@@ -81,7 +81,8 @@ lor_release_lock() {
 
 lor_parse_common_args() {
   # Sets: LOR_DRY_RUN LOR_LIVE_RAKUTEN LOR_PIPELINE_ID LOR_FROM_STEP LOR_SKIP_017 LOR_MAX_ITEMS
-  #        LOR_INCLUDE_IMPORT LOR_PAGES_PER_RUN LOR_CURSORS_PER_RUN
+  #        LOR_INCLUDE_IMPORT LOR_PAGES_PER_RUN LOR_CURSORS_PER_RUN LOR_GENRE_IDS
+  #        LOR_NO_UPDATE_SORT LOR_MAX_QPS
   LOR_DRY_RUN=0
   LOR_LIVE_RAKUTEN=0
   LOR_PIPELINE_ID=""
@@ -92,6 +93,10 @@ lor_parse_common_args() {
   # 段階1初期live相当（運用枠 Decision）
   LOR_PAGES_PER_RUN="${PAGES_PER_RUN:-10}"
   LOR_CURSORS_PER_RUN="${CURSORS_PER_RUN:-1}"
+  # Ranking API が受け付ける段階1ジャンル（#1765: 100000/100003/100004 は Ranking 400）
+  LOR_GENRE_IDS="${GENRE_IDS:-100005}"
+  LOR_NO_UPDATE_SORT=1
+  LOR_MAX_QPS="${MAX_QPS:-}"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -139,9 +144,41 @@ lor_parse_common_args() {
         LOR_PAGES_PER_RUN="${1#*=}"
         shift
         ;;
+      --pages-per-run)
+        LOR_PAGES_PER_RUN="${2:-}"
+        shift 2
+        ;;
       --cursors-per-run=*)
         LOR_CURSORS_PER_RUN="${1#*=}"
         shift
+        ;;
+      --cursors-per-run)
+        LOR_CURSORS_PER_RUN="${2:-}"
+        shift 2
+        ;;
+      --genre-ids=*)
+        LOR_GENRE_IDS="${1#*=}"
+        shift
+        ;;
+      --genre-ids)
+        LOR_GENRE_IDS="${2:-}"
+        shift 2
+        ;;
+      --no-update-sort)
+        LOR_NO_UPDATE_SORT=1
+        shift
+        ;;
+      --allow-update-sort)
+        LOR_NO_UPDATE_SORT=0
+        shift
+        ;;
+      --max-qps=*)
+        LOR_MAX_QPS="${1#*=}"
+        shift
+        ;;
+      --max-qps)
+        LOR_MAX_QPS="${2:-}"
+        shift 2
         ;;
       -h|--help)
         return 2
@@ -259,11 +296,24 @@ lor_run_import_chain() {
   if [[ "${LOR_LIVE_RAKUTEN}" -eq 1 ]]; then
     live_flags+=(--live-rakuten --live-object-storage)
   fi
+  local genre_flags=()
+  if [[ -n "${LOR_GENRE_IDS}" ]]; then
+    genre_flags+=(--genre-ids "${LOR_GENRE_IDS}")
+  fi
+  local batch003_extra=()
+  if [[ "${LOR_NO_UPDATE_SORT}" -eq 1 ]]; then
+    batch003_extra+=(--no-update-sort)
+  fi
+  if [[ -n "${LOR_MAX_QPS}" ]]; then
+    batch003_extra+=(--max-qps "${LOR_MAX_QPS}")
+  fi
 
   lor_run_batch_module "item_pseudo_diff" "batch.application.item_pseudo_diff" \
     "${live_flags[@]}" \
+    "${genre_flags[@]}" \
     --pages-per-run "${LOR_PAGES_PER_RUN}" \
     --cursors-per-run "${LOR_CURSORS_PER_RUN}" \
+    "${batch003_extra[@]}" \
     || return $?
 
   if [[ "${LOR_INCLUDE_IMPORT}" -eq 0 ]]; then
@@ -355,7 +405,7 @@ lor_begin_scenario() {
     LOR_LOG_FILE="${OUTPUT_DIR}/${scenario}-$(date +%Y%m%dT%H%M%S).log"
   fi
   lor_log INFO "scenario=${scenario} pipeline_batch_run_id=${LOR_PIPELINE_ID} dry_run=${LOR_DRY_RUN} live_rakuten=${LOR_LIVE_RAKUTEN}"
-  lor_log INFO "max_items=${LOR_MAX_ITEMS} pages_per_run=${LOR_PAGES_PER_RUN} cursors_per_run=${LOR_CURSORS_PER_RUN} from_step=${LOR_FROM_STEP:-"(start)"}"
+  lor_log INFO "max_items=${LOR_MAX_ITEMS} pages_per_run=${LOR_PAGES_PER_RUN} cursors_per_run=${LOR_CURSORS_PER_RUN} genre_ids=${LOR_GENRE_IDS:-"(unset)"} no_update_sort=${LOR_NO_UPDATE_SORT} max_qps=${LOR_MAX_QPS:-"(batch-default)"} from_step=${LOR_FROM_STEP:-"(start)"}"
   if [[ -n "${LOR_FROM_STEP}" ]]; then
     LOR_SKIPPING=1
   else

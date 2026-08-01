@@ -24,6 +24,10 @@ Options:
   --max-items <n>                   005〜008 件数上限（既定: MAX_ITEMS or 100）
   --pages-per-run <n>               BATCH-003（既定: 10 = 段階1）
   --cursors-per-run <n>             BATCH-003（既定: 1）
+  --genre-ids <ids>                 カンマ区切り（既定: 100005。#1765 Ranking対応）
+  --no-update-sort                  BATCH-003 で update_sort 除外（既定オン）
+  --allow-update-sort               update_sort を許可
+  --max-qps <n>                     BATCH-003 安全側 QPS 上書き
 
 Step names: ranking_snapshot, item_pseudo_diff, raw_staging, product_diff,
             item_apply, item_active_status, import_summary
@@ -48,10 +52,16 @@ main() {
   {
     local live_flags=()
     if [[ "${LOR_LIVE_RAKUTEN}" -eq 1 ]]; then
-      live_flags+=(--live-rakuten)
+      # BATCH-002 の Raw 保存も live OS を使う（#1765 パターンBと同旨）
+      live_flags+=(--live-rakuten --live-object-storage)
+    fi
+    local genre_flags=()
+    if [[ -n "${LOR_GENRE_IDS}" ]]; then
+      genre_flags+=(--genre-ids "${LOR_GENRE_IDS}")
     fi
     lor_run_batch_module_job_only "ranking_snapshot" "batch.application.ranking_snapshot" \
       "${live_flags[@]}" \
+      "${genre_flags[@]}" \
       || rc=$?
     if [[ "${rc}" -eq 0 ]]; then
       lor_run_import_chain || rc=$?
