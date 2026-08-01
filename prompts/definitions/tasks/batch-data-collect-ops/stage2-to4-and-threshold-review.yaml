@@ -1,0 +1,248 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-data-collect-ops-stage2-to4-and-threshold-review"
+  title: "batch-data-collect-ops:段階2〜4継続収集と§5.3.5本見直し"
+  summary: "方針Bに従い #1801 reopenせず、段階2〜4の継続収集（Human live実行）と§5.3.5本見直しを新Taskで進める。AIは手順・記録同期・阻害時最小修正・PR/Reviewのみ。schedule有効化・GHA楽天liveは含まない。"
+  workstream_key: "batch-data-collect-ops"
+  phase: "ops-execution"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  epic_issue_number: 1798
+  epic_branch: "chore/epic-1798-batch-data-collect-ops"
+  related_issues:
+    - 1801
+    - 1807
+    - 1799
+    - 1745
+    - 1804
+    - 1803
+    - 1763
+    - 1607
+  related_prs:
+    - 1807
+    - 1806
+    - 1805
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Human決定（方針B）: #1801 CLOSED 後は reopen せず、段階2〜4＋§5.3.5本見直しを新Taskで継続する。
+  段階1は #1801 / PR #1807 で充足（BATCH-003成功累計3・進行条件充足）。次は段階2（pages_per_run=60）。
+  運用枠正本: ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md（案A・最大7日または累計20 Run）。
+  ゲート: 2026-08-01-local-batch-orchestrator-gate。親シェルは #1804 / PR #1806 MERGED。
+  **live 実行（--live-rakuten）の主体は Human。AI は実行しない。**
+  AI担当: Task Definition / Review Definition / Issue / Branch / worktree /
+  手順docs・結果docs同期 / 収集阻害時の最小修正 / PR作成 / AI Review。
+
+objective: |
+  運用枠 Decision どおり段階2→3→4を進め、結果を正本docsへ残し、§5.3.5本見直し（維持含む）を反映する。
+  Human が親シェル経由で live 実行し、AI は記録同期・最小修正・PR/Review を担う。
+
+scope:
+  - "段階2→3→4の継続収集（運用枠 Decision 準拠。段階2は通常継続ノブ pages_per_run=60）"
+  - "Human による親シェル経由 live 実行結果の docs 追記（secretなし）"
+  - "fetch_cursor進捗・paused/failed再開の記録（secretなし）"
+  - "§5.3.3指標の観測と§5.3.5閾値の本見直し（維持含む）→ 運用方針へ反映"
+  - "収集阻害時のみ apps/batch または scripts/batch の必要最小修正"
+  - "結果docs（#1801継続追記または本Task用結果docs）への同期"
+  - "AIは live 実行しない。手順整備・記録同期・PR/Review のみ"
+
+out_of_scope:
+  - "段階1の再実施必須化（#1801で充足済み）"
+  - "運用枠Decisionの再定義"
+  - "AI による --live-rakuten / local楽天live の実行"
+  - "#1792 schedule有効化"
+  - "#1607 / GHA楽天live"
+  - "実crontab登録・PC常時起動（Human）"
+  - "secret実値の表示・変更"
+  - "BATCH-009〜015 の本Taskでの定期化必須化"
+  - "常用QPS=2の再改訂"
+  - "親orchestrator workflowのscheduleコメント解除"
+  - "OpenAPI / generated / apps/web|api|reco"
+  - "本線#7品質評価本体"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/batch-data-collect-ops_local継続収集結果_1801.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "scripts/batch/README.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/batch-data-collect-ops_local継続収集結果_1801.md"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/tasks/batch-data-collect-ops/stage2-to4-and-threshold-review.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-data-collect-ops/stage2-to4-and-threshold-review/pr-review.yaml"
+      action: "create"
+      required: true
+    - path: "apps/batch/**"
+      action: "update"
+      required: false
+    - path: "scripts/batch/**"
+      action: "update"
+      required: false
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+
+acceptance_criteria:
+  - "段階2進行条件充足（または Human 停止判断）が結果docsに記録されている"
+  - "段階3〜4の実施、または Human 停止判断が結果docsに記録されている"
+  - "§5.3.5本見直し（維持含む）が運用方針に反映されている"
+  - "結果docs / PR / Issue に secret 実値を含まない"
+  - "収集記録が親シェル経由である（個別CLI本線化なし）"
+  - "GHA楽天live・schedule有効化・#1607・実crontab・BATCH-009〜015定期化を含まない"
+  - "AI が --live-rakuten を実行していない（実行主体は Human）"
+
+branch:
+  no_branch: false
+  summary: "stage2-to4-threshold-review"
+  name: "chore/task-1808-stage2-to4-threshold-review"
+  base: "chore/epic-1798-batch-data-collect-ops"
+  target: "chore/epic-1798-batch-data-collect-ops"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-01"
+    due_date: "2026-08-08"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1801
+    - 1799
+    - 1804
+    - 1745
+  prs:
+    - 1807
+    - 1806
+  tasks:
+    - "task-batch-data-collect-ops-local-collect-and-monitor"
+    - "task-batch-data-collect-ops-ops-plan-decision"
+    - "task-batch-data-collect-ops-local-orchestrator-impl"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-batch-data-collect-ops-local-collect-and-monitor"
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "docs/15_運用・改善/運用手順/batch-data-collect-ops_local継続収集結果_1801.md"
+    - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - "scripts/batch/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "local収集結果の記録（Human実行分を含む）"
+    - "docs整合確認"
+  commands: []
+  manual_checks:
+    - "egress照合失敗時に楽天HTTPしない"
+    - "429時にcursor pageが進まない"
+    - "収集が親オーケストレータ経由である"
+    - "AIが --live-rakuten を実行していない"
+  not_required:
+    - "GHA楽天live E2E"
+    - "AIによるlive実行"
+  skip_reason:
+    "GHA楽天live E2E": "本Task out of scope"
+    "AIによるlive実行": "Human決定。live実行主体はHuman"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "方針B（#1801 reopenなし・新Task継続）と役割分担（Human live / AI記録）が守られているか"
+    - "段階2〜4が運用枠Decisionに従っているか"
+    - "収集が親オーケストレータ経由であるか（個別CLI本線化していないか）"
+    - "secret実値・schedule有効化・GHA楽天liveが混入していないか"
+    - "§5.3.5本見直し（維持含む）の根拠が実測に基づくか"
+
+human_decision_points:
+  - "§5.3.5見直し値の最終採択（維持含む）"
+  - "段階3〜4途中での停止・ジャンル縮小判断"
+  - "期間/Run上限到達時の継続可否（Epic #1798）"
+  - "Projects Status / Project追加（botに project scope が無い場合は Human）"
+
+stop_conditions:
+  - "AIが --live-rakuten を実行しようとした場合"
+  - "運用枠Decision（2026-07-31-batch-data-collect-ops-plan）が decided でない"
+  - "期間上限（最大7日）または BATCH-003累計 Run 20回に到達し、継続のHuman再判断がない"
+  - "GHA楽天liveやschedule有効化が必要に見える"
+  - "secret実値が必要に見える"
+  - "#1801 worktree と同一 exclusive files を競合編集する場合"
+
+notes:
+  - "Issue #1808 / Branch chore/task-1808-stage2-to4-threshold-review"
+  - "方針B: #1801 reopenなし。段階2以降は本Task"
+  - "live実行主体はHuman。AIは手順・記録同期・阻害時最小修正・PR/Review"
+  - "段階2起動例（Human）: ./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --pages-per-run=60 --max-qps 1"
+  - "Planned Start 2026-08-01 / Due Date 2026-08-08（運用枠残り・開始+7日付近。Definition明示値）"
+  - "親Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops"
+  - "関連: #1801 / PR #1807 / #1799 / #1745 / #1804"
