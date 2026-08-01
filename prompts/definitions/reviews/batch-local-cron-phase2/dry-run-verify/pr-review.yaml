@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1824
   task_definition: "prompts/definitions/tasks/batch-local-cron-phase2/dry-run-verify.yaml"
   target_branch: "chore/epic-1818-batch-local-cron-phase2"
   parent_epic_issue: "[Epic]batch-local-cron-phase2:local cron Phase2親シェル配線（009〜016）"
