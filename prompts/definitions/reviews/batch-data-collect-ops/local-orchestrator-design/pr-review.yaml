@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1805
   issue:
     number: 1803
   task_definition: "prompts/definitions/tasks/batch-data-collect-ops/local-orchestrator-design.yaml"
