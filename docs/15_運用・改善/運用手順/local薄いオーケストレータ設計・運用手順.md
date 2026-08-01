@@ -232,12 +232,13 @@ Phase1 定常では `--live-rakuten` とノブ（`pages_per_run=60` / `max_qps=1
 # 【例】実登録は Human。AI / Task は登録しない。
 # リポジトリルートで実行する前提。パス・ユーザは環境に合わせる。
 # 親シェル経由のみ。葉 Batch の個別 cron は禁止。
+# Human 採択（#1816）: daily=火〜日 05:00 JST / weekly=月曜 05:00 JST
 
-# local-daily: 月曜〜土曜 00:30 JST
-30 0 * * 1-6  cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-daily.log 2>&1
+# local-daily: 火曜〜日曜 05:00 JST
+0 5 * * 0,2-6  cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-daily.log 2>&1
 
-# local-weekly: 日曜 00:30 JST（当日は daily を入れない）
-30 0 * * 0    cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_weekly_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-weekly.log 2>&1
+# local-weekly: 月曜 05:00 JST（当日は daily を入れない）
+0 5 * * 1      cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_weekly_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-weekly.log 2>&1
 ```
 
 手動起動例（概念）:

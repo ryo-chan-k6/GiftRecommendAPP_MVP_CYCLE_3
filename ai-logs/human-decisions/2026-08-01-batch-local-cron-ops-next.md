@@ -79,6 +79,7 @@
 | `--genre-ids` | **ジャンル1本ローテ** | MVP: `100005` / `100003` / `100004` / `100000` を1本ずつ。同時複数禁止 |
 | BATCH-017 | **任意** | 連鎖内。不要時は `--skip-import-summary` |
 | 同時楽天 live | **禁止（常に1本）** | Decision §3 / 楽天Fetch運用方針 §6.2 |
+| crontab スケジュール | **daily=火〜日 05:00 JST** / **weekly=月曜 05:00 JST** | Human 採択（#1816）。同日二重起動しない。cron 例: daily `0 5 * * 0,2-6` / weekly `0 5 * * 1`（ホスト JST 前提） |
 
 運用手順正本: `docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md`。
 実 crontab 登録・PC常時起動・観測期間の `--live-rakuten` は Human。AI は登録・live を実行しない。
