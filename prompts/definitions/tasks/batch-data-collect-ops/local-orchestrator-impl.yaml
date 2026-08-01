@@ -16,6 +16,7 @@ parent:
   epic_branch: "chore/epic-1798-batch-data-collect-ops"
   related_issues:
     - 1745
+    - 1803
     - 1801
     - 1792
     - 1607
@@ -118,7 +119,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "local-orchestrator-impl"
-  name: null
+  name: "chore/task-1804-local-orchestrator-impl"
   base: "chore/epic-1798-batch-data-collect-ops"
   target: "chore/epic-1798-batch-data-collect-ops"
   worktree_required: true
@@ -142,6 +143,7 @@ dependencies:
   issues:
     - 1798
     - 1745
+    - 1803
   prs: []
   tasks:
     - "task-batch-data-collect-ops-local-orchestrator-design"
@@ -199,6 +201,7 @@ stop_conditions:
   - "本格ジョブ基盤導入が必要に見える"
 
 notes:
+  - "Issue #1804 / Branch chore/task-1804-local-orchestrator-impl"
   - "着手ゲート: local-orchestrator-design 完了（親Epic Branchへmerge）"
   - "完了後: #1801 をオーケストレータ経由で着手"
   - "親Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops"

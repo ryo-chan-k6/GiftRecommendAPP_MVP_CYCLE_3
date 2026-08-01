@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1803
   task_definition: "prompts/definitions/tasks/batch-data-collect-ops/local-orchestrator-design.yaml"
   target_branch: "chore/epic-1798-batch-data-collect-ops"
   parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
@@ -49,5 +49,5 @@ review_points:
   - "secret実値・schedule有効化・GHA楽天live・#1607が混入していないか"
 
 notes:
-  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue番号は /start-task 後に反映"
+  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue #1803。PRは /create-pr 後に反映"
   - "Human Reviewは省略しない"

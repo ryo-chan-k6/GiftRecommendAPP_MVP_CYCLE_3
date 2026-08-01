@@ -18,6 +18,7 @@ parent:
     - 1745
     - 1799
     - 1801
+    - 1804
     - 1792
     - 1607
   related_prs: []
@@ -118,7 +119,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "local-orchestrator-design"
-  name: null
+  name: "chore/task-1803-local-orchestrator-design"
   base: "chore/epic-1798-batch-data-collect-ops"
   target: "chore/epic-1798-batch-data-collect-ops"
   worktree_required: true
@@ -195,6 +196,7 @@ stop_conditions:
   - "secret実値が必要に見える"
 
 notes:
+  - "Issue #1803 / Branch chore/task-1803-local-orchestrator-design"
   - "ゲート正本: ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md"
   - "完了後: /start-task local-orchestrator-impl（未起票なら起票）→ #1801"
   - "親Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops"

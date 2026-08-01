@@ -19,6 +19,8 @@ parent:
     - 1789
     - 1763
     - 1799
+    - 1803
+    - 1804
     - 1792
     - 1607
   related_prs: []
@@ -147,6 +149,7 @@ dependencies:
     - 1745
     - 1763
     - 1799
+    - 1804
   prs: []
   tasks:
     - "task-batch-data-collect-ops-ops-plan-decision"
