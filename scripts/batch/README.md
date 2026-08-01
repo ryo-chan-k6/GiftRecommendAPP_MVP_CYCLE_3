@@ -8,7 +8,8 @@ Batch 手動実行・dry-run・再実行補助、および local 薄いオーケ
 | ------------ | ---- |
 | [環境設計書 §19.7](../../docs/06_実装設計/cross_cutting/環境設計書.md) | Batch 環境変数 |
 | [CI・CD方針書](../../docs/05_アプリケーション設計/共通/CI・CD方針書.md) | Batch は GitHub Actions 手動/定期実行を基本 |
-| [local薄いオーケストレータ設計・運用手順](../../docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md) | local 親シェルの正本 |
+| [local薄いオーケストレータ設計・運用手順](../../docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md) | local 親シェルの設計正本 |
+| [local_cron_Phase1_crontab運用手順](../../docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md) | Phase1 crontab 運用手順・定常ノブ（#1813） |
 
 ## local 薄いオーケストレータ（#1804）
 
@@ -65,7 +66,15 @@ set -a && source .env && set +a
 
 葉 Batch の `--job-run-id` は段ごとに UUID を発行する（`pipeline_batch_run_id` を複数葉の `batch_run_log` PK に共用しない）。業務紐付けは `--diff-batch-run-id` / `--batch-run-id` 等で pipeline ID を渡す。
 
-**実 crontab 登録は Human**（例は設計・運用手順 §7）。本スクリプト群は crontab へ書き込まない。
+**実 crontab 登録は Human**（正本: [local_cron_Phase1_crontab運用手順](../../docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md)。設計要約は [local薄いオーケストレータ設計・運用手順](../../docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md) §7）。本スクリプト群は crontab へ書き込まない。
+
+Phase1 定常ノブ例（Human・ジャンルは1本ローテ）:
+
+```bash
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 100005 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+```
 
 Phase1 に BATCH-009〜015 は含めない。Airflow 等は導入しない。
 
@@ -112,5 +121,6 @@ uv run python ../../scripts/batch/object_storage_live_verify.py \
 
 | 対象 | 担当 |
 | ---- | ---- |
-| 本格収集キャンペーン（オーケストレータ経由） | #1801 |
+| 本格収集キャンペーン（オーケストレータ経由） | #1801（完了側） |
+| local cron Phase1（crontab運用・無人観測） | #1811 / #1813（手順）→ 後続 verify |
 | 本番 egress IP 設計 | **Backlog: #1607**・未検討（GHA楽天liveは禁止維持） |

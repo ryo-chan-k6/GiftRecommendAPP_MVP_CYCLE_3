@@ -108,7 +108,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "cron-ops-runbook"
-  name: ""
+  name: "chore/task-1813-cron-ops-runbook"
   base: "chore/epic-1811-batch-local-cron-phase1"
   target: "chore/epic-1811-batch-local-cron-phase1"
   worktree_required: true
@@ -116,13 +116,14 @@ branch:
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
-    status: "Todo"
+    status: "In Progress"
     phase: "15_運用・改善"
     priority: "high"
     planned_start: "2026-08-01"
     due_date: "2026-08-03"
 
 issue:
+  number: 1813
   unit: "task"
   type: "chore"
   area: "batch"
@@ -187,6 +188,7 @@ stop_conditions:
   - "009〜016配線が本Taskに必要に見える場合"
 
 notes:
-  - "親Epic Issue番号 / Branch は /start-epic 後に反映。本Taskは最初に /start-task する対象"
+  - "Task Issue #1813 / Branch chore/task-1813-cron-ops-runbook / 親Epic #1811"
   - "依存: #1798 CLOSED / Decision 2026-08-01-batch-local-cron-ops-next decided"
   - "後続: cron-ops-verify（Human登録後）"
+  - "Projects追加は bot PAT に project scope がなく未実施（Human依頼）"

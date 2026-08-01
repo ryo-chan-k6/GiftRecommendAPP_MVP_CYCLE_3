@@ -7,11 +7,12 @@
 | 文書種別 | 設計・運用手順正本（Phase1） |
 | 対象 | GHA親オーケストレータ相当を local で薄く再現する親シェル |
 | 作成日 | 2026-08-01 |
-| 関連Issue | [#1803](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1803)（本設計） / [#1804](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1804)（実装） / [#1801](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1801)（収集） |
-| 親Epic | [#1798](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1798) |
+| 関連Issue | [#1803](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1803)（本設計） / [#1804](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1804)（実装） / [#1801](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1801)（収集） / [#1813](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1813)（crontab運用手順） |
+| 親Epic | [#1798](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1798)（設計・実装） / [#1811](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1811)（local cron Phase1） |
 | ゲート正本 | [2026-08-01-local-batch-orchestrator-gate](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md)（`decided`） |
 | 運用枠正本 | [2026-07-31-batch-data-collect-ops-plan](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md)（`decided`） |
-| 状態 | Implemented（#1804。収集実行・実 crontab 登録は含まない） |
+| cron次本線 | [2026-08-01-batch-local-cron-ops-next](../../../ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md)（`decided`） |
+| 状態 | Implemented（#1804）。crontab 運用手順正本は [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md)（#1813）。実 crontab 登録は Human |
 
 本書は設計・運用手順の正本である。親シェル実装は #1804（`scripts/batch/local_*_orchestrator.sh`）。収集実行は #1801。実 crontab 登録は Human。
 secret・接続文字列・token・egress IP の実値は記載しない。
@@ -219,29 +220,37 @@ Phase1 local 親シェルおよびそれが起動する Batch は、次を満た
 
 ## 7. crontab 例と Human 境界
 
+**Phase1 定常運用の正本**は [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md)（#1813）とする。
+本節は親シェル設計側の要約・参照入口であり、定常ノブ・Human 登録チェックリスト・verify 着手条件はそちらを正とする。
+
 ### 7.1 例（登録しない・参考のみ）
 
 タイムゾーンはホストの cron 設定に依存する。以下は **JST 想定の例**であり、GHA UTC cron（`30 15 * * 0-5` 等）の移植ではない。
+Phase1 定常では `--live-rakuten` とノブ（`pages_per_run=60` / `max_qps=1` / Ranking `100005` / ジャンル1本）を明示する（詳細は crontab運用手順 §4〜§5）。
 
 ```cron
 # 【例】実登録は Human。AI / Task は登録しない。
 # リポジトリルートで実行する前提。パス・ユーザは環境に合わせる。
+# 親シェル経由のみ。葉 Batch の個別 cron は禁止。
 
 # local-daily: 月曜〜土曜 00:30 JST
-30 0 * * 1-6  cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_daily_orchestrator.sh >> scripts/batch/output-local-orchestrator/cron-daily.log 2>&1
+30 0 * * 1-6  cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-daily.log 2>&1
 
 # local-weekly: 日曜 00:30 JST（当日は daily を入れない）
-30 0 * * 0    cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_weekly_orchestrator.sh >> scripts/batch/output-local-orchestrator/cron-weekly.log 2>&1
+30 0 * * 0    cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_weekly_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-weekly.log 2>&1
 ```
 
 手動起動例（概念）:
 
 ```bash
-# dry-run（#1804 実装後）
+# dry-run（#1804）
 ./scripts/batch/local_daily_orchestrator.sh --dry-run
 
 # live（明示フラグ必須。secret は .env 等から読み、値をエコーしない）
-./scripts/batch/local_daily_orchestrator.sh --live-rakuten
+# Phase1 定常ノブ例（ジャンルは1本ローテ。詳細は crontab運用手順）
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 100005 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
 ```
 
 ### 7.2 Human 境界
@@ -249,14 +258,14 @@ Phase1 local 親シェルおよびそれが起動する Batch は、次を満た
 | 作業 | 担当 |
 | ---- | ---- |
 | 親シェル実装・dry-run 確認 | #1804（AI 可） |
-| crontab 例・運用手順の文書化 | 本書 / #1803 |
+| crontab 例・設計側要約 | 本書 / #1803 |
+| crontab 運用手順正本・定常ノブ同期 | [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md) / #1813 |
 | **実 crontab 登録** | **Human** |
 | **PC / WSL 常時起動・電源・ネットワーク維持** | **Human** |
 | 本格収集キャンペーンの開始・段階進行・停止判断 | #1801 ＋ Human（運用枠 Decision） |
 | GHA schedule 有効化（#1792） | Human・別 Task（本書対象外） |
 
-AI Agent および Task #1803 / #1804 は、実 crontab へ書き込まない。
-
+AI Agent および Task #1803 / #1804 / #1813 は、実 crontab へ書き込まない。`--live-rakuten` 実行も #1813 では AI が行わない。
 ---
 
 ## 8. 後続 Task への引き渡し条件
@@ -333,6 +342,8 @@ CLI 慣例（実装で確定してよい）:
 | 資料 | 用途 |
 | ---- | ---- |
 | [local薄いオーケストレータ導入ゲート](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md) | Issue 分割・Phase1・cron 境界 |
+| [local cron 次本線 Decision](../../../ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md) | local cron・Phase1 定常ノブ |
+| [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md) | crontab 運用手順正本（#1813） |
 | [本格収集運用枠 Decision](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) | 段階・期間/Run 上限・停止 |
 | [楽天Fetch運用方針](./楽天Fetch運用方針.md) | QPS・egress・同時 live・監視 |
 | [バッチ実行スケジュール設計書](../../05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md) | GHA 親子・needs・concurrency |
@@ -352,3 +363,4 @@ CLI 慣例（実装で確定してよい）:
 | 2026-08-01 | #1804 実装反映。`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh` / `lib/local_orchestrator_common.sh` を配置。`--dry-run` で順序・flock・Run ID 確認可 |
 | 2026-08-01 | #1808。`--genre-ids` / `--ranking-genre-ids` 分離を CLI 表へ反映 |
 | 2026-08-01 | #1808。weekly existing 連鎖の business run ID 分離（004 object_key ↔ 005 選定）を追記 |
+| 2026-08-01 | #1813。§7 を Phase1 定常ノブ付き例へ更新し、crontab運用手順正本への参照を追加 |
