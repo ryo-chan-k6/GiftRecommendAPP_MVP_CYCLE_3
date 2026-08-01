@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1823
   issue:
     number: 1822
   task_definition: "prompts/definitions/tasks/batch-local-cron-phase2/impl.yaml"
@@ -56,3 +56,4 @@ notes:
   - "Human Reviewは省略しない"
   - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"
   - "Task Issue #1822 / Branch chore/task-1822-phase2-impl"
+  - "Task PR #1823"
