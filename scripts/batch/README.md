@@ -55,6 +55,12 @@ uv run python ../../scripts/batch/object_storage_live_verify.py \
 
 ## 配置予定（後続）
 
-- ローカル dry-run 起動補助
-- GitHub Actions workflow 連携メモ
-- 本番 egress IP 設計（**Backlog: #1607 BL-RAKUTEN-EGRESS-PROD**・未検討）
+| 対象 | 予定パス | 担当 |
+| ---- | -------- | ---- |
+| local日次親オーケストレータ | `local_daily_orchestrator.sh` | #1804（設計正本: [local薄いオーケストレータ設計・運用手順](../../docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md)） |
+| local週次親オーケストレータ | `local_weekly_orchestrator.sh` | #1804 |
+| 共通（flock / Run ID） | `lib/local_orchestrator_common.sh` | #1804 |
+| ローカル dry-run 起動補助 | 上記親シェルの `--dry-run` | #1804 |
+| 本番 egress IP 設計 | — | **Backlog: #1607**・未検討（GHA楽天liveは禁止維持） |
+
+設計・運用手順・crontab例（実登録はHuman）の正本は上記 docs。本READMEは実装後に起動例を追記する。

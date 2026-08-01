@@ -416,6 +416,16 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - 期間/Run上限到達後の継続は Epic #1798 内で Human 再判断する
 - §5.3.5の実測見直し（維持含む）は収集Task側でdocsへ反映する
 
+### 11.4 local薄いオーケストレータ（実行制御）
+
+- [local薄いオーケストレータ導入ゲート](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md) が **`decided`** である（#1803 / #1804）
+- 設計・運用手順の正本は [local薄いオーケストレータ設計・運用手順](./local薄いオーケストレータ設計・運用手順.md)
+- Phase1 は BATCH-001〜004 中心（必要なら 005〜008）。BATCH-009〜015 は含めない
+- 起動は親シナリオ（日次相当 / 週次相当）のみ。子 Batch の個別 cron は禁止
+- 排他は本線 flock ＋楽天 live 横断1本。失敗時は後続停止。`pipeline_batch_run_id` を親で生成して伝播
+- 実 crontab 登録・PC常時起動は **Human**。親シェル実装は #1804、収集実行は #1801（#1804 完了後）
+- GHA 楽天 live・#1607・schedule 有効化は対象外のまま
+
 ---
 
 ## 12. 関連資料
@@ -430,6 +440,8 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | [楽天Fetch運用値 Human Decision Log](../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md) | §10の取得量・Run分割・再開・実行場所の採択 |
 | [楽天Fetch MVP fetch_plan Human Decision Log](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) | §10 No.1 の具体的ジャンル・階層・route 承認 |
 | [本格収集運用枠 Human Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) | §10 No.10。B-0下 local 本格収集の段階・期間/Run上限・停止・監視見直し |
+| [local薄いオーケストレータ導入ゲート](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md) | §11.4。local親シェル導入・Phase1・cron Human境界 |
+| [local薄いオーケストレータ設計・運用手順](./local薄いオーケストレータ設計・運用手順.md) | GHA needs / 排他 / Run ID の local 対応表・運用手順 |
 | [バッチ外部API本実装ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md) | 外部API実装状態 |
 | [バッチ実行スケジュール設計書](../../05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md) | 親子workflow・concurrency |
 | [バッチ親workflow schedule有効化ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md) | schedule無効・Human決定 |
@@ -460,3 +472,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-07-31 | #1785 AI Review対応: §5.2 / §10 No.1 / §11.1 の「実HTTP未実施」表記を検証結果（local パターンB実施済み）と同期。GHA楽天HTTP禁止は維持 |
 | 2026-07-31 | #1791: §11.2 / §12 に daily schedule B-0採択と監視・rollback最小手順を接続 |
 | 2026-07-31 | #1799: §10 No.10 / §11.3 / §12 に本格収集運用枠（案A・最大7日または累計20 Run）を接続 |
+| 2026-08-01 | #1803: §11.4 / §12 に local薄いオーケストレータ設計・ゲートを接続 |
