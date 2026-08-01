@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1806
   issue:
     number: 1804
   task_definition: "prompts/definitions/tasks/batch-data-collect-ops/local-orchestrator-impl.yaml"
@@ -50,5 +50,5 @@ review_points:
   - "009〜015定期化や実crontab登録を完了扱いにしていないか"
 
 notes:
-  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue #1804。PRは /create-pr 後に反映"
+  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue #1804。PR #1806"
   - "Human Reviewは省略しない"

@@ -11,9 +11,9 @@
 | 親Epic | [#1798](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1798) |
 | ゲート正本 | [2026-08-01-local-batch-orchestrator-gate](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md)（`decided`） |
 | 運用枠正本 | [2026-07-31-batch-data-collect-ops-plan](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md)（`decided`） |
-| 状態 | Draft（Human Review前） |
+| 状態 | Implemented（#1804。収集実行・実 crontab 登録は含まない） |
 
-本書は設計・運用手順の正本である。親シェル実装本体・収集実行・実 crontab 登録は含まない。
+本書は設計・運用手順の正本である。親シェル実装は #1804（`scripts/batch/local_*_orchestrator.sh`）。収集実行は #1801。実 crontab 登録は Human。
 secret・接続文字列・token・egress IP の実値は記載しない。
 
 ---
@@ -71,7 +71,7 @@ secret・接続文字列・token・egress IP の実値は記載しない。
 | ファイル | 用途 |
 | -------- | ---- |
 | `scripts/batch/lib/local_orchestrator_common.sh` | flock・Run ID 生成・段階実行・ログ・終了コード規約 |
-| `scripts/batch/locks/`（gitignored 想定） | flock 用 lock ファイル置き場 |
+| `scripts/batch/output-local-orchestrator/locks/`（`scripts/batch/output-*/` で gitignored） | flock 用 lock ファイル置き場 |
 
 ### 3.3 Phase1 実行順序
 
@@ -146,8 +146,8 @@ BATCH-004 → 005 → 006 → 007 → 008（→ 017 任意）
 
 | ロック | 目的 | 推奨 lock 名（実装は #1804） |
 | ------ | ---- | --------------------------- |
-| 本線 flock | GHA `batch-mainline` 相当。daily / weekly / 手動親の衝突防止 | `scripts/batch/locks/local-batch-mainline.lock` |
-| 楽天 live 横断 1 本 | BATCH-001〜004 live の同時実行禁止（[楽天Fetch運用方針](./楽天Fetch運用方針.md) §6.2） | `scripts/batch/locks/local-rakuten-live.lock` |
+| 本線 flock | GHA `batch-mainline` 相当。daily / weekly / 手動親の衝突防止 | `scripts/batch/output-local-orchestrator/locks/local-batch-mainline.lock` |
+| 楽天 live 横断 1 本 | BATCH-001〜004 live の同時実行禁止（[楽天Fetch運用方針](./楽天Fetch運用方針.md) §6.2） | `scripts/batch/output-local-orchestrator/locks/local-rakuten-live.lock` |
 
 要件:
 
@@ -305,8 +305,7 @@ scripts/batch/
 ├─ local_weekly_orchestrator.sh       # 新規（#1804）
 ├─ lib/
 │  └─ local_orchestrator_common.sh    # 新規（#1804）推奨
-├─ locks/                             # flock 用（gitignored 推奨）
-├─ output-local-orchestrator/         # ログ（gitignored 推奨）
+├─ output-local-orchestrator/         # ログ＋locks（gitignored: scripts/batch/output-*/）
 ├─ rakuten_live_verify.py             # 既存疎通ハーネス
 └─ object_storage_live_verify.py      # 既存
 ```
@@ -347,3 +346,4 @@ CLI 慣例（実装で確定してよい）:
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-08-01 | 初版（#1803）。Phase1 範囲、GHA↔local 対応表、排他・失敗停止・再開・観測、安全要件、crontab 例と Human 境界、#1804 / #1801 引き渡し、推奨スクリプト名 |
+| 2026-08-01 | #1804 実装反映。`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh` / `lib/local_orchestrator_common.sh` を配置。`--dry-run` で順序・flock・Run ID 確認可 |
