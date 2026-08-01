@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-local-cron-phase1-cron-ops-verify"
+  title: "batch-local-cron-phase1:無人観測結果 Task PRレビュー"
+  summary: "無人観測結果docs同期 Task PR を AI Review する。Human登録ゲート・secret非露出・個別cron禁止・AI非liveを確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 0
+  task_definition: "prompts/definitions/tasks/batch-local-cron-phase1/cron-ops-verify.yaml"
+  target_branch: "chore/epic-1811-batch-local-cron-phase1"
+  parent_epic_issue: "[Epic]batch-local-cron-phase1:local cron Phase1無人運用（001〜008）"
+  parent_epic_branch: "chore/epic-1811-batch-local-cron-phase1"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Human crontab登録済みゲートを満たしているか"
+  - "観測結果docsにsecret実値がないか"
+  - "個別cron禁止・親シェル経由が確認されているか"
+  - "AIが --live-rakuten を実行していないか"
+  - "GHA schedule / Phase2 / 018/019 が混入していないか"
+
+notes:
+  - "依存: cron-ops-runbook 完了 + Human登録済み"
+  - "Human Reviewは省略しない"
+  - "親Epic #1811 / Branch chore/epic-1811-batch-local-cron-phase1。Task Issue番号は /start-task 後に反映"

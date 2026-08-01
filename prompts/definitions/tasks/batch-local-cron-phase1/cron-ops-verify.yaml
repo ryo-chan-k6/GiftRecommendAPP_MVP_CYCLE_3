@@ -1,0 +1,191 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-local-cron-phase1-cron-ops-verify"
+  title: "batch-local-cron-phase1:無人観測結果docs同期"
+  summary: "Humanによるcrontab登録後、数日の無人観測結果をdocsへ同期する。AIは --live-rakuten を実行せず、記録・正本同期のみを行う。"
+  workstream_key: "batch-local-cron-phase1"
+  phase: "ops-verify"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-local-cron-phase1:local cron Phase1無人運用（001〜008）"
+  epic_issue_number: 1811
+  epic_branch: "chore/epic-1811-batch-local-cron-phase1"
+  related_issues:
+    - 1745
+    - 1798
+    - 1792
+    - 1607
+  related_prs:
+    - 1810
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  前Task（cron-ops-runbook）で手順・定常ノブが正本化された後、Humanが実crontabを登録する。
+  本Taskはその後の数日無人運用結果を docs / 必要なら experiments log に残す。
+  AIは観測期間中の --live-rakuten を実行しない。Humanが回したログ・cursor進捗・失敗有無を要約同期する。
+  個別cronの有無、GHA schedule非混入、secret非露出を確認観点に含める。
+
+objective: |
+  Human登録済みの local cron Phase1 について、数日無人観測結果を secret なしで正本docsへ残し、
+  親シェル経由のみの定着を確認可能にする。
+
+scope:
+  - "Human crontab登録済みであることの記録同期（登録内容の要約。secretなし）"
+  - "数日無人観測結果docs（成功/失敗/paused・再開・個別cron無し確認）"
+  - "親シェル経由のみであることの確認記録"
+  - "必要最小の運用手順・Decision追記（観測からの学び）"
+  - "統括#1745次本線追跡の更新案"
+
+out_of_scope:
+  - "crontab運用手順の初版作成（前Task cron-ops-runbook）"
+  - "AIによる --live-rakuten 実行"
+  - "実crontabの新規登録・変更（Human）"
+  - "BATCH-009〜016配線"
+  - "BATCH-018 / 019"
+  - "#1792 schedule有効化 / #1607 / GHA楽天live"
+  - "secret実値の表示・変更"
+  - "OpenAPI / generated / apps/web|api|reco"
+  - "親orchestrator workflowのscheduleコメント解除"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "scripts/batch/README.md"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+    - path: "ai-logs/human-decisions/**"
+      action: "create_or_update"
+      required: false
+
+acceptance_criteria:
+  - "着手前に cron-ops-runbook が親Epic Branchへ反映済み、かつ Human crontab登録済み記録がある"
+  - "数日無人観測結果docsがあり secret / token / 接続文字列実値がない"
+  - "個別cronが無いこと、親シェル経由のみであることが記録されている"
+  - "GHA schedule有効化・#1607・GHA楽天live・009〜016・018/019を含まない"
+  - "AIが --live-rakuten を実行していない"
+
+branch:
+  no_branch: false
+  summary: "cron-ops-verify"
+  name: ""
+  base: "chore/epic-1811-batch-local-cron-phase1"
+  target: "chore/epic-1811-batch-local-cron-phase1"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-01"
+    due_date: "2026-08-03"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1745
+    - 1798
+  prs:
+    - 1810
+  tasks:
+    - "task-batch-local-cron-phase1-cron-ops-runbook"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-batch-local-cron-phase1-cron-ops-runbook"
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "観測結果docsの整合確認（secretなし）"
+  commands: []
+  manual_checks:
+    - "個別cron行が無い"
+    - "GHA on.schedule が有効化されていない"
+    - "観測docsにsecret実値がない"
+  not_required:
+    - "AIによる --live-rakuten 実行"
+  skip_reason:
+    "AIによる --live-rakuten 実行": "観測はHuman。AIは記録同期のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "Human登録済みゲートを満たしているか"
+    - "観測結果にsecret実値がないか"
+    - "個別cron禁止・親シェル経由が確認されているか"
+    - "AIが --live-rakuten を実行していないか"
+    - "GHA schedule / Phase2 / 018/019 が混入していないか"
+
+human_decision_points:
+  - "観測結果を踏まえたノブ変更・停止・Phase2着手可否"
+  - "異常時の再開判断"
+
+stop_conditions:
+  - "Human crontab登録済み記録が無いまま観測結果を作成しようとした場合"
+  - "AIによる --live-rakuten 実行が必要に見える場合"
+  - "GHA schedule有効化やsecret実値が必要に見える場合"
+  - "009〜016配線が本Taskに必要に見える場合"
+
+notes:
+  - "依存: cron-ops-runbook 完了 + Human crontab登録済み"
+  - "親Epic Issue番号 / Branch は /start-epic 後に反映"
+  - "AIは記録同期のみ。live実行・crontab変更はHuman"

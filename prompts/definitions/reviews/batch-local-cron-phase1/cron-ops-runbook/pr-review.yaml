@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-local-cron-phase1-cron-ops-runbook"
+  title: "batch-local-cron-phase1:crontab運用手順 Task PRレビュー"
+  summary: "crontab運用手順と定常ノブ同期 Task PR を AI Review する。親シェル経由・個別cron禁止・Human登録境界・secret非露出を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 0
+  task_definition: "prompts/definitions/tasks/batch-local-cron-phase1/cron-ops-runbook.yaml"
+  target_branch: "chore/epic-1811-batch-local-cron-phase1"
+  parent_epic_issue: "[Epic]batch-local-cron-phase1:local cron Phase1無人運用（001〜008）"
+  parent_epic_branch: "chore/epic-1811-batch-local-cron-phase1"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "親シェル経由のみ・個別cron禁止が明記されているか"
+  - "定常ノブがDecisionと矛盾しないか"
+  - "AIがcrontab登録や --live-rakuten を実行していないか"
+  - "GHA schedule / #1607 / Phase2(009〜016) / 018/019 が混入していないか"
+  - "secret実値がないか"
+
+notes:
+  - "Human Reviewは省略しない"
+  - "親Epic #1811 / Branch chore/epic-1811-batch-local-cron-phase1。Task Issue番号は /start-task 後に反映"
