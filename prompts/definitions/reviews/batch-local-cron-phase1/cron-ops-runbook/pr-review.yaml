@@ -14,9 +14,9 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1814
   issue:
-    number: 0
+    number: 1813
   task_definition: "prompts/definitions/tasks/batch-local-cron-phase1/cron-ops-runbook.yaml"
   target_branch: "chore/epic-1811-batch-local-cron-phase1"
   parent_epic_issue: "[Epic]batch-local-cron-phase1:local cron Phase1無人運用（001〜008）"
@@ -51,4 +51,4 @@ review_points:
 
 notes:
   - "Human Reviewは省略しない"
-  - "親Epic #1811 / Branch chore/epic-1811-batch-local-cron-phase1。Task Issue番号は /start-task 後に反映"
+  - "親Epic #1811 / Branch chore/epic-1811-batch-local-cron-phase1 / Task Issue #1813"
