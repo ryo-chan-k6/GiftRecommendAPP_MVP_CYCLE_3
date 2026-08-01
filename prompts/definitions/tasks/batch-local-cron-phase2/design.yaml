@@ -23,6 +23,7 @@ parent:
   related_prs:
     - 1810
     - 1815
+    - 1821
 
 commands:
   primary: "/start-task"
@@ -144,6 +145,7 @@ dependencies:
   prs:
     - 1810
     - 1815
+    - 1821
   tasks: []
   blocking: false
 
@@ -210,3 +212,4 @@ notes:
   - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"
   - "後続: impl → dry-run-verify → cron-cutover（Humanゲート）"
   - "Task Issue #1820 / Branch docs/task-1820-phase2-design / 親Epic #1818"
+  - "Task PR #1821 → chore/epic-1818-batch-local-cron-phase2"
