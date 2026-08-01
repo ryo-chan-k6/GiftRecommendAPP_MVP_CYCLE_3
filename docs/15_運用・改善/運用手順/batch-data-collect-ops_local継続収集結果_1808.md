@@ -8,7 +8,7 @@
 | 前提 | [本格収集運用枠](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) / [段階1結果](./batch-data-collect-ops_local継続収集結果_1801.md) |
 | 記録日 | 2026-08-01 |
 | 実行主体 | **Human**（`--live-rakuten`）。AI は手順・記録同期・阻害時最小修正・PR/Review |
-| 段階 | 段階2 **充足** → 段階3: `100003`/`100004` **安定**（次: `100000`） |
+| 段階 | 段階2 **充足** → 段階3 **完了**（4ジャンル到達）→ 段階4へ |
 
 secret・token・APIキー・egress IP・接続文字列実値は記載しない。
 
@@ -171,35 +171,65 @@ set -a && source .env && set +a
 | 個別 `pipeline_batch_run_id` | Human 環境ログに保持。本docsへは一覧未転記 |
 | 判定 | `100004` の段階3拡大は **安定**。次ジャンルへ進めてよい |
 
-### 5.6 次ジャンル（`100000`）手順
-
-Ranking は常に `100005`。未同期なら weekly 1回 → daily 継続。これで段階3の残りジャンルが揃う（その後段階4: 4ジャンル運用）。
-
-```bash
-# 初回（ジャンル同期）
-./scripts/batch/local_weekly_orchestrator.sh --live-rakuten \
-  --genre-ids 100000 --ranking-genre-ids 100005 \
-  --pages-per-run=60 --max-qps 1
-
-# 継続
-./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
-  --genre-ids 100000 --ranking-genre-ids 100005 \
-  --pages-per-run=60 --max-qps 1
-```
-
----
-
-## 6. §5.3.5 本見直し
+### 5.6 `100000` weekly / daily（成功・Human報告）
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 見直し時点 | 段階2完了 **または** 開始から7日（どちらか早い方）→ **段階2完了で到達** |
-| 現状 | 見直し実施待ち（Human 実測共有後、運用方針§5.3.5へ維持/改定案を反映） |
+| weekly / daily | **成功**（`--genre-ids 100000 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1`） |
+| 429 | **なし**（Human報告） |
+| 個別 `pipeline_batch_run_id` | Human 環境ログに保持。本docsへは一覧未転記 |
+| 判定 | `100000` 安定。**段階3完了**（承認済み4ジャンルすべて到達） |
+
+### 5.7 段階3サマリ
+
+| ジャンル | Ranking | weekly | daily | 備考 |
+| -------- | ------- | ------ | ----- | ---- |
+| `100005` | 自身 | （段階1〜2で充足） | 段階2で10回以上成功 | 段階1〜2の本線 |
+| `100003` | `100005` | 成功（ID修正後） | 数回すべて成功 | |
+| `100004` | `100005` | 成功 | 成功 | |
+| `100000` | `100005` | 成功 | 成功 | |
+
+---
+
+## 6. 段階4（4ジャンル運用）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| ノブ | 通常継続: `pages_per_run=60` / `cursors_per_run=1` / `max_qps=1` |
+| 制約 | **並列 live 禁止**。常に楽天 live 1本。`--ranking-genre-ids 100005` 固定 |
+| 運用 | 取得ジャンルを **1本ずつローテーション**（例: 日替わりで `100005`→`100003`→`100004`→`100000`） |
+| 停止 | 開始 2026-08-01 から最大7日、または BATCH-003 累計 Run 20回（どちらか先）で一旦停止し Epic 内再判断 |
+
+```bash
+# 例: 当日は 100005 を取得（Ranking も 100005）
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 100005 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+
+# 翌日例: 100003 を取得（Ranking は常に 100005）
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 100003 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+```
+
+週次で 001/004 連鎖を回すときは `local_weekly_orchestrator.sh`（取得ジャンル1本＋`--ranking-genre-ids 100005`）。同時に daily を別起動しない。
+
+---
+
+## 7. §5.3.5 本見直し
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 見直し時点 | 段階2完了で到達（本格収集開始 2026-08-01） |
+| 実測（事実） | 段階1〜3を通じ Human 報告の成功 Run で **429なし**。段階3で4ジャンル到達 |
+| AI推奨 | 警告/ハード初期値は **維持**（変更根拠となる429・容量逼迫の実測なし） |
+| 反映 | [楽天Fetch運用方針](./楽天Fetch運用方針.md) §5.3.5 / 変更履歴へ **維持** を記載 |
+| Human確認 | 数値改定が必要なら指示。なければ維持で確定扱い可 |
 | 非記載 | secret 実値 |
 
 ---
 
-## 7. 変更履歴
+## 8. 変更履歴
 
 | 日付 | 内容 |
 | ---- | ---- |
@@ -208,3 +238,4 @@ Ranking は常に `100005`。未同期なら weekly 1回 → daily 継続。こ�
 | 2026-08-01 | weekly 成功（5.2）と 2回目空 Items 失敗（5.3）を記録。BATCH-005 空 Items skip 化 |
 | 2026-08-01 | `100003` daily 数回すべて成功（Human報告）。次ジャンル `100004` 手順を追記 |
 | 2026-08-01 | `100004` weekly/daily 成功（Human報告）。次ジャンル `100000` 手順を追記 |
+| 2026-08-01 | `100000` 成功・段階3完了。段階4手順と§5.3.5本見直し（維持推奨）を追記 |
