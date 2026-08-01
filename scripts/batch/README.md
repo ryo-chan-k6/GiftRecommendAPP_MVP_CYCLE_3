@@ -44,9 +44,24 @@ set -a && source .env && set +a
 | `--skip-import-summary` | BATCH-017 スキップ |
 | `--no-import-chain` | 003/004 後の 005〜008 スキップ |
 | `--max-items` / `--pages-per-run` / `--cursors-per-run` | 予算ノブ |
-| `--genre-ids` | 対象ジャンル（既定 `100005`。#1765: Ranking API は `100000`/`100003`/`100004` が 400） |
+| `--genre-ids` | BATCH-003（および weekly BATCH-001）向け。段階3で拡大する側（既定 `100005`） |
+| `--ranking-genre-ids` | BATCH-002 Ranking 向け（既定 `100005`。#1765: `100000`/`100003`/`100004` は Ranking 400） |
 | `--no-update-sort` / `--allow-update-sort` | BATCH-003 update_sort（既定は除外） |
 | `--max-qps` | BATCH-003 安全側 QPS 上書き |
+
+段階3例（Human・Ranking は `100005` のまま、取得ジャンルだけ拡大）:
+
+```bash
+# 先にジャンル同期が必要なら weekly（001→002→003…）
+./scripts/batch/local_weekly_orchestrator.sh --live-rakuten \
+  --genre-ids 100003 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+
+# 日次のみ（001スキップ。cursor が既にある場合）
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 100003 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+```
 
 葉 Batch の `--job-run-id` は段ごとに UUID を発行する（`pipeline_batch_run_id` を複数葉の `batch_run_log` PK に共用しない）。業務紐付けは `--diff-batch-run-id` / `--batch-run-id` 等で pipeline ID を渡す。
 

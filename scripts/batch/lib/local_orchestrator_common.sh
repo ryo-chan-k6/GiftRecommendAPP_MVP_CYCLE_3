@@ -81,7 +81,8 @@ lor_release_lock() {
 
 lor_parse_common_args() {
   # Sets: LOR_DRY_RUN LOR_LIVE_RAKUTEN LOR_PIPELINE_ID LOR_FROM_STEP LOR_SKIP_017 LOR_MAX_ITEMS
-  #        LOR_INCLUDE_IMPORT LOR_PAGES_PER_RUN LOR_CURSORS_PER_RUN LOR_GENRE_IDS
+  #        LOR_INCLUDE_IMPORT LOR_PAGES_PER_RUN LOR_CURSORS_PER_RUN
+  #        LOR_GENRE_IDS（BATCH-003/001 取得・同期） LOR_RANKING_GENRE_IDS（BATCH-002）
   #        LOR_NO_UPDATE_SORT LOR_MAX_QPS
   LOR_DRY_RUN=0
   LOR_LIVE_RAKUTEN=0
@@ -93,8 +94,11 @@ lor_parse_common_args() {
   # 段階1初期live相当（運用枠 Decision）
   LOR_PAGES_PER_RUN="${PAGES_PER_RUN:-10}"
   LOR_CURSORS_PER_RUN="${CURSORS_PER_RUN:-1}"
-  # Ranking API が受け付ける段階1ジャンル（#1765: 100000/100003/100004 は Ranking 400）
+  # BATCH-003（および weekly の BATCH-001）向け。段階3でジャンル拡大する側。
   LOR_GENRE_IDS="${GENRE_IDS:-100005}"
+  # BATCH-002 Ranking 専用（#1765: 100000/100003/100004 は Ranking HTTP 400）
+  # --genre-ids を変えても Ranking 側は既定のまま残す（段階3拡大のため分離）
+  LOR_RANKING_GENRE_IDS="${RANKING_GENRE_IDS:-100005}"
   LOR_NO_UPDATE_SORT=1
   LOR_MAX_QPS="${MAX_QPS:-}"
 
@@ -162,6 +166,14 @@ lor_parse_common_args() {
         ;;
       --genre-ids)
         LOR_GENRE_IDS="${2:-}"
+        shift 2
+        ;;
+      --ranking-genre-ids=*)
+        LOR_RANKING_GENRE_IDS="${1#*=}"
+        shift
+        ;;
+      --ranking-genre-ids)
+        LOR_RANKING_GENRE_IDS="${2:-}"
         shift 2
         ;;
       --no-update-sort)
@@ -408,7 +420,7 @@ lor_begin_scenario() {
     LOR_LOG_FILE="${OUTPUT_DIR}/${scenario}-$(date +%Y%m%dT%H%M%S).log"
   fi
   lor_log INFO "scenario=${scenario} pipeline_batch_run_id=${LOR_PIPELINE_ID} dry_run=${LOR_DRY_RUN} live_rakuten=${LOR_LIVE_RAKUTEN}"
-  lor_log INFO "max_items=${LOR_MAX_ITEMS} pages_per_run=${LOR_PAGES_PER_RUN} cursors_per_run=${LOR_CURSORS_PER_RUN} genre_ids=${LOR_GENRE_IDS:-"(unset)"} no_update_sort=${LOR_NO_UPDATE_SORT} max_qps=${LOR_MAX_QPS:-"(batch-default)"} from_step=${LOR_FROM_STEP:-"(start)"}"
+  lor_log INFO "max_items=${LOR_MAX_ITEMS} pages_per_run=${LOR_PAGES_PER_RUN} cursors_per_run=${LOR_CURSORS_PER_RUN} genre_ids=${LOR_GENRE_IDS:-"(unset)"} ranking_genre_ids=${LOR_RANKING_GENRE_IDS:-"(unset)"} no_update_sort=${LOR_NO_UPDATE_SORT} max_qps=${LOR_MAX_QPS:-"(batch-default)"} from_step=${LOR_FROM_STEP:-"(start)"}"
   if [[ -n "${LOR_FROM_STEP}" ]]; then
     LOR_SKIPPING=1
   else

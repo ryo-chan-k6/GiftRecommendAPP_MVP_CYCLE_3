@@ -43,21 +43,27 @@ main() {
     if [[ "${LOR_LIVE_RAKUTEN}" -eq 1 ]]; then
       live_flags+=(--live-rakuten --live-object-storage)
     fi
-    local genre_flags=()
+    local fetch_genre_flags=()
     if [[ -n "${LOR_GENRE_IDS}" ]]; then
-      genre_flags+=(--genre-ids "${LOR_GENRE_IDS}")
+      fetch_genre_flags+=(--genre-ids "${LOR_GENRE_IDS}")
+    fi
+    local ranking_genre_flags=()
+    if [[ -n "${LOR_RANKING_GENRE_IDS}" ]]; then
+      ranking_genre_flags+=(--genre-ids "${LOR_RANKING_GENRE_IDS}")
     fi
 
+    # BATCH-001: 拡大対象ジャンルを同期（段階3）
     lor_run_batch_module_job_only "genre_sync" "batch.application.genre_sync" \
       "${live_flags[@]}" \
-      "${genre_flags[@]}" \
+      "${fetch_genre_flags[@]}" \
       || rc=$?
     if [[ "${rc}" -ne 0 ]]; then
       :
     else
+      # BATCH-002: Ranking 対応ジャンルのみ（既定 100005）
       lor_run_batch_module_job_only "ranking_snapshot" "batch.application.ranking_snapshot" \
         "${live_flags[@]}" \
-        "${genre_flags[@]}" \
+        "${ranking_genre_flags[@]}" \
         || rc=$?
     fi
     if [[ "${rc}" -eq 0 ]]; then

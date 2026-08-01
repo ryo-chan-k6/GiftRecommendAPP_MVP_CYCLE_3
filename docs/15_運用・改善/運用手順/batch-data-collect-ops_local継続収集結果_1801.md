@@ -100,8 +100,8 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | 項目 | 内容 |
 | ---- | ---- |
 | 見直し時点（運用枠） | 段階2完了、または本格収集開始から7日のどちらか早い方 |
-| 現状 | 段階1進行条件は充足。段階2未着手のため見直し時点未達 |
-| 暫定 | 閾値変更なし（**維持**） |
+| 現状 | 段階2進行条件も充足（#1808・Human報告）。見直し時点は段階2完了側に到達 → **本見直しは #1808 で実施** |
+| 暫定（#1801時点） | 閾値変更なし（**維持**）。数値見直しの採択記録は #1808 結果docsへ |
 
 ---
 
@@ -111,11 +111,11 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | ---- | ---- |
 | Object Storage ブロッカー | **解消**（Human endpoint 実値投入） |
 | Human方針 | **方針 B**（2026-08-01）: #1801 は段階1までで区切り、**reopen しない**。段階2〜4＋§5.3.5本見直しは新 Task **#1808** で継続 |
-| 現在 | 段階1進行条件充足。段階2以降は #1808（Human が live 実行。AI は記録同期・最小修正・PR/Review） |
+| 現在 | 段階1・段階2進行条件充足。段階3以降は #1808 |
 | 段階2以降の実行主体 | **Human**（`--live-rakuten`）。AI は実行しない |
-| 再開コマンド例（段階2・Human） | `./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --pages-per-run=60 --max-qps 1` |
+| 段階2コマンド例（Human・実施済み） | `./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --pages-per-run=60 --max-qps 1` |
 
-段階2以降の収集・§5.3.5本見直しの作業計画・Branch・PR は **#1808**（`chore/task-1808-stage2-to4-threshold-review`）を正とする。本結果docsへの Run 追記は #1808 側で継続してよい。
+段階2以降の収集・§5.3.5本見直しの作業計画・Branch・PR・詳細Run表は **#1808**（`docs/.../batch-data-collect-ops_local継続収集結果_1808.md`）を正とする。
 
 ---
 
@@ -125,10 +125,11 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | ---- | ---- |
 | 本格収集開始日 | 2026-08-01 |
 | 期間上限 | 開始から最大7日、または BATCH-003 累計 Run 20回 |
-| BATCH-003 成功 Run 累計 | **3**（`531b6cbc-…` / `7b6c491e-…` / `3174f140-…`） |
-| 段階1 進行条件 | 2〜3 Run・429なし・失敗なし・ログ追跡可能 → **充足** |
-| 段階2移行 | 新 Task **#1808** で着手（通常継続ノブ `pages_per_run=60`。Human live 実行） |
-| キャンペーン完了 | **未完了**（段階2〜4・§5.3.5本見直しは #1808） |
+| BATCH-003 成功 Run 累計（#1801記録分） | **3**（段階1ノブ。`531b6cbc-…` / `7b6c491e-…` / `3174f140-…`） |
+| 段階1 進行条件 | **充足** |
+| 段階2 進行条件 | **充足**（#1808: Human報告。`pages_per_run=60` で **10回以上連続成功・429なし**。個別 `pipeline_batch_run_id` は #1808 結果docs） |
+| 段階3移行 | #1808（`--genre-ids` と `--ranking-genre-ids` 分離後） |
+| キャンペーン完了 | **未完了**（段階3〜4・§5.3.5本見直しは #1808） |
 
 ---
 
@@ -140,3 +141,4 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | 2026-08-01 | OS復旧後の段階1成功・job_run_id UniqueViolation修正・通し SUCCEEDED を追記 |
 | 2026-08-01 | Human継続方針・段階1追加Run（累計3）・進行条件充足を追記 |
 | 2026-08-01 | 方針B反映。段階2以降は新 Task #1808 / Human live 実行へ引き継ぎ |
+| 2026-08-01 | 段階2充足（Human: 10回以上連続成功・429なし）を追記。詳細は #1808 結果docs |

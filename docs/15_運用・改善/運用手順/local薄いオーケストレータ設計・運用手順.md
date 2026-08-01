@@ -318,6 +318,8 @@ CLI 慣例（実装で確定してよい）:
 | `--live-rakuten` | 楽天 HTTP live 明示 |
 | `--from-step=<name>` | 再開時の開始段（任意） |
 | `--pipeline-batch-run-id=<uuid>` | 既存 ID の継続（省略時は新規） |
+| `--genre-ids` | BATCH-003（および weekly BATCH-001）向け。段階3で拡大する側（既定 `100005`） |
+| `--ranking-genre-ids` | BATCH-002 Ranking 向け（既定 `100005`。#1765: Ranking 非対応ジャンルと分離） |
 | `MAX_ITEMS` | 005〜008 件数上限（GHA `max_items` 相当） |
 | Run 予算ノブ | BATCH-003 は運用枠・§5.3.4（段階1は初期 live 相当） |
 
@@ -347,3 +349,4 @@ CLI 慣例（実装で確定してよい）:
 | ---- | ---- |
 | 2026-08-01 | 初版（#1803）。Phase1 範囲、GHA↔local 対応表、排他・失敗停止・再開・観測、安全要件、crontab 例と Human 境界、#1804 / #1801 引き渡し、推奨スクリプト名 |
 | 2026-08-01 | #1804 実装反映。`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh` / `lib/local_orchestrator_common.sh` を配置。`--dry-run` で順序・flock・Run ID 確認可 |
+| 2026-08-01 | #1808。`--genre-ids` / `--ranking-genre-ids` 分離を CLI 表へ反映 |
