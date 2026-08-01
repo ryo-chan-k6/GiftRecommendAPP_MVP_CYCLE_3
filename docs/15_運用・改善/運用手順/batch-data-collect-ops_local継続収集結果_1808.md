@@ -108,6 +108,49 @@ set -a && source .env && set +a
   --pages-per-run=60 --max-qps 1
 ```
 
+### 5.2 `100003` weekly（成功・existing ID 修正後）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| `pipeline_batch_run_id`（シナリオ） | `d8d42811-f58e-443a-b3bc-12a5c1259460` |
+| existing `business_run_id` | `68dd3f36-39f2-4ee5-8b3e-40923ea79765` |
+| BATCH-001 / 002 / 003 | succeeded（003: `pages=1` `budget_stopped=True`） |
+| 003後 import 連鎖 | succeeded |
+| BATCH-004 | partially_succeeded（16/3）。429なし |
+| 004後 BATCH-005 | partially_succeeded（15/1）。1件 `GRS-VAL-001`（空 Items）だがシナリオ継続 |
+| 004後 006〜017 | succeeded（008 updated=1 applied=16） |
+| シナリオ結果 | **SUCCEEDED**（existing business ID 分離の確認） |
+
+### 5.3 `100003` weekly 2回目（失敗・空 Items のみ）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| `pipeline_batch_run_id` | `9d491128-d327-4b98-9e60-90302f003919` |
+| BATCH-001 / 002 / 003 | succeeded（003: `pages=1`） |
+| 003後 BATCH-005 | **failed** `GRS-VAL-001` / `GRS-BAT-001`。plan=1・空 Items（`first_item_keys=-`） |
+| シナリオ結果 | FAILED（005 で停止。004 未到達） |
+
+#### 原因（事実と推論）
+
+| 区分 | 内容 |
+| ---- | ---- |
+| 事実 | 005 が `top_keys` に `Items` を含むが要素なしの Raw を処理し、staging 行 0 件で全体 failed |
+| 事実 | 003 は空 Items を catalog exhausted として Raw 保存する（`allow_empty`） |
+| 推論 | 直前 weekly で当該カーソルが枯渇し、2回目は空ページのみが予算内に入った |
+
+#### 対応
+
+| 項目 | 内容 |
+| ---- | ---- |
+| BATCH-005 | 空 Items（staging 行 0 件）を **skip + staged** とし、sole empty でも `succeeded`（シナリオを止めない） |
+| 運用 | ジャンル同期済みの `100003` 収集継続は **daily** を主とする。weekly の連打は不要 |
+
+```bash
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 100003 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+```
+
 ---
 
 ## 6. §5.3.5 本見直し
@@ -126,3 +169,4 @@ set -a && source .env && set +a
 | ---- | ---- |
 | 2026-08-01 | 初版。段階2充足（Human: 10回以上成功・429なし）。Ranking/取得ジャンル分離と段階3手順 |
 | 2026-08-01 | 段階3 `100003` weekly 失敗を記録。existing 連鎖の business run ID 分離を親シェルへ反映 |
+| 2026-08-01 | weekly 成功（5.2）と 2回目空 Items 失敗（5.3）を記録。BATCH-005 空 Items skip 化 |

@@ -365,6 +365,26 @@ class RawStagingJob:
             result.skipped_raw_ids.append(meta.raw_metadata_id)
             return "skipped"
 
+        # BATCH-003 は catalog exhausted の空 Items も Raw 保存する（allow_empty）。
+        # staging 行 0 件は検証失敗ではなく skip とし、再選定されないよう staged にする。
+        if (
+            not transformed.items
+            and not transformed.ranking_rows
+            and not transformed.genre_rows
+        ):
+            result.skipped_raw_ids.append(meta.raw_metadata_id)
+            self._repos.mark_staged(
+                raw_metadata_id=meta.raw_metadata_id, staged_at=staged_at
+            )
+            phases_seen.add("validate")
+            phases_seen.add("persist")
+            phases_seen.add("status")
+            for phase in ("validate", "persist", "status"):
+                if phase not in result.completed_phases:
+                    result.completed_phases.append(phase)
+                    self._repos.record_phase(phase=phase, status="succeeded")
+            return "skipped"
+
         # validate
         validated = validate_transform_result(transformed)
         phases_seen.add("validate")
