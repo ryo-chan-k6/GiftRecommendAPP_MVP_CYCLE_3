@@ -8,7 +8,7 @@
 | 前提 | [本格収集運用枠](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) / [段階1結果](./batch-data-collect-ops_local継続収集結果_1801.md) |
 | 記録日 | 2026-08-01 |
 | 実行主体 | **Human**（`--live-rakuten`）。AI は手順・記録同期・阻害時最小修正・PR/Review |
-| 段階 | 段階2 **充足** → 段階3: `100003` **安定**（次: `100004`） |
+| 段階 | 段階2 **充足** → 段階3: `100003`/`100004` **安定**（次: `100000`） |
 
 secret・token・APIキー・egress IP・接続文字列実値は記載しない。
 
@@ -161,23 +161,31 @@ set -a && source .env && set +a
 | 個別 `pipeline_batch_run_id` | Human 環境ログに保持。本docsへは一覧未転記 |
 | 判定 | `100003` の段階3拡大は **安定**。次ジャンルへ進めてよい |
 
-### 5.5 次ジャンル（`100004`）手順
+### 5.5 `100004` weekly / daily（成功・Human報告）
 
-Ranking は常に `100005`。未同期なら weekly 1回 → daily 継続。
+| 項目 | 内容 |
+| ---- | ---- |
+| weekly | **成功**（`--genre-ids 100004 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1`） |
+| daily | **成功**（同ノブ） |
+| 429 | **なし**（Human報告） |
+| 個別 `pipeline_batch_run_id` | Human 環境ログに保持。本docsへは一覧未転記 |
+| 判定 | `100004` の段階3拡大は **安定**。次ジャンルへ進めてよい |
+
+### 5.6 次ジャンル（`100000`）手順
+
+Ranking は常に `100005`。未同期なら weekly 1回 → daily 継続。これで段階3の残りジャンルが揃う（その後段階4: 4ジャンル運用）。
 
 ```bash
 # 初回（ジャンル同期）
 ./scripts/batch/local_weekly_orchestrator.sh --live-rakuten \
-  --genre-ids 100004 --ranking-genre-ids 100005 \
+  --genre-ids 100000 --ranking-genre-ids 100005 \
   --pages-per-run=60 --max-qps 1
 
 # 継続
 ./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
-  --genre-ids 100004 --ranking-genre-ids 100005 \
+  --genre-ids 100000 --ranking-genre-ids 100005 \
   --pages-per-run=60 --max-qps 1
 ```
-
-その後 `100000` も同様（1ジャンルずつ）。
 
 ---
 
@@ -199,3 +207,4 @@ Ranking は常に `100005`。未同期なら weekly 1回 → daily 継続。
 | 2026-08-01 | 段階3 `100003` weekly 失敗を記録。existing 連鎖の business run ID 分離を親シェルへ反映 |
 | 2026-08-01 | weekly 成功（5.2）と 2回目空 Items 失敗（5.3）を記録。BATCH-005 空 Items skip 化 |
 | 2026-08-01 | `100003` daily 数回すべて成功（Human報告）。次ジャンル `100004` 手順を追記 |
+| 2026-08-01 | `100004` weekly/daily 成功（Human報告）。次ジャンル `100000` 手順を追記 |
