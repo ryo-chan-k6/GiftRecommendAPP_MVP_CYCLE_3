@@ -9,7 +9,7 @@
 | 件名 | 本格収集(#1798)完了後の次本線: local cron 全BATCH自動運用（GHA延期） |
 | 発生日時 | 2026-08-01 |
 | 記録日時 | 2026-08-01 |
-| 関連Issue | #1798（本線#6完了側） / #1745（統括） / #1792 / #1607（延期） / #1811（Phase1 Epic） / #1813（crontab運用手順） |
+| 関連Issue | #1798（本線#6完了側） / #1745（統括） / #1792 / #1607（延期） / #1811（Phase1 Epic） / #1813（crontab運用手順） / #1816（曜日・時刻採択） |
 | 前提 | `2026-07-31-batch-data-collect-ops-plan` / `2026-07-31-batch-daily-schedule-enable-b0` / #1808 案A一旦終了 |
 | 重要度 | `high` |
 | 状態 | `decided` |
@@ -47,7 +47,8 @@
 | ---- | ---- | ---- |
 | #1798 | Epic 完了PR（→ develop） | 完了（PR #1810 → develop） |
 | Epic #1811（crontab Phase1） | 001〜008 の cron 無人運用定着 | 進行中 |
-| Task #1813（cron-ops-runbook） | crontab運用手順正本化・定常ノブ同期 | 進行中（実登録はHuman） |
+| Task #1813（cron-ops-runbook） | crontab運用手順正本化・定常ノブ同期 | 完了（実登録はHuman） |
+| Task #1816（曜日・時刻） | daily=火〜日 05:00 / weekly=月曜 05:00 JST | 反映中 |
 | 後続 cron-ops-verify | Human登録後の数日無人観測結果docs化 | 未着手（Human登録待ち） |
 | 新規 Epic（local Phase2） | 親シェルへ 009〜016 配線・検証・cron載せ替え | 未着手 |
 | #1792 / #1607 | 先送り（本線に吸収しない） | 延期維持 |
@@ -61,7 +62,7 @@
 - `docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md`
 - `docs/15_運用・改善/運用手順/batch-data-collect-ops_local継続収集結果_1808.md`
 - `docs/15_運用・改善/運用手順/楽天Fetch運用方針.md`
-- Issue #1798 / #1745 / #1792 / #1607 / #1811 / #1813
+- Issue #1798 / #1745 / #1792 / #1607 / #1811 / #1813 / #1816
 
 ---
 
