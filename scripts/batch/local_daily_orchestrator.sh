@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# local-daily: GHA batch-daily-orchestrator の Phase1 切り出し
+# local-daily: GHA batch-daily-orchestrator の Phase1+Phase2 切り出し
 # 順序: BATCH-002 → import連鎖(003→005→006→007→008→017任意)
-# 意味生成(009〜) / distribution_metrics / retry は走らない。
+#       →（--run-meaning 時）meaning連鎖(009→…→015→017任意) → BATCH-016
+# 既定は Phase1 互換（009〜016 スキップ）。retry / 018 / 019 は走らない。
 # 実 crontab 登録は Human。secret 実値を出力しない。
 
 set -euo pipefail
@@ -19,9 +20,14 @@ Options:
   --live-rakuten                    楽天HTTP live明示（egress照合は各Batch側）
   --pipeline-batch-run-id <uuid>    既存 pipeline ID を継続（省略時は新規）
   --from-step <name>                再開開始段（例: ranking_snapshot / item_pseudo_diff）
-  --skip-import-summary             BATCH-017 をスキップ
+  --skip-import-summary             import 連鎖末尾の BATCH-017 をスキップ
   --no-import-chain                 003/004 の後の 005〜008 をスキップ
-  --max-items <n>                   005〜008 件数上限（既定: MAX_ITEMS or 100）
+  --run-meaning                     Phase2: 009〜016 を実行（既定はスキップ＝Phase1互換）
+  --skip-meaning                    Phase2: 009〜016 を明示スキップ（既定と同義。--run-meaning と排他）
+  --skip-meaning-summary            意味連鎖末尾の BATCH-017 をスキップ
+  --meaning-pipeline-batch-run-id   意味連鎖の既存 pipeline ID を継続
+  --source <name>                   意味生成 source（既定: rakuten）
+  --max-items <n>                   005〜008 / 009〜015 件数上限（既定: MAX_ITEMS or 100）
   --pages-per-run <n>               BATCH-003（既定: 10 = 段階1）
   --cursors-per-run <n>             BATCH-003（既定: 1）
   --genre-ids <ids>                 BATCH-003 向け（既定: 100005。段階3で拡大する側）
@@ -31,7 +37,10 @@ Options:
   --max-qps <n>                     BATCH-003 安全側 QPS 上書き
 
 Step names: ranking_snapshot, item_pseudo_diff, raw_staging, product_diff,
-            item_apply, item_active_status, import_summary
+            item_apply, item_active_status, import_summary,
+            item_generation_queue, item_semantic, feature_input_hash, item_feature,
+            feature_normalization, embedding_input_hash, item_embedding,
+            meaning_summary, distribution_metrics
 
 EOF
 }
@@ -66,6 +75,12 @@ main() {
       || rc=$?
     if [[ "${rc}" -eq 0 ]]; then
       lor_run_import_chain || rc=$?
+    fi
+    if [[ "${rc}" -eq 0 ]]; then
+      lor_run_meaning_chain || rc=$?
+    fi
+    if [[ "${rc}" -eq 0 ]]; then
+      lor_run_distribution_metrics || rc=$?
     fi
   } || rc=$?
 
