@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1809
   issue:
     number: 1808
   task_definition: "prompts/definitions/tasks/batch-data-collect-ops/stage2-to4-and-threshold-review.yaml"
