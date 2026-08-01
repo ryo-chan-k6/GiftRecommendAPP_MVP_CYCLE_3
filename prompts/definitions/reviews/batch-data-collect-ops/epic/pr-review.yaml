@@ -14,13 +14,13 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1810
   issue:
-    number: null
+    number: 1798
   task_definition: "prompts/definitions/epics/batch-data-collect-ops/epic.yaml"
   target_branch: "develop"
   parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
-  parent_epic_branch: null
+  parent_epic_branch: "chore/epic-1798-batch-data-collect-ops"
 
 commands:
   primary: "/review-pr"
@@ -51,5 +51,5 @@ review_points:
   - "#1745本線#6追跡が更新されているか"
 
 notes:
-  - "Issue番号 / Branch / PR は /start-epic・本線Epic PR作成後に反映する（本Definition先作成PRでは null 許容）"
+  - "Epic Issue #1798 / Branch chore/epic-1798-batch-data-collect-ops。PR番号は Epic PR 作成後に反映"
   - "Human Reviewは省略しない"

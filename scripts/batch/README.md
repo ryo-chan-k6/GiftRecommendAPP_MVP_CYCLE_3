@@ -1,6 +1,6 @@
 # scripts/batch/
 
-Batch 手動実行・dry-run・再実行補助を配置するディレクトリ。
+Batch 手動実行・dry-run・再実行補助、および local 薄いオーケストレータを配置するディレクトリ。
 
 ## 参照
 
@@ -8,11 +8,66 @@ Batch 手動実行・dry-run・再実行補助を配置するディレクトリ�
 | ------------ | ---- |
 | [環境設計書 §19.7](../../docs/06_実装設計/cross_cutting/環境設計書.md) | Batch 環境変数 |
 | [CI・CD方針書](../../docs/05_アプリケーション設計/共通/CI・CD方針書.md) | Batch は GitHub Actions 手動/定期実行を基本 |
+| [local薄いオーケストレータ設計・運用手順](../../docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md) | local 親シェルの正本 |
 
-## MVP（Task ③）
+## local 薄いオーケストレータ（#1804）
 
-- README のみ
-- 物理名正本: `RAKUTEN_APPLICATION_ID`, `OBJECT_STORAGE_*`（§19.7.1）
+| スクリプト | 用途 |
+| ---------- | ---- |
+| `local_daily_orchestrator.sh` | 日次相当 Phase1（002 → import 連鎖） |
+| `local_weekly_orchestrator.sh` | 週次相当 Phase1（001 → 002 → import → existing） |
+| `lib/local_orchestrator_common.sh` | flock / Run ID / 段実行 / 失敗停止 |
+
+| ディレクトリ | 用途 |
+| ------------ | ---- |
+| `output-local-orchestrator/` | 親シェルログ＋flock（`locks/` 配下。`scripts/batch/output-*/` で gitignored） |
+
+### 起動例
+
+```bash
+# dry-run（順序・flock・pipeline_batch_run_id のみ。楽天HTTPなし）
+./scripts/batch/local_daily_orchestrator.sh --dry-run
+./scripts/batch/local_weekly_orchestrator.sh --dry-run
+
+# live（明示フラグ必須。secret は .env から読み、値をエコーしない）
+# 実行場所: 登録済み egress IP の WSL/local のみ。GHA 禁止。
+set -a && source .env && set +a
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten
+```
+
+| フラグ | 意味 |
+| ------ | ---- |
+| `--dry-run` | 外部副作用なしで順序・lock・Run ID を確認 |
+| `--live-rakuten` | 楽天 HTTP live 明示（`--dry-run` と排他） |
+| `--pipeline-batch-run-id` | 既存 ID の継続 |
+| `--from-step` | 再開開始段 |
+| `--skip-import-summary` | BATCH-017 スキップ |
+| `--no-import-chain` | 003/004 後の 005〜008 スキップ |
+| `--max-items` / `--pages-per-run` / `--cursors-per-run` | 予算ノブ |
+| `--genre-ids` | BATCH-003（および weekly BATCH-001）向け。段階3で拡大する側（既定 `100005`） |
+| `--ranking-genre-ids` | BATCH-002 Ranking 向け（既定 `100005`。#1765: `100000`/`100003`/`100004` は Ranking 400） |
+| `--no-update-sort` / `--allow-update-sort` | BATCH-003 update_sort（既定は除外） |
+| `--max-qps` | BATCH-003 安全側 QPS 上書き |
+
+段階3例（Human・Ranking は `100005` のまま、取得ジャンルだけ拡大）:
+
+```bash
+# 先にジャンル同期が必要なら weekly（001→002→003…）
+./scripts/batch/local_weekly_orchestrator.sh --live-rakuten \
+  --genre-ids 100003 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+
+# 日次のみ（001スキップ。cursor が既にある場合）
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 100003 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+```
+
+葉 Batch の `--job-run-id` は段ごとに UUID を発行する（`pipeline_batch_run_id` を複数葉の `batch_run_log` PK に共用しない）。業務紐付けは `--diff-batch-run-id` / `--batch-run-id` 等で pipeline ID を渡す。
+
+**実 crontab 登録は Human**（例は設計・運用手順 §7）。本スクリプト群は crontab へ書き込まない。
+
+Phase1 に BATCH-009〜015 は含めない。Airflow 等は導入しない。
 
 ## ハーネス（明示 live のみ）
 
@@ -53,8 +108,9 @@ uv run python ../../scripts/batch/object_storage_live_verify.py \
   --output-dir ../../scripts/batch/output-object-storage-live
 ```
 
-## 配置予定（後続）
+## 後続
 
-- ローカル dry-run 起動補助
-- GitHub Actions workflow 連携メモ
-- 本番 egress IP 設計（**Backlog: #1607 BL-RAKUTEN-EGRESS-PROD**・未検討）
+| 対象 | 担当 |
+| ---- | ---- |
+| 本格収集キャンペーン（オーケストレータ経由） | #1801 |
+| 本番 egress IP 設計 | **Backlog: #1607**・未検討（GHA楽天liveは禁止維持） |

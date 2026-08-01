@@ -186,6 +186,10 @@ BATCH-003の「運用予算」と監視閾値は§5.3.4 / §5.3.5の**Human採�
 
 実容量の絶対値はプラン確定前のため、比率・増分・エラー率を初期採択値とする。**運用開始1週間の実測後に数値を見直す**前提とする。
 
+本格収集（#1798 / #1799）では、見直し時点を [本格収集運用枠 Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) により **段階2完了、または本格収集開始から7日経過のどちらか早い方** とする（維持も可。実測とdocs反映は後続収集Task）。
+
+**2026-08-01 本見直し（#1808）:** 段階2完了時点で実施。段階1〜3の Human 実測で **429なし**・4ジャンル到達。下表の警告/ハード初期値は **維持**（改定根拠となる逼迫実測なし）。詳細は [結果docs #1808](./batch-data-collect-ops_local継続収集結果_1808.md)。
+
 | 指標 | 警告（Run予算を下げる） | ハード（そのRun停止・Human通知） | アクション |
 | ---- | ----------------------- | -------------------------------- | ---------- |
 | `rate_limited` / 429 | 同一日に1回 | 同一Runで再発、または同日2回目 | QPS=1、`pages_per_run` を半減、15分以上クールダウン |
@@ -381,8 +385,9 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 7 | GHA楽天live | 当面localのみ / 条件付きGHA | **Human採択: 当面localのみ**。GitHub-hosted runnerから楽天HTTPを呼ばず、#1607を吸収しない |
 | 8 | 安全側QPS=1 | 全Runの既定 / 長時間・再開時のみ / 不採用 | **Human採択**。長時間Run、BATCH-003/004、429後の再開時のみ適用。常用QPS=2は変更しない |
 | 9 | クールダウン | 15分 / 30分 / 60分 / 別値 | **Human採択**。初回15分、再発時60分以上 |
+| 10 | 本格収集運用枠（B-0下 local） | 段階・期間/Run数・停止・監視見直し | **Human採択（2026-07-31）**。[本格収集運用枠 Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md)。案A。ジャンル段階1→4。期間 **最大7日または BATCH-003累計 Run 20回**（どちらか先）で一旦停止し Epic内再判断。Run予算は§5.3.4維持。加速ノブ不使用。§5.3.5見直しは段階2完了または開始7日のどちらか早い時点 |
 
-採択の正本は[楽天Fetch運用値 Human Decision Log](../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md)とする。No.1の具体的 `fetch_plan` は [2026-07-31 Log](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) で承認済み。local 実楽天HTTP（パターンB）は [検証結果](./楽天Fetch_local_live検証結果_1765.md) で実施済み。secret投入・追加実行は引き続き Human 環境での判断とする。GHA楽天HTTP live化は当面禁止のまま（No.7）。
+採択の正本は[楽天Fetch運用値 Human Decision Log](../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md)とする。No.1の具体的 `fetch_plan` は [2026-07-31 Log](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) で承認済み。local 実楽天HTTP（パターンB）は [検証結果](./楽天Fetch_local_live検証結果_1765.md) で実施済み。secret投入・追加実行は引き続き Human 環境での判断とする。GHA楽天HTTP live化は当面禁止のまま（No.7）。本格収集の段階・期間上限は No.10 / [本格収集運用枠 Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) を正とする。
 
 ---
 
@@ -405,6 +410,29 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - schedule有効化について別途Human明示承認がある
 - **2026-07-31:** daily scheduleは [B-0 Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-daily-schedule-enable-b0.md) により**無効継続**。B-1再判断前に[監視・rollback最小手順](./親workflow_daily_schedule監視・rollback最小手順.md)を前提とする
 
+### 11.3 batch-data-collect-ops（本格収集・監視改善）
+
+- [本格収集運用枠 Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) が **`decided`** である（#1799）
+- 後続 `local-collect-and-monitor` は、同Logのジャンル段階・期間/Run上限（最大7日または BATCH-003累計20 Run）・停止条件・§5.3.5見直し計画に従う
+- 実行は **local 楽天liveのみ**。GHA楽天HTTP・`on.schedule` 有効化（#1792）・#1607 は含めない
+- 期間/Run上限到達後の継続は Epic #1798 内で Human 再判断する
+- §5.3.5の実測見直し（維持含む）は収集Task側でdocsへ反映する
+- 実行記録正本: [結果 #1801](./batch-data-collect-ops_local継続収集結果_1801.md) / [結果 #1808](./batch-data-collect-ops_local継続収集結果_1808.md)
+- **2026-08-01:** 段階1着手〜進行条件充足（BATCH-003 成功累計3・429なし）。Human方針は **継続**
+- **2026-08-01 (#1808):** 段階2充足・段階3完了・段階4初回ローテーション成功。§5.3.5 本見直し結果は **維持**。BATCH-003 累計20超で追加Run停止。Human採択 **案A（一旦終了）**（Run上限引き上げなし）
+- **2026-08-01 次本線:** [local cron 全BATCH自動運用 Decision](../../../ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md)。対象 **001〜016**（018/019除外）。GHA schedule / #1607 / GHA楽天live は先送り
+
+### 11.4 local薄いオーケストレータ（実行制御）
+
+- [local薄いオーケストレータ導入ゲート](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md) が **`decided`** である（#1803 / #1804）
+- 設計・運用手順の正本は [local薄いオーケストレータ設計・運用手順](./local薄いオーケストレータ設計・運用手順.md)
+- Phase1 は BATCH-001〜004 中心（必要なら 005〜008）。BATCH-009〜015 は含めない
+- 起動は親シナリオ（日次相当 / 週次相当）のみ。子 Batch の個別 cron は禁止
+- 排他は本線 flock ＋楽天 live 横断1本。失敗時は後続停止。`pipeline_batch_run_id` を親で生成して伝播
+- 実 crontab 登録・PC常時起動は **Human**。親シェル実装は #1804（`scripts/batch/local_*_orchestrator.sh`）、収集実行は #1801 / #1808
+- 親シェルは `--genre-ids`（BATCH-003 / weekly BATCH-001）と `--ranking-genre-ids`（BATCH-002・既定 `100005`）を分離して伝播する（#1808）
+- GHA 楽天 live・#1607・schedule 有効化は対象外のまま
+
 ---
 
 ## 12. 関連資料
@@ -418,6 +446,9 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | [楽天市場API 常用QPS=2 Human Decision Log](../../../ai-logs/human-decisions/2026-07-25-rakuten-operational-qps-revise-to-2.md) | 常用QPS改訂 |
 | [楽天Fetch運用値 Human Decision Log](../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md) | §10の取得量・Run分割・再開・実行場所の採択 |
 | [楽天Fetch MVP fetch_plan Human Decision Log](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) | §10 No.1 の具体的ジャンル・階層・route 承認 |
+| [本格収集運用枠 Human Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) | §10 No.10。B-0下 local 本格収集の段階・期間/Run上限・停止・監視見直し |
+| [local薄いオーケストレータ導入ゲート](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md) | §11.4。local親シェル導入・Phase1・cron Human境界 |
+| [local薄いオーケストレータ設計・運用手順](./local薄いオーケストレータ設計・運用手順.md) | GHA needs / 排他 / Run ID の local 対応表・運用手順 |
 | [バッチ外部API本実装ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md) | 外部API実装状態 |
 | [バッチ実行スケジュール設計書](../../05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md) | 親子workflow・concurrency |
 | [バッチ親workflow schedule有効化ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md) | schedule無効・Human決定 |
@@ -447,3 +478,9 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-07-31 | #1775 AI Review対応: §5.2 / §5.3.4 の CLI TBD 残存を解消。§10 No.1 / §12 に fetch_plan Log を接続 |
 | 2026-07-31 | #1785 AI Review対応: §5.2 / §10 No.1 / §11.1 の「実HTTP未実施」表記を検証結果（local パターンB実施済み）と同期。GHA楽天HTTP禁止は維持 |
 | 2026-07-31 | #1791: §11.2 / §12 に daily schedule B-0採択と監視・rollback最小手順を接続 |
+| 2026-07-31 | #1799: §10 No.10 / §11.3 / §12 に本格収集運用枠（案A・最大7日または累計20 Run）を接続 |
+| 2026-08-01 | #1803: §11.4 / §12 に local薄いオーケストレータ設計・ゲートを接続 |
+| 2026-08-01 | #1804: §11.4 に親シェル実装パス（`scripts/batch/local_*_orchestrator.sh`）を反映 |
+| 2026-08-01 | #1801: §11.3 に継続収集結果docs・§5.3.5維持（見直し時点未達）・§11.4 genre伝播を反映 |
+| 2026-08-01 | #1808: 段階3完了・段階4運用。§5.3.5本見直し **維持**。`--genre-ids` / `--ranking-genre-ids` 分離を§11.4へ反映 |
+| 2026-08-01 | 次本線 Decision（local cron 001〜016・GHA/#1607先送り・018/019除外）を§11.3へ接続 |

@@ -616,6 +616,33 @@ def test_partial_success_one_raw_fails_grs_bat_002() -> None:
     assert repos.raw_metadata["rm_bad"]["import_status"] == "failed"
 
 
+def test_empty_items_item_search_raw_is_skipped_not_failed() -> None:
+    """BATCH-003 catalog exhausted（空 Items）Raw は skip + succeeded（シナリオ停止しない）。"""
+
+    empty_payload = {
+        "Items": [],
+        "carrier": 0,
+        "count": 0,
+        "first": 0,
+        "hits": 30,
+        "last": 0,
+        "page": 1,
+        "pageCount": 0,
+    }
+    repos, _, _ = _seed_repos(payloads={"rm_empty": empty_payload})
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(job_run_id="job-empty-items", max_raw=1)
+
+    assert result.status == "succeeded"
+    assert result.skipped_raw_ids == ["rm_empty"]
+    assert result.failed_raw_ids == []
+    assert result.succeeded_raw_ids == []
+    assert "GRS-VAL-001" not in result.error_codes
+    assert "GRS-BAT-001" not in result.error_codes
+    assert repos.raw_metadata["rm_empty"]["import_status"] == "staged"
+
+
 def test_concurrent_start_rejected_with_grs_bat_003() -> None:
     """§16 No.12: 同一 Batch 多重起動 → GRS-BAT-003。"""
 

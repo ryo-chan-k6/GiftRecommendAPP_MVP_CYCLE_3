@@ -44,7 +44,8 @@ objective: |
 
 scope:
   - "本格収集の運用枠（対象ジャンル段階・Run回数/期間・予算ノブ・停止条件）の Human Decision Log 化と正本docs同期"
-  - "BATCH-001〜004 local live による継続収集の実施と運用結果docs（secretなし）"
+  - "GHA親オーケストレータ相当をlocalで薄く再現する設計・親シェル実装（scripts/batch。実crontab登録はHuman）"
+  - "BATCH-001〜004 local live による継続収集の実施と運用結果docs（secretなし）。収集はlocalオーケストレータ経由を本線とする"
   - "fetch_cursor 進捗（active/paused/exhausted/failed）と paused/failed 再開運用の定着・記録"
   - "運用方針§5.3.5 監視閾値の実測に基づく見直し（警告/ハード）と docs 反映"
   - "DB / Object Storage / 楽天API呼出 / Actionsコスト観点の観測結果整理（金額推定はHuman）"
@@ -80,6 +81,7 @@ epic_scope:
     - "docs/06_実装設計/batch/BATCH-004_*"
     - "docs/06_実装設計/database/fetch_cursor_テーブル定義書.md"
     - "apps/batch/**"
+    - "scripts/batch/**"
   forbidden_paths:
     - "packages/contracts/**"
     - "apps/web/**"
@@ -152,6 +154,9 @@ output:
     - path: "apps/batch/**"
       action: "update"
       required: false
+    - path: "scripts/batch/**"
+      action: "create_or_update"
+      required: false
   generated:
     expected: false
     paths: []
@@ -161,8 +166,9 @@ output:
     path: "ai-logs/human-decisions/"
 
 deliverables:
-  - "Epic Issue / Branch（`/start-epic` 後に番号確定）"
+  - "Epic Issue #1798 / Branch chore/epic-1798-batch-data-collect-ops"
   - "本格収集の運用枠 Human Decision Log"
+  - "local薄いオーケストレータ設計docsと scripts/batch 親シェル実装"
   - "local継続収集の運用結果docs（secretなし）"
   - "監視閾値の実測見直し結果（運用方針§5.3.5同期）"
   - "統括#1745本線#6追跡更新"
@@ -181,7 +187,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "batch-data-collect-ops"
-  name: null
+  name: "chore/epic-1798-batch-data-collect-ops"
   base: "develop"
   target: "develop"
   worktree_required: true
@@ -274,7 +280,9 @@ stop_conditions:
 
 notes:
   - "統括#1745の本線候補#6。Epic formal parentは持たない（Relationships追跡）"
-  - "子Task候補: (1) 運用枠 Human Decision Log (2) local継続収集＋監視実測/見直し"
+  - "子Task: (1) ops-plan-decision #1799 CLOSED (2) local-orchestrator-design (3) local-orchestrator-impl (4) local-collect-and-monitor #1801"
+  - "ゲート: ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md（薄いオーケストレータ・#1801前段）"
   - "#1792 / #1607 は吸収しない。B-1は別Decision"
   - "work_mode=ai-agent。local live実行の実secretはHuman環境。値はcommitしない"
-  - "Branch名は /start-epic 後に chore/epic-<n>-batch-data-collect-ops へ確定"
+  - "Epic Issue #1798 / Branch chore/epic-1798-batch-data-collect-ops"
+  - "Airflow等の本格ジョブ基盤・実crontab登録はスコープ外（手順とスクリプトまで）"

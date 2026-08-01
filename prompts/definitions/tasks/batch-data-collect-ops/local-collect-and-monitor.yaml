@@ -4,7 +4,7 @@ definition_type: "task"
 task:
   id: "task-batch-data-collect-ops-local-collect-and-monitor"
   title: "batch-data-collect-ops:local継続収集と監視閾値見直し"
-  summary: "運用枠Decision採択後、local楽天liveで継続収集を実施し、§5.3.5監視閾値を実測に基づき見直してdocsへ反映する。schedule有効化・GHA楽天liveは含まない。"
+  summary: "運用枠Decisionとlocal薄いオーケストレータ実装後、オーケストレータ経由でlocal楽天live継続収集を実施し、§5.3.5監視閾値を実測に基づき見直してdocsへ反映する。schedule有効化・GHA楽天liveは含まない。"
   workstream_key: "batch-data-collect-ops"
   phase: "ops-execution"
 
@@ -12,18 +12,24 @@ work_mode: "ai-agent"
 
 parent:
   epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
-  epic_issue_number: null
-  epic_branch: null
+  epic_issue_number: 1798
+  epic_branch: "chore/epic-1798-batch-data-collect-ops"
   related_issues:
     - 1745
     - 1789
     - 1763
+    - 1799
+    - 1803
+    - 1804
     - 1792
     - 1607
-  related_prs: []
+  related_prs:
+    - 1802
+    - 1805
+    - 1806
 
 commands:
-  primary: "/start-task"
+  primary: "/work-issue"
   allowed:
     - "/start-task"
     - "/work-issue"
@@ -44,22 +50,33 @@ agent:
     - "test-ai"
 
 background: |
-  前Task（ops-plan-decision）で運用枠が decided であることが着手ゲート。
+  前Task（ops-plan-decision / #1799）で運用枠が decided であることが着手ゲート。
+  採択正本: ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md（案A。
+  ジャンル段階1→4。期間最大7日または BATCH-003累計 Run 20回。§5.3.4ノブ維持。加速不使用）。
+  追加ゲート: 2026-08-01-local-batch-orchestrator-gate。
+  local薄いオーケストレータは design #1803 / PR #1805 および impl #1804 / PR #1806 が
+  親Epic Branchへ MERGED 済みのため、本Taskの収集実行は着手可。
+  本線は親シェル経由（例: scripts/batch/local_daily_orchestrator.sh --live-rakuten）。
+  場当たり個別CLIを本線としない。
   local live の実secretは Human 環境。値は commit / docs / PR に出さない。
   #1791のschedule最小手順の再作成ではなく、本格収集の実行と閾値実測が成果。
 
 objective: |
-  Decisionどおりにlocal継続収集を行い、結果と§5.3.5見直し（維持含む）を正本docsへ残す。
+  local薄いオーケストレータ経由で本格収集運用枠 Decision どおりに継続収集を行い、
+  結果と§5.3.5見直し（維持含む）を正本docsへ残す。
 
 scope:
-  - "運用枠に従った BATCH-001〜004 local live 継続収集の実施"
+  - "親シェル経由での BATCH-001〜004 local live 継続収集の実施（必要なら import 005〜008）"
+  - "運用枠（2026-07-31-batch-data-collect-ops-plan）に従ったジャンル段階1→4・期間/Run上限・停止条件の遵守"
   - "fetch_cursor進捗・paused/failed再開の記録（secretなし）"
-  - "§5.3.3指標の観測と§5.3.5閾値の見直し提案→Human採択反映"
+  - "§5.3.3指標の観測と§5.3.5閾値の見直し提案→Human採択反映（段階2完了または開始7日のどちらか早い時点）"
   - "運用結果docs / 運用方針 / 必要最小ギャップdocs更新"
-  - "実装バグが収集を阻む場合のみ apps/batch の最小修正（本旨は運用）"
+  - "実装バグが収集を阻む場合のみ apps/batch または scripts/batch の最小修正（本旨は運用）"
 
 out_of_scope:
-  - "運用枠Decisionの再定義（前Task）"
+  - "運用枠Decisionの再定義（ops-plan-decision）"
+  - "local薄いオーケストレータの設計・新規実装（先行 design/impl Task・完了済）"
+  - "実crontab登録・PC常時起動（Human）"
   - "#1792 schedule有効化"
   - "#1607 / GHA楽天live"
   - "常用QPS=2の再改訂"
@@ -67,12 +84,21 @@ out_of_scope:
   - "secret実値の表示・変更"
   - "親orchestrator workflowのscheduleコメント解除"
   - "OpenAPI / generated / apps/web|api|reco"
+  - "BATCH-009〜015 の本Taskでの定期化必須化"
 
 input:
   docs:
     - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
       required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md"
+      required: true
     - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
+      required: true
+    - path: "scripts/batch/README.md"
       required: true
   files: []
 
@@ -88,12 +114,17 @@ output:
     - path: "apps/batch/**"
       action: "update"
       required: false
+    - path: "scripts/batch/**"
+      action: "update"
+      required: false
     - path: "ai-logs/experiments/**"
       action: "create"
       required: false
 
 acceptance_criteria:
-  - "着手前に運用枠 Decision Log が decided"
+  - "着手前に 2026-07-31-batch-data-collect-ops-plan が decided"
+  - "着手前に local-orchestrator-impl（#1804 / PR #1806）が親Epic Branchへ反映済み"
+  - "収集がオーケストレータ経由であり、同Logのジャンル段階・期間/Run上限・停止条件に従っている"
   - "local継続収集の結果docsがあり secret 実値を含まない"
   - "§5.3.5見直し（維持含む）が運用方針に反映されている"
   - "GHA楽天live・schedule有効化・#1607・secret実値を含まない"
@@ -101,9 +132,9 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "local-collect-and-monitor"
-  name: null
-  base: null
-  target: null
+  name: "chore/task-1801-local-collect-and-monitor"
+  base: "chore/epic-1798-batch-data-collect-ops"
+  target: "chore/epic-1798-batch-data-collect-ops"
   worktree_required: true
 
 project:
@@ -112,7 +143,7 @@ project:
     status: "Todo"
     phase: "15_運用・改善"
     priority: "high"
-    planned_start: "2026-08-04"
+    planned_start: "2026-08-05"
     due_date: "2026-08-14"
 
 issue:
@@ -125,17 +156,25 @@ dependencies:
   issues:
     - 1745
     - 1763
-  prs: []
+    - 1799
+    - 1803
+    - 1804
+  prs:
+    - 1806
   tasks:
     - "task-batch-data-collect-ops-ops-plan-decision"
+    - "task-batch-data-collect-ops-local-orchestrator-design"
+    - "task-batch-data-collect-ops-local-orchestrator-impl"
   blocking: true
 
 parallel_control:
-  depends_on: []
+  depends_on:
+    - "task-batch-data-collect-ops-local-orchestrator-impl"
   blocks: []
   exclusive_files:
     - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
     - "apps/batch/src/batch/infrastructure/rakuten/**"
+    - "scripts/batch/**"
   conflict_risk: "medium"
   contract_impact: false
   generated_impact: false
@@ -149,6 +188,7 @@ test_policy:
   manual_checks:
     - "egress照合失敗時に楽天HTTPしない"
     - "429時にcursor pageが進まない"
+    - "収集が親オーケストレータ経由である"
   not_required:
     - "GHA楽天live E2E"
   skip_reason:
@@ -163,7 +203,8 @@ review:
     contract: false
     security: true
   review_points:
-    - "運用枠Decisionゲートを満たしているか"
+    - "運用枠Decisionゲートとオーケストレータ実装ゲートを満たしているか"
+    - "収集が親オーケストレータ経由であるか（個別CLI本線化していないか）"
     - "secret実値・schedule有効化・GHA楽天liveが混入していないか"
     - "閾値見直しの根拠が実測に基づくか"
 
@@ -172,10 +213,17 @@ human_decision_points:
   - "途中停止・ジャンル縮小が必要になった場合の判断"
 
 stop_conditions:
-  - "運用枠Decisionが無い、または decided でない"
+  - "運用枠Decision（2026-07-31-batch-data-collect-ops-plan）が無い、または decided でない"
+  - "local-orchestrator-impl が親Epic Branch未反映のまま収集を開始しようとした場合"
+  - "期間上限（最大7日）または BATCH-003累計 Run 20回に到達し、継続のHuman再判断がない"
   - "GHA楽天liveやschedule有効化が必要に見える"
   - "secret実値が必要に見える"
 
 notes:
-  - "依存: ops-plan-decision 完了かつ decided"
+  - "依存: ops-plan-decision（#1799）完了かつ 2026-07-31-batch-data-collect-ops-plan が decided"
+  - "依存: local-orchestrator-design（#1803 / PR #1805 MERGED）・local-orchestrator-impl（#1804 / PR #1806 MERGED）→ 収集着手可"
+  - "ゲート: 2026-08-01-local-batch-orchestrator-gate decided"
+  - "起動例: ./scripts/batch/local_daily_orchestrator.sh --live-rakuten （secretは.env、値をログに出さない）"
+  - "運用枠の正本は ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md（案A・最大7日または累計20 Run）"
   - "local実行はHuman環境。AIは手順・記録・docs同期を担当"
+  - "Issue #1801 / Branch chore/task-1801-local-collect-and-monitor。Planned Start 2026-08-05（Definition明示値）"

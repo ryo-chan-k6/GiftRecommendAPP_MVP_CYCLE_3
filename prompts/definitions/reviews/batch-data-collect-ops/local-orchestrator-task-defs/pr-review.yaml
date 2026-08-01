@@ -1,0 +1,66 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-data-collect-ops-local-orchestrator-task-defs"
+  title: "batch-data-collect-ops:local薄いオーケストレータ Task Definition追加 PRレビュー"
+  summary: "Epic Branch向け中間PR（ゲートDecision・子Task Definition差し込み）を AI Review する。Epic完了PR（develop）としては扱わない。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1802
+  issue:
+    number: 1803
+  task_definition: "prompts/definitions/tasks/batch-data-collect-ops/local-orchestrator-design.yaml"
+  target_branch: "chore/epic-1798-batch-data-collect-ops"
+  parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  parent_epic_branch: "chore/epic-1798-batch-data-collect-ops"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Epic PR（develop / Closes #1798）として扱っていないか（中間PRであること）"
+  - "PR本文が Related to #1803 単一参照で、Closes #1798 を使っていないか"
+  - "ゲートDecisionが decided で、Issue分割・Phase1範囲・cron境界・allowed_paths・#1801停止が明記されているか"
+  - "Epic allowed_paths に scripts/batch/** が追加されているか"
+  - "secret実値・schedule有効化・#1607・GHA楽天liveが混入していないか"
+  - "本PRに設計docs本体・シェル実装・収集結果を求めていないか（後続 #1803/#1804/#1801）"
+
+acceptance_criteria_override:
+  - "中間PRとして base が chore/epic-1798-batch-data-collect-ops である"
+  - "Related to #1803 があり Closes #1798 がない"
+  - "2026-08-01-local-batch-orchestrator-gate が decided"
+  - "local-orchestrator-design / impl Task Definition と Review Definition がある"
+  - "epic.yaml に scripts/batch/** が allowed_paths に含まれる"
+  - "#1801 Definition がオーケストレータ実装依存・Planned Start後ろ倒しになっている"
+  - "secret実値・schedule有効化・GHA楽天live差分がない"
+
+notes:
+  - "本Reviewは epic/pr-review.yaml を適用しない。Epic完了時のみ develop向けEpic PR に epic/pr-review を使う"
+  - "主Issue参照は #1803（design着手の前提となる Definition 差し込み）。Epic #1798 は親として本文説明に留め Closes しない"
+  - "Human Reviewは省略しない"
