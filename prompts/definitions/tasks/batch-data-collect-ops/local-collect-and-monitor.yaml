@@ -18,6 +18,7 @@ parent:
     - 1745
     - 1789
     - 1763
+    - 1799
     - 1792
     - 1607
   related_prs: []
@@ -44,17 +45,20 @@ agent:
     - "test-ai"
 
 background: |
-  前Task（ops-plan-decision）で運用枠が decided であることが着手ゲート。
+  前Task（ops-plan-decision / #1799）で運用枠が decided であることが着手ゲート。
+  採択正本: ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md（案A。
+  ジャンル段階1→4。期間最大7日または BATCH-003累計 Run 20回。§5.3.4ノブ維持。加速不使用）。
   local live の実secretは Human 環境。値は commit / docs / PR に出さない。
   #1791のschedule最小手順の再作成ではなく、本格収集の実行と閾値実測が成果。
 
 objective: |
-  Decisionどおりにlocal継続収集を行い、結果と§5.3.5見直し（維持含む）を正本docsへ残す。
+  本格収集運用枠 Decision どおりにlocal継続収集を行い、結果と§5.3.5見直し（維持含む）を正本docsへ残す。
 
 scope:
-  - "運用枠に従った BATCH-001〜004 local live 継続収集の実施"
+  - "運用枠（2026-07-31-batch-data-collect-ops-plan）に従った BATCH-001〜004 local live 継続収集の実施"
+  - "ジャンル段階1→4・期間/Run上限（最大7日または累計20 Run）・停止条件の遵守"
   - "fetch_cursor進捗・paused/failed再開の記録（secretなし）"
-  - "§5.3.3指標の観測と§5.3.5閾値の見直し提案→Human採択反映"
+  - "§5.3.3指標の観測と§5.3.5閾値の見直し提案→Human採択反映（段階2完了または開始7日のどちらか早い時点）"
   - "運用結果docs / 運用方針 / 必要最小ギャップdocs更新"
   - "実装バグが収集を阻む場合のみ apps/batch の最小修正（本旨は運用）"
 
@@ -71,6 +75,8 @@ out_of_scope:
 input:
   docs:
     - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md"
       required: true
     - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
       required: true
@@ -93,7 +99,8 @@ output:
       required: false
 
 acceptance_criteria:
-  - "着手前に運用枠 Decision Log が decided"
+  - "着手前に 2026-07-31-batch-data-collect-ops-plan が decided"
+  - "収集が同Logのジャンル段階・期間/Run上限・停止条件に従っている"
   - "local継続収集の結果docsがあり secret 実値を含まない"
   - "§5.3.5見直し（維持含む）が運用方針に反映されている"
   - "GHA楽天live・schedule有効化・#1607・secret実値を含まない"
@@ -172,10 +179,12 @@ human_decision_points:
   - "途中停止・ジャンル縮小が必要になった場合の判断"
 
 stop_conditions:
-  - "運用枠Decisionが無い、または decided でない"
+  - "運用枠Decision（2026-07-31-batch-data-collect-ops-plan）が無い、または decided でない"
+  - "期間上限（最大7日）または BATCH-003累計 Run 20回に到達し、継続のHuman再判断がない"
   - "GHA楽天liveやschedule有効化が必要に見える"
   - "secret実値が必要に見える"
 
 notes:
-  - "依存: ops-plan-decision 完了かつ decided"
+  - "依存: ops-plan-decision（#1799）完了かつ 2026-07-31-batch-data-collect-ops-plan が decided"
+  - "運用枠の正本は ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md（案A・最大7日または累計20 Run）"
   - "local実行はHuman環境。AIは手順・記録・docs同期を担当"
