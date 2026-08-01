@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-local-cron-phase2-cron-cutover"
+  title: "batch-local-cron-phase2:crontab載せ替え Task PRレビュー"
+  summary: "Phase2 crontab載せ替え（Humanゲート）Task PR を AI Review する。ゲート条件・親シェルのみ・AI非実行・Phase1非破壊を確認する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/batch-local-cron-phase2/cron-cutover.yaml"
+  target_branch: "chore/epic-1818-batch-local-cron-phase2"
+  parent_epic_issue: "[Epic]batch-local-cron-phase2:local cron Phase2親シェル配線（009〜016）"
+  parent_epic_branch: "chore/epic-1818-batch-local-cron-phase2"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Humanゲート条件（Phase1観測完了 or 明示承認）が満たされてから着手しているか"
+  - "親シェル経由のみ・個別cron禁止か"
+  - "AIがcrontab登録・--live-rakutenしていないか"
+  - "Phase1 crontabを壊していないか"
+  - "secret実値がないか"
+
+notes:
+  - "現状は Definition のみ。/start-task はゲート解除後"
+  - "Human Reviewは省略しない"
+  - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"
