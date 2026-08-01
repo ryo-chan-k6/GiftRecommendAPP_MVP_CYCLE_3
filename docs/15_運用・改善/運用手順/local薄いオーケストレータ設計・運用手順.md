@@ -4,17 +4,17 @@
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 文書種別 | 設計・運用手順正本（Phase1） |
+| 文書種別 | 設計・運用手順正本（Phase1 実装済 ＋ Phase2 配線設計） |
 | 対象 | GHA親オーケストレータ相当を local で薄く再現する親シェル |
 | 作成日 | 2026-08-01 |
-| 関連Issue | [#1803](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1803)（本設計） / [#1804](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1804)（実装） / [#1801](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1801)（収集） / [#1813](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1813)（crontab運用手順） |
-| 親Epic | [#1798](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1798)（設計・実装） / [#1811](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1811)（local cron Phase1） |
+| 関連Issue | [#1803](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1803)（Phase1設計） / [#1804](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1804)（Phase1実装） / [#1820](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1820)（Phase2配線設計） / [#1813](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1813)（crontab運用手順） |
+| 親Epic | [#1798](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1798)（本線#6） / [#1811](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1811)（local cron Phase1） / [#1818](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1818)（local cron Phase2） |
 | ゲート正本 | [2026-08-01-local-batch-orchestrator-gate](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md)（`decided`） |
 | 運用枠正本 | [2026-07-31-batch-data-collect-ops-plan](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md)（`decided`） |
 | cron次本線 | [2026-08-01-batch-local-cron-ops-next](../../../ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md)（`decided`） |
-| 状態 | Implemented（#1804）。crontab 運用手順正本は [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md)（#1813）。実 crontab 登録は Human |
+| 状態 | Phase1 Implemented（#1804）。Phase2 配線設計は #1820（実装は後続 impl）。crontab 運用手順正本は [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md)（#1813）。実 crontab 登録・Phase2 載せ替えは Human |
 
-本書は設計・運用手順の正本である。親シェル実装は #1804（`scripts/batch/local_*_orchestrator.sh`）。収集実行は #1801。実 crontab 登録は Human。
+本書は設計・運用手順の正本である。§1〜§10 は Phase1（001〜008/+017任意）および関連資料。§11〜§15 は Phase2（009〜016 親シェル配線）。§16 は変更履歴。親シェル実装は #1804（`scripts/batch/local_*_orchestrator.sh`）。Phase2 実装・dry-run・crontab 載せ替えは後続 Task。実 crontab 登録は Human。
 secret・接続文字列・token・egress IP の実値は記載しない。
 
 ---
@@ -53,10 +53,10 @@ secret・接続文字列・token・egress IP の実値は記載しない。
 | 楽天 Fetch 本線 | BATCH-001 / 002 / 003 / 004 | **必須中心** |
 | import 連鎖（複合子内） | BATCH-005 / 006 / 007 / 008 | **必要なら含める**（GHA `item_import` / `existing_item_pipeline` 相当） |
 | import 集計 | BATCH-017 | **任意**（GHA 複合子に含まれる。観測用。失敗時扱いを実装で定義） |
-| 意味生成 | BATCH-009〜015 | **含めない** |
-| 分布メトリクス | BATCH-016 | **含めない** |
-| Offline Evaluation | BATCH-018 | **含めない** |
-| retry_failed_items | BATCH-系 retry | **含めない**（GHA daily の任意 job 相当） |
+| 意味生成 | BATCH-009〜015 | Phase1 **含めない**（Phase2 は §11〜§15） |
+| 分布メトリクス | BATCH-016 | Phase1 **含めない**（Phase2 は §11〜§15） |
+| Offline Evaluation | BATCH-018 | **含めない**（Phase2 にも載せない） |
+| retry_failed_items | BATCH-系 retry | Phase1 / Phase2 とも本線自動に **含めない**（GHA daily 任意 job 相当） |
 
 ### 3.2 親シナリオ（local）
 
@@ -352,10 +352,292 @@ CLI 慣例（実装で確定してよい）:
 | `.github/workflows/batch-daily-orchestrator.yml` | 日次親正本 |
 | `.github/workflows/batch-weekly-orchestrator.yml` | 週次親正本 |
 | `.github/workflows/batch-rakuten-item-import.yml` | import 複合子正本 |
+| `.github/workflows/batch-item-meaning-generation.yml` | 意味生成複合子正本（Phase2） |
+| `.github/workflows/batch-distribution-metrics.yml` | 分布メトリクス正本（Phase2） |
+| Epic #1818 / Task #1820 | local cron Phase2（009〜016 親シェル配線） |
 
 ---
 
-## 11. 変更履歴
+## 11. Phase2 再現範囲と daily / weekly 配置
+
+本章は Decision `2026-08-01-batch-local-cron-ops-next` の Phase2（Epic #1818 / Task #1820）の**配線設計**である。
+実装本体・dry-run 本記録・実 crontab 載せ替えは後続 Task。本節は設計のみ。
+
+### 11.1 目的と非目的
+
+#### 目的
+
+- GHA `batch-daily-orchestrator` / `batch-weekly-orchestrator` の **import 連鎖後 → `item_meaning_generation` → `distribution_metrics`** を、local 親シェルへ載せる要件を確定する
+- daily / weekly のどちらに BATCH-009〜016 を載せるかを明記し、後続 impl が迷わない状態にする
+- Phase1 観測（#1811）と並行しても濁さない **互換モード / 非干渉境界** を設計に含める
+
+#### 非目的（#1820 および Phase2 設計の out of scope）
+
+| 対象 | 扱い |
+| ---- | ---- |
+| 親シェル実装本体（009〜016 配線コード） | 後続 impl Task |
+| dry-run 実行結果の運用 docs 本記録 | 後続 dry-run-verify Task |
+| 実 crontab 変更・載せ替え | **cron-cutover / Human ゲート**（観測中は禁止） |
+| AI による `--live-rakuten` / Phase2 追加 live | **禁止**（観測濁し防止） |
+| BATCH-018 / 019 | 自動運用対象外維持 |
+| GHA `on.schedule` 有効化（#1792） / #1607 / GHA 楽天 live | 対象外・先送り |
+| `retry_failed_items` の local 本線自動 | Phase2 本線に含めない（GHA 任意 job 相当。必要なら別途 Human / manual） |
+| Phase1 #1811 の再開・完了扱い | 分離維持（本設計では操作しない） |
+| secret 実値の表示・変更 | 禁止 |
+
+### 11.2 Phase2 で親シェルに載せる Batch
+
+| 区分 | Batch | Phase2 |
+| ---- | ----- | ------ |
+| 意味生成連鎖 | BATCH-009 → 010 → 011 → 012 → 013 → 014 → 015 | **必須**（GHA `batch-item-meaning-generation` 相当） |
+| 意味連鎖末尾集計 | BATCH-017（meaning 複合子末尾） | **任意**（GHA 複合子に含まれる。`--skip-meaning-summary` 等で省略可。実装で確定） |
+| 分布メトリクス | BATCH-016 | **必須**（GHA `batch-distribution-metrics` / `trigger_mode: chain` 相当） |
+| Offline Evaluation | BATCH-018 | **載せない** |
+| Feedback | BATCH-019 | **載せない** |
+| retry | retry_failed_items | **載せない**（本線自動外） |
+
+Phase1 の 001〜008（+017 import 側任意）は維持する。Phase2 はそれら**の後**に 009〜016 を直列で追加する。
+
+### 11.3 推奨配置（daily / weekly）— 設計推奨案
+
+GHA 正本（[バッチ実行スケジュール設計書](../../05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md) §6 / §12）に合わせ、**009〜016 は daily にも weekly にも載せる**。
+
+| シナリオ | 009〜015 | 016 | 備考 |
+| -------- | -------- | --- | ---- |
+| `local-daily` | **載せる**（import 連鎖成功後） | **載せる**（意味生成成功後） | GHA daily: `item_import` → `item_meaning_generation` → `distribution_metrics` |
+| `local-weekly` | **載せる**（existing 連鎖成功後に **1回のみ**） | **載せる**（意味生成成功後） | GHA weekly: `existing_item_pipeline` → `item_meaning_generation` → `distribution_metrics`。import 後と existing 後の二重実行はしない |
+| 日曜 | weekly のみ | weekly のみ | Phase1 同様、週次当日は `local-daily` を別途起動しない |
+
+**採用しない案（参考）:**
+
+| 案 | 内容 | 不採用理由 |
+| -- | ---- | ---------- |
+| A' | 016 のみ weekly | GHA daily が 016 を日次で回す方針と不一致 |
+| B' | 009〜016 を weekly のみ | GHA daily の needs 再現にならない |
+| C' | 葉 Batch の個別 cron | Decision / Phase1 方針違反（親シェル経由のみ） |
+
+最終採択は Human 判断点（Issue #1820）。本設計の**推奨は上表（GHA 同型）**とする。
+
+### 11.4 Phase2 実行順序
+
+#### local-daily（GHA daily 相当・Phase2）
+
+```text
+BATCH-002 ランキングスナップショット
+  ↓（成功時のみ）
+BATCH-003 → 005 → 006 → 007 → 008（→ 017 import 任意）
+  ↓（成功時のみ。かつ --run-meaning 時）
+BATCH-009 → 010 → 011 → 012 → 013 → 014 → 015（→ 017 meaning 任意）
+  ↓（成功時のみ）
+BATCH-016 分布メトリクス（trigger_mode=chain 相当）
+  ※ retry_failed_items / 018 / 019 は走らない
+```
+
+#### local-weekly（GHA weekly 相当・Phase2）
+
+```text
+BATCH-001 ジャンル同期
+  ↓
+BATCH-002 ランキングスナップショット
+  ↓
+BATCH-003 → 005 → 006 → 007 → 008（→ 017 import 任意）
+  ↓
+BATCH-004 → 005 → 006 → 007 → 008（→ 017 existing 任意）
+  ↓（成功時のみ。かつ --run-meaning 時）
+BATCH-009 → 010 → 011 → 012 → 013 → 014 → 015（→ 017 meaning 任意）
+  ↓（成功時のみ）
+BATCH-016 分布メトリクス
+  ※ 018 Offline Evaluation は走らない（GHA 任意も Phase2 非対象）
+```
+
+---
+
+## 12. Phase2 の GHA needs 対応表
+
+### 12.1 親レベル
+
+| GHA（正本） | local Phase2 | 備考 |
+| ----------- | ------------ | ---- |
+| `batch-daily-orchestrator.yml` | `local_daily_orchestrator.sh` | schedule 無効（B-0）維持。local は OS cron / 手動 |
+| `batch-weekly-orchestrator.yml` | `local_weekly_orchestrator.sh` | 同上。018 は載せない |
+| `jobs.item_import` → `item_meaning_generation` | import 連鎖成功後に意味生成連鎖 | daily |
+| `jobs.existing_item_pipeline` → `item_meaning_generation` | existing 連鎖成功後に意味生成連鎖 | weekly（import 直後には意味生成しない） |
+| `jobs.item_meaning_generation` → `distribution_metrics` | 意味生成成功後に BATCH-016 | daily / weekly 共通 |
+| `concurrency.group: batch-mainline` | 本線 flock（§5.1。Phase2 でも共用） | 009〜016 実行中も本線 lock を保持 |
+| `concurrency.group: batch-item-meaning-generation` | 本線 flock で代替 | OS 上に葉専用 group を複製しない（Phase1 §4.2 と同旨） |
+| `retry_failed_items` / `offline_evaluation` | **非実装** | Phase2 out of scope |
+| `notify_failure` | Phase1 同様（終了コード＋ローカルログ。Slack 任意） | secret をログに出さない |
+
+### 12.2 複合子・葉（Phase2 追加分）
+
+| GHA workflow / job | Batch | local 対応（実装は後続） |
+| ------------------ | ----- | ------------------------ |
+| `batch-item-meaning-generation.yml` | 009→010→011→012→013→014→015→017 | 親シェル内の意味生成連鎖関数（直列）。起動は親のみ |
+| `resolve-run-id`（meaning） | （制御） | 意味連鎖用 `pipeline_batch_run_id` を親が発行し伝播（§13.3） |
+| `batch-distribution-metrics.yml` | BATCH-016 | 親シェルから直列呼び出し。`trigger_mode=chain` 相当 |
+| 葉ごとの `job_run_id` | （制御） | 各葉で新規 UUID。業務 ID（pipeline）と混在させない |
+
+### 12.3 Phase1 境界との接続
+
+| 境界 | 方針 |
+| ---- | ---- |
+| import / existing 連鎖の終端 | Phase1 どおり 008（+017任意）まで。ここで一旦成功判定 |
+| 意味生成の開始条件 | 直前連鎖が成功 **かつ** `--run-meaning`（§14） |
+| 意味生成失敗時 | 016 を起動しない（needs 相当） |
+| 001〜008 失敗時 | 009〜016 を起動しない |
+| 個別 cron | **禁止**（009〜016 を crontab に直接載せない） |
+
+---
+
+## 13. Phase2 の排他・失敗停止・Run ID
+
+Phase1 §5 を継承し、009〜016 追加時も次を満たす。
+
+### 13.1 排他（flock）
+
+| ロック | Phase2 での扱い |
+| ------ | --------------- |
+| 本線 `local-batch-mainline.lock` | daily / weekly / 手動親の衝突防止。意味生成・016 実行中も保持 |
+| 楽天 live `local-rakuten-live.lock` | 001〜004 live 段のみ。009〜016 は楽天 HTTP しない前提（取得不要） |
+| 意味生成専用 OS lock | **必須としない**（本線 flock で足りる）。将来並行手動が必要になったら別途 Human 判断 |
+
+要件（Phase1 §5.1 に加え）:
+
+1. Phase2 段も本線 lock 取得後にのみ実行する
+2. 既存 Run がある場合は cancel せず完了待ち
+3. GHA schedule 有効化はしない（#1792 先送り）。将来の GHA×local 同時運用は別 Human 判断
+
+### 13.2 失敗時の後続停止
+
+| 事象 | 親シェルの振る舞い |
+| ---- | ------------------ |
+| 001〜008 系が非0 | 009〜016 を起動しない |
+| 009〜015 のいずれかが非0 | **後続（残り意味段および 016）を起動しない** |
+| 016 が非0 | シナリオ失敗終了（018 は無い） |
+| secret 漏えい疑い | 再実行せず Human / security へエスカレーション |
+
+失敗通知の最低ラインは Phase1 §5.2 と同じ（終了コード、失敗段名、関連 Run ID、ログパス。secret なし）。
+
+### 13.3 Run ID 伝播
+
+| 概念 | GHA | local Phase2（設計） |
+| ---- | --- | -------------------- |
+| import 連鎖の `pipeline_batch_run_id` | item-import 複合子 | Phase1 どおり親がシナリオ開始時に1つ生成し 003 連鎖へ |
+| existing 連鎖の business ID | existing-item 複合子 | Phase1 どおり weekly で別 UUID（004 `--job-run-id` と 005 以降 `--batch-run-id` を同一） |
+| meaning 連鎖の `pipeline_batch_run_id` | meaning 複合子の `resolve-run-id` | **意味連鎖開始時に新規 UUID を1つ発行**し 009〜015（+017）へ伝播。import / existing の ID と混在させない |
+| 016 の葉 `job_run_id` | distribution-metrics 葉 | 葉側で新規 UUID（pipeline と分離） |
+| 空入力時 | GHA が新規 UUID | local も未指定時は親が生成。手動再開時は明示指定可 |
+
+実装 CLI 概念名（後続 impl で確定してよい）:
+
+| フラグ（概念） | 意味 |
+| -------------- | ---- |
+| `--meaning-pipeline-batch-run-id=<uuid>` | 意味連鎖の既存 ID 継続 |
+| `--from-step=<name>` | Phase1 段に加え `item_generation_queue` … `distribution_metrics` 等を許容（実装で一覧確定） |
+
+---
+
+## 14. Phase1 互換モードと観測非干渉
+
+### 14.1 Phase1 互換モード（必須）
+
+Phase1 観測中に Phase2 実装が親シェルへ入っても、**既定動作は 001〜008（+017任意）のみ**とする。
+
+| 項目 | 設計推奨 |
+| ---- | -------- |
+| 既定 | **009〜016 をスキップ**（Phase1 互換） |
+| 有効化 | 明示フラグ **`--run-meaning`**（名称は impl で微調整可。同義の環境変数を置く場合は opt-in のみ） |
+| 無効化の別名 | `--skip-meaning` を残す場合は「既定 skip と矛盾しない」こと（例: `--run-meaning` が無い＝skip。両方指定時はエラー） |
+| crontab（観測中） | **変更しない**。フラグなし／`--run-meaning` なしのまま Phase1 挙動を維持 |
+| cutover 後 | Human が cron 行へ `--run-meaning` を追加（cron-cutover Task / Human ゲート） |
+
+**Human 判断点:** 既定を skip（本推奨）とするか、既定 run + `--skip-meaning` 必須とするか。
+観測非干渉の観点では **既定 skip / `--run-meaning` opt-in** を推奨する（impl マージ直後に crontab 未変更でも濁さない）。
+
+### 14.2 Phase1 観測非干渉（必須）
+
+| ルール | 内容 |
+| ------ | ---- |
+| 実 crontab 載せ替え禁止 | Phase1 観測完了または Human 明示承認まで、009〜016 live を crontab に載せない |
+| AI live 禁止 | AI Agent は `--live-rakuten` および Phase2 追加の実 Batch live を実行しない |
+| 追加 live 禁止 | Phase2 検証は `--dry-run` 中心。観測を濁す追加 live を本 Epic で行わない |
+| #1811 分離 | Phase1 Epic の再開・完了・verify 判断を本設計 / Phase2 Task で行わない |
+| 個別 cron 禁止 | 009〜016 を含む葉の個別 crontab 登録をしない |
+
+### 14.3 crontab 例（登録しない・Phase2 cutover 後の参考）
+
+以下は **Human ゲート通過後**の参考例である。#1820 / impl / dry-run-verify では登録しない。
+
+```cron
+# 【例】Phase2 cutover 後。実登録は Human。AI は登録しない。
+# Phase1 ノブを維持したうえで --run-meaning を追加するイメージ。
+
+# local-daily: 月曜〜土曜 00:30 JST
+30 0 * * 1-6  cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_daily_orchestrator.sh --live-rakuten --run-meaning --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-daily.log 2>&1
+
+# local-weekly: 日曜 00:30 JST（当日は daily を入れない）
+30 0 * * 0    cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_weekly_orchestrator.sh --live-rakuten --run-meaning --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-weekly.log 2>&1
+```
+
+観測中の Phase1 行からは `--run-meaning` を付けない（または親シェル既定 skip のまま）。
+
+### 14.4 安全要件（Phase2 追加観点）
+
+Phase1 §6 に加え:
+
+| 要件 | 内容 |
+| ---- | ---- |
+| 意味生成・016 | 楽天 HTTP を行わない。egress / 楽天 live lock は不要（取得しない） |
+| Embedding（015）等の外部 API | 既存 Batch の live / stub 方針に従う。secret をログ・docs に出さない |
+| dry-run | impl は `--dry-run` で 009〜016 の順序・flock・Run ID・`--run-meaning` 分岐を確認できること |
+| GHA | workflow の schedule コメント解除・楽天 live 化はしない |
+
+---
+
+## 15. Phase2 後続 Task への引き渡し
+
+### 15.1 impl（親シェル 009〜016 実装）
+
+| No | 条件 |
+| --: | ---- |
+| 1 | 本書 §11〜§14 がレビュー可能な状態である |
+| 2 | daily / weekly 配置推奨（GHA 同型）と Phase1 互換（既定 skip / `--run-meaning`）が明記されている |
+| 3 | 実装 scope に実 crontab 変更・AI live・018/019・#1792・#1607・GHA 楽天 live・secret 実値が含まれない |
+| 4 | exclusive 競合に注意（`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh` / common） |
+
+実装成果物期待:
+
+- `local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh`（および common）への 009〜016 配線
+- `--dry-run` で意味連鎖・016・互換モードを確認可能
+- `--run-meaning`（既定 skip）必須化
+- `scripts/batch/README.md` の最小更新
+- 設計docsとの実装差分の最小同期（必要時）
+
+### 15.2 dry-run-verify
+
+- AI live なしで dry-run 結果を docs / experiments 等へ本記録
+- Phase1 観測を濁さないこと
+
+### 15.3 cron-cutover（Human ゲート）
+
+| 条件 | 内容 |
+| ---- | ---- |
+| 着手条件 | Phase1 観測完了 **または** Human 明示承認 |
+| 実施者 | **Human**（AI は実 crontab を変更しない） |
+| 内容 | cron 行へ `--run-meaning` 追加等。Phase1 ノブ・親シェル経由・個別 cron 禁止を維持 |
+| 禁止 | 観測中の勝手な載せ替え、AI `--live-rakuten`、018/019 混入 |
+
+### 15.4 明示的に引き渡さないもの
+
+- #1792 / B-1 schedule 有効化
+- #1607 / GHA 楽天 live
+- BATCH-018 / 019 の自動運用
+- Phase1 #1811 の完了判断
+- Airflow 等の基盤導入
+
+---
+
+## 16. 変更履歴
 
 | 日付 | 内容 |
 | ---- | ---- |
@@ -364,3 +646,4 @@ CLI 慣例（実装で確定してよい）:
 | 2026-08-01 | #1808。`--genre-ids` / `--ranking-genre-ids` 分離を CLI 表へ反映 |
 | 2026-08-01 | #1808。weekly existing 連鎖の business run ID 分離（004 object_key ↔ 005 選定）を追記 |
 | 2026-08-01 | #1813。§7 を Phase1 定常ノブ付き例へ更新し、crontab運用手順正本への参照を追加 |
+| 2026-08-01 | #1820。§11〜§15 を追加（Phase2: 009〜016 配線設計、GHA needs 対応、Phase1互換・観測非干渉、後続 Task 引き渡し）。変更履歴を §16 へ移動 |
