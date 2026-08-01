@@ -82,6 +82,8 @@ tests/recommendation-quality/output/
 scripts/perf/output/
 scripts/perf/output-*/
 scripts/batch/output-*/
+scripts/batch/locks/*
+!scripts/batch/locks/.gitkeep
 
 # =========================
 # Misc

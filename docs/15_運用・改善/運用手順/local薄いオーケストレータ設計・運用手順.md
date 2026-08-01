@@ -11,9 +11,9 @@
 | 親Epic | [#1798](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1798) |
 | ゲート正本 | [2026-08-01-local-batch-orchestrator-gate](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md)（`decided`） |
 | 運用枠正本 | [2026-07-31-batch-data-collect-ops-plan](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md)（`decided`） |
-| 状態 | Draft（Human Review前） |
+| 状態 | Implemented（#1804。収集実行・実 crontab 登録は含まない） |
 
-本書は設計・運用手順の正本である。親シェル実装本体・収集実行・実 crontab 登録は含まない。
+本書は設計・運用手順の正本である。親シェル実装は #1804（`scripts/batch/local_*_orchestrator.sh`）。収集実行は #1801。実 crontab 登録は Human。
 secret・接続文字列・token・egress IP の実値は記載しない。
 
 ---
@@ -347,3 +347,4 @@ CLI 慣例（実装で確定してよい）:
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-08-01 | 初版（#1803）。Phase1 範囲、GHA↔local 対応表、排他・失敗停止・再開・観測、安全要件、crontab 例と Human 境界、#1804 / #1801 引き渡し、推奨スクリプト名 |
+| 2026-08-01 | #1804 実装反映。`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh` / `lib/local_orchestrator_common.sh` を配置。`--dry-run` で順序・flock・Run ID 確認可 |

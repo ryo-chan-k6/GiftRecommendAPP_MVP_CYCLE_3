@@ -423,7 +423,7 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - Phase1 は BATCH-001〜004 中心（必要なら 005〜008）。BATCH-009〜015 は含めない
 - 起動は親シナリオ（日次相当 / 週次相当）のみ。子 Batch の個別 cron は禁止
 - 排他は本線 flock ＋楽天 live 横断1本。失敗時は後続停止。`pipeline_batch_run_id` を親で生成して伝播
-- 実 crontab 登録・PC常時起動は **Human**。親シェル実装は #1804、収集実行は #1801（#1804 完了後）
+- 実 crontab 登録・PC常時起動は **Human**。親シェル実装は #1804（`scripts/batch/local_*_orchestrator.sh`）、収集実行は #1801（#1804 完了後）
 - GHA 楽天 live・#1607・schedule 有効化は対象外のまま
 
 ---
@@ -473,3 +473,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-07-31 | #1791: §11.2 / §12 に daily schedule B-0採択と監視・rollback最小手順を接続 |
 | 2026-07-31 | #1799: §10 No.10 / §11.3 / §12 に本格収集運用枠（案A・最大7日または累計20 Run）を接続 |
 | 2026-08-01 | #1803: §11.4 / §12 に local薄いオーケストレータ設計・ゲートを接続 |
+| 2026-08-01 | #1804: §11.4 に親シェル実装パス（`scripts/batch/local_*_orchestrator.sh`）を反映 |
