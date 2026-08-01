@@ -31,7 +31,7 @@ secret・token・APIキー・egress IP・接続文字列の実値は記載しな
 | 実 crontab への書き込み | **Human のみ**。AI Agent は実行しない |
 | `--live-rakuten` の実行 | **Human のみ**（観測期間含む）。AI は実行しない |
 | 数日無人観測結果の記録本体 | 後続 Task（`cron-ops-verify`） |
-| BATCH-009〜016 配線 | Phase2 別Epic |
+| BATCH-009〜016 配線・dry-run 本記録 | Phase2 別Epic（実装 #1822 / dry-run #1824）。実 crontab への `--run-meaning` 追加は Human ゲート |
 | BATCH-018 / 019 | 自動運用対象外 |
 | GHA `on.schedule` 有効化（#1792） | 先送り |
 | #1607 / GHA 楽天 live | 先送り・禁止維持 |

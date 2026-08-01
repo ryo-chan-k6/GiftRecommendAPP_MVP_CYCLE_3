@@ -109,7 +109,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "phase2-impl"
-  name: null
+  name: "chore/task-1822-phase2-impl"
   base: "chore/epic-1818-batch-local-cron-phase2"
   target: "chore/epic-1818-batch-local-cron-phase2"
   worktree_required: true
@@ -207,3 +207,4 @@ notes:
   - "着手条件: design Taskが親Epic Branchへ反映済み"
   - "後続: dry-run-verify"
   - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"
+  - "Task Issue #1822 / Branch chore/task-1822-phase2-impl"
