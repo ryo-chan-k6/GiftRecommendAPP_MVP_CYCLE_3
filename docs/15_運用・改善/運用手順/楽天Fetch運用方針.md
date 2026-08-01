@@ -416,7 +416,7 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - 期間/Run上限到達後の継続は Epic #1798 内で Human 再判断する
 - §5.3.5の実測見直し（維持含む）は収集Task側でdocsへ反映する
 - 実行記録正本: [batch-data-collect-ops_local継続収集結果_1801](./batch-data-collect-ops_local継続収集結果_1801.md)
-- **2026-08-01:** 段階1着手。Object Storage 復旧後に親シェル経由で BATCH-003 成功 Run 累計2・通し SUCCEEDED を確認。§5.3.5 は見直し時点未達のため **維持**（閾値変更なし）。詳細は結果docs
+- **2026-08-01:** 段階1着手〜進行条件充足（BATCH-003 成功累計3・429なし）。Human方針は **継続**（同一Issue/PRで段階1→4）。§5.3.5 は見直し時点未達のため **維持**。詳細は結果docs
 
 ### 11.4 local薄いオーケストレータ（実行制御）
 

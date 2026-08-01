@@ -9,7 +9,7 @@
 | 前提Decision | [本格収集運用枠](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) / [オーケストレータ導入ゲート](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md) / [fetch_plan](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) |
 | 記録日 | 2026-08-01 |
 | 実行経路 | `scripts/batch/local_daily_orchestrator.sh --live-rakuten`（個別CLI本線化なし） |
-| 段階 | 段階1（進行中）。Humanにより Planned Start（2026-08-05）前の早期着手を承認 |
+| 段階 | 段階1（進行条件充足・継続中）。Human方針: **継続**（途中完了例外は採らない）。Planned Start 前の早期着手を承認 |
 
 secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値は本ドキュメントに含めない。
 
@@ -82,6 +82,17 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | BATCH-003 | `pages=1 budget_stopped=True`（予算10に対し1ページで停止。cursor/route 側の進行量） |
 | 429 | なし |
 
+### 4.5 段階1 Run（追加・通し成功）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 時刻 | 2026-08-01 15:17 JST |
+| `pipeline_batch_run_id` | `3174f140-b994-45ea-808d-cedfd1d224b5` |
+| ノブ | 同上 |
+| 結果 | local-daily **SUCCEEDED**（002→003→005→006→007→008→017） |
+| BATCH-003 | `pages=1 budget_stopped=True` / 429 なし |
+| 備考 | AI Review must 対応（段階1追加1 Run）＋Human継続方針の明示後に実施 |
+
 ---
 
 ## 5. §5.3.5 見直し
@@ -89,7 +100,7 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | 項目 | 内容 |
 | ---- | ---- |
 | 見直し時点（運用枠） | 段階2完了、または本格収集開始から7日のどちらか早い方 |
-| 現状 | 段階1進行中（BATCH-003 成功 Run 2）。見直し時点未達 |
+| 現状 | 段階1進行条件は充足。段階2未着手のため見直し時点未達 |
 | 暫定 | 閾値変更なし（**維持**） |
 
 ---
@@ -99,7 +110,8 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | 項目 | 内容 |
 | ---- | ---- |
 | Object Storage ブロッカー | **解消**（Human endpoint 実値投入） |
-| 現在 | 段階1継続可。追加 Run は同一親シェル経由 |
+| Human方針 | **継続**（2026-08-01）。途中完了例外は採らない。同一Issue/PRで段階1→4を進める |
+| 現在 | 段階1進行条件充足。段階2移行は Human 判断待ち（通常継続ノブ） |
 | 再開コマンド例 | `./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --max-qps 1` |
 
 ---
@@ -110,9 +122,10 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | ---- | ---- |
 | 本格収集開始日 | 2026-08-01 |
 | 期間上限 | 開始から最大7日、または BATCH-003 累計 Run 20回 |
-| BATCH-003 成功 Run 累計 | **2**（`531b6cbc-…` / `7b6c491e-…`） |
-| 段階1 進行条件 | 2〜3 Run・429なし・失敗なし・ログ追跡可能 → **ほぼ充足**（通し成功1＋再開成功1。追加1 Run 推奨） |
-| 段階2移行 | Human判断（通常継続ノブ `pages_per_run=60`） |
+| BATCH-003 成功 Run 累計 | **3**（`531b6cbc-…` / `7b6c491e-…` / `3174f140-…`） |
+| 段階1 進行条件 | 2〜3 Run・429なし・失敗なし・ログ追跡可能 → **充足** |
+| 段階2移行 | Human判断待ち（通常継続ノブ `pages_per_run=60`） |
+| キャンペーン完了 | **未完了**（段階2〜4・§5.3.5本見直しは後続） |
 
 ---
 
@@ -122,3 +135,4 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | ---- | ---- |
 | 2026-08-01 | 初版。ゲート確認・genre伝播・OSプレースホルダ停止を記録 |
 | 2026-08-01 | OS復旧後の段階1成功・job_run_id UniqueViolation修正・通し SUCCEEDED を追記 |
+| 2026-08-01 | Human継続方針・段階1追加Run（累計3）・進行条件充足を追記 |
