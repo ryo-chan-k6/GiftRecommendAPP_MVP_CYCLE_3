@@ -1,0 +1,200 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-data-collect-ops-local-orchestrator-design"
+  title: "batch-data-collect-ops:local薄いオーケストレータ設計"
+  summary: "GHA親オーケストレータ相当をlocalで薄く再現するための要件・シナリオ対応表・運用手順を正本docs化する。実装・収集実行・実crontab登録は含まない。"
+  workstream_key: "batch-data-collect-ops"
+  phase: "ops-design"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  epic_issue_number: 1798
+  epic_branch: "chore/epic-1798-batch-data-collect-ops"
+  related_issues:
+    - 1745
+    - 1799
+    - 1801
+    - 1792
+    - 1607
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Humanゲート 2026-08-01-local-batch-orchestrator-gate で、local薄いオーケストレータ導入が decided。
+  楽天HTTP liveは登録egress IPのlocalのみ（GHA禁止）。実行制御の正本はGHA親だが、楽天本線はlocalで回す必要がある。
+  本Taskは設計・運用手順の正本化のみ。シェル実装は後続 local-orchestrator-impl。
+
+objective: |
+  GHA daily/weekly/manual の needs・排他・Run ID伝播・失敗停止をlocal親シェルで再現するための
+  要件・対応表・運用手順をdocsに残し、後続実装Taskの入力を確定する。
+
+scope:
+  - "Phase1再現範囲の明文化（BATCH-001〜004中心。必要なら005〜008。009〜015は含めない）"
+  - "GHA親/複合子（needs・concurrency・pipeline_batch_run_id）とlocal親シェルの対応表"
+  - "排他（本線flock＋楽天live横断1本）、失敗時後続停止、再開単位、観測（ログ/DB）の要件"
+  - "egress照合・明示live・QPS=2・secret非記載の安全要件を運用手順へ反映"
+  - "crontab例と「実登録はHuman」境界の明記"
+  - "後続 local-orchestrator-impl / #1801 への引き渡し条件の明記"
+  - "必要最小の楽天Fetch運用方針・ギャップdocs同期（設計範囲に限る）"
+
+out_of_scope:
+  - "親シェル実装本体（後続 local-orchestrator-impl）"
+  - "local継続収集の実行本体（#1801）"
+  - "実crontab登録・PC常時起動設定（Human）"
+  - "Airflow / Prefect 等の本格ジョブ基盤導入"
+  - "#1792 schedule有効化"
+  - "#1607 / GHA楽天live"
+  - "常用QPS=2の再改訂"
+  - "secret実値の表示・変更"
+  - "OpenAPI / generated / apps/web|api|reco"
+  - "親orchestrator workflowのscheduleコメント解除"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "scripts/batch/README.md"
+      required: true
+  files:
+    - path: ".github/workflows/batch-daily-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-weekly-orchestrator.yml"
+      required: true
+    - path: ".github/workflows/batch-rakuten-item-import.yml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/tasks/batch-data-collect-ops/**"
+      action: "update"
+      required: false
+    - path: "ai-logs/human-decisions/**"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "2026-08-01-local-batch-orchestrator-gate が decided であり本Taskと矛盾しない"
+  - "Phase1範囲（001〜004中心、009〜非対象）がdocsに明示されている"
+  - "GHA needs / 排他 / Run ID / 失敗停止のlocal対応が対応表または同等で追跡できる"
+  - "実crontab登録がHuman境界として明記されている"
+  - "実装・収集実行・#1792・#1607・GHA楽天live・secret実値を含まない"
+
+branch:
+  no_branch: false
+  summary: "local-orchestrator-design"
+  name: null
+  base: "chore/epic-1798-batch-data-collect-ops"
+  target: "chore/epic-1798-batch-data-collect-ops"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-01"
+    due_date: "2026-08-03"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1798
+    - 1799
+    - 1745
+  prs: []
+  tasks:
+    - "task-batch-data-collect-ops-ops-plan-decision"
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-batch-data-collect-ops-local-orchestrator-impl"
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/**"
+    - "ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認"
+  commands: []
+  manual_checks:
+    - "Decision Log / 運用手順に secret 実値がない"
+    - "Phase1に意味生成009〜が混入していない"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "設計・docsのみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "ゲートDecisionと設計docsが一致しているか"
+    - "子ごとの個別cron設計になっていないか"
+    - "schedule有効化や#1607が混入していないか"
+
+human_decision_points:
+  - "設計docs上のシナリオ名・ファイル配置名の最終採否（実装前の軽微な命名調整は可）"
+
+stop_conditions:
+  - "2026-08-01-local-batch-orchestrator-gate が decided でない"
+  - "本格ジョブ基盤導入が必要に見える"
+  - "GHA楽天liveやschedule有効化が必要に見える"
+  - "secret実値が必要に見える"
+
+notes:
+  - "ゲート正本: ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md"
+  - "完了後: /start-task local-orchestrator-impl（未起票なら起票）→ #1801"
+  - "親Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops"

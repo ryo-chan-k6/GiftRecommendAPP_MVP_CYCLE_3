@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-data-collect-ops-local-orchestrator-design"
+  title: "batch-data-collect-ops:local薄いオーケストレータ設計 Task PRレビュー"
+  summary: "local薄いオーケストレータ設計 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/batch-data-collect-ops/local-orchestrator-design.yaml"
+  target_branch: "chore/epic-1798-batch-data-collect-ops"
+  parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  parent_epic_branch: "chore/epic-1798-batch-data-collect-ops"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "ゲートDecisionと設計docsが一致しているか"
+  - "子ごとの個別cron設計になっていないか"
+  - "secret実値・schedule有効化・GHA楽天live・#1607が混入していないか"
+
+notes:
+  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue番号は /start-task 後に反映"
+  - "Human Reviewは省略しない"

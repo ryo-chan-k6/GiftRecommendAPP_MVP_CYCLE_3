@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-data-collect-ops-local-orchestrator-impl"
+  title: "batch-data-collect-ops:local薄いオーケストレータ実装 Task PRレビュー"
+  summary: "local薄いオーケストレータ実装 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/batch-data-collect-ops/local-orchestrator-impl.yaml"
+  target_branch: "chore/epic-1798-batch-data-collect-ops"
+  parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  parent_epic_branch: "chore/epic-1798-batch-data-collect-ops"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "設計docsとの整合と意図的差分の説明"
+  - "flock / Run ID / 失敗停止 / dry-runが実装されているか"
+  - "secret実値・.env実値・schedule有効化・GHA楽天liveが混入していないか"
+  - "009〜015定期化や実crontab登録を完了扱いにしていないか"
+
+notes:
+  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue番号は /start-task 後に反映"
+  - "Human Reviewは省略しない"

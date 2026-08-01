@@ -1,0 +1,204 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-data-collect-ops-local-orchestrator-impl"
+  title: "batch-data-collect-ops:local薄いオーケストレータ実装"
+  summary: "設計docsに従い、GHA needs相当のlocal親シェル（flock・Run ID・失敗停止・dry-run）をscripts/batchへ実装する。本格収集実行・実crontab登録・意味生成009〜は含まない。"
+  workstream_key: "batch-data-collect-ops"
+  phase: "ops-implementation"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  epic_issue_number: 1798
+  epic_branch: "chore/epic-1798-batch-data-collect-ops"
+  related_issues:
+    - 1745
+    - 1801
+    - 1792
+    - 1607
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  先行 Task local-orchestrator-design の設計docsとゲートDecisionが入力。
+  Phase1は楽天Fetch本線（001〜004、必要なら005〜008）。009〜015は対象外。
+  実crontab登録はHuman。本Taskはスクリプトと手順・dry-run確認まで。
+
+objective: |
+  local親オーケストレータを scripts/batch に実装し、#1801 がオーケストレータ経由で
+  段階収集を開始できる状態にする。
+
+scope:
+  - "設計docsで定義した親シナリオ用シェル（日次相当 / 週次相当など）の実装"
+  - "flockによる本線排他と楽天live横断1本制限"
+  - "pipeline_batch_run_id 生成・各Batch CLIへの伝播"
+  - "失敗時の後続停止、段階1向け低予算ノブのデフォルト、dry-runモード"
+  - "egress照合前提・明示 --live-rakuten / BATCH_RAKUTEN_LIVE の安全配線（secret非記載）"
+  - "scripts/batch/README.md と運用手順docsの実装反映"
+  - "dry-runまたは最小smoke（liveなし）での起動確認記録（secretなし）"
+  - "収集を阻む場合のみ apps/batch の最小修正（任意）"
+
+out_of_scope:
+  - "設計方針の再定義（先行 design Task）"
+  - "本格収集キャンペーン本体（#1801）"
+  - "実crontab登録・PC常時起動（Human）"
+  - "BATCH-009〜015 意味生成パイプラインのlocal定期化"
+  - "Airflow / Prefect 等の本格ジョブ基盤"
+  - "#1792 schedule有効化"
+  - "#1607 / GHA楽天live"
+  - "常用QPS=2の再改訂"
+  - "secret実値の表示・変更"
+  - "OpenAPI / generated / apps/web|api|reco"
+  - "親orchestrator workflowのscheduleコメント解除"
+  - ".github/workflows/batch-*-orchestrator.yml のschedule有効化"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/**"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "scripts/batch/README.md"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-data-collect-ops/local-orchestrator-design.yaml"
+      required: true
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "update"
+      required: true
+    - path: "scripts/batch/README.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/batch/**"
+      action: "create_or_update"
+      required: true
+    - path: "apps/batch/**"
+      action: "update"
+      required: false
+
+acceptance_criteria:
+  - "先行 design Task の成果（運用手順・対応表）を入力として実装している"
+  - "親シェルが順序・flock・Run ID・失敗停止・dry-runを満たす"
+  - "Phase1範囲外（009〜015定期化・実crontab登録・schedule有効化）を含まない"
+  - "scripts/batch/README と運用手順が実装と一致し secret 実値がない"
+  - "dry-runまたはliveなしsmokeの確認記録がある（secretなし）"
+  - "#1792・#1607・GHA楽天live・secret実値を含まない"
+
+branch:
+  no_branch: false
+  summary: "local-orchestrator-impl"
+  name: null
+  base: "chore/epic-1798-batch-data-collect-ops"
+  target: "chore/epic-1798-batch-data-collect-ops"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-03"
+    due_date: "2026-08-05"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1798
+    - 1745
+  prs: []
+  tasks:
+    - "task-batch-data-collect-ops-local-orchestrator-design"
+  blocking: true
+
+parallel_control:
+  depends_on:
+    - "task-batch-data-collect-ops-local-orchestrator-design"
+  blocks:
+    - "task-batch-data-collect-ops-local-collect-and-monitor"
+  exclusive_files:
+    - "scripts/batch/**"
+    - "docs/15_運用・改善/運用手順/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "dry-runまたはliveなしsmoke"
+    - "docs整合確認"
+  commands: []
+  manual_checks:
+    - "同時起動時にflockで弾ける、または文書化された排他がある"
+    - "live指定なしで楽天HTTPしない"
+  not_required:
+    - "GHA楽天live E2E"
+    - "本格収集7日キャンペーン"
+  skip_reason:
+    "GHA楽天live E2E": "本Task out of scope"
+    "本格収集7日キャンペーン": "#1801の範囲"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "設計docsとの差分が意図的で説明されているか"
+    - "secret実値・.env実値が混入していないか"
+    - "子Batch個別cronになっていないか"
+    - "009〜015やschedule有効化が混入していないか"
+
+human_decision_points:
+  - "dry-run確認結果を踏まえた #1801 着手可否"
+
+stop_conditions:
+  - "先行 design Task が未完了"
+  - "GHA楽天liveやschedule有効化が必要に見える"
+  - "secret実値が必要に見える"
+  - "本格ジョブ基盤導入が必要に見える"
+
+notes:
+  - "着手ゲート: local-orchestrator-design 完了（親Epic Branchへmerge）"
+  - "完了後: #1801 をオーケストレータ経由で着手"
+  - "親Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops"
