@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1807
   issue:
     number: 1801
   task_definition: "prompts/definitions/tasks/batch-data-collect-ops/local-collect-and-monitor.yaml"
