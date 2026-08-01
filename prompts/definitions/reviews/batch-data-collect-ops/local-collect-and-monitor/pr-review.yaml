@@ -4,7 +4,7 @@ definition_type: "review"
 review:
   id: "review-batch-data-collect-ops-local-collect-and-monitor"
   title: "batch-data-collect-ops:local継続収集 Task PRレビュー"
-  summary: "local継続収集と監視閾値見直し Task PR を AI Review する。"
+  summary: "local継続収集と監視閾値見直し Task PR を AI Review する。親オーケストレータ経由・運用枠遵守・secret非露出を確認する。"
   type: "task_pr_review"
   status: "ready"
 
@@ -16,9 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1801
   task_definition: "prompts/definitions/tasks/batch-data-collect-ops/local-collect-and-monitor.yaml"
-  target_branch: null
+  target_branch: "chore/epic-1798-batch-data-collect-ops"
   parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
   parent_epic_branch: "chore/epic-1798-batch-data-collect-ops"
 
@@ -44,10 +44,13 @@ review_scope:
   project_operation: true
 
 review_points:
-  - "運用枠Decisionゲートを満たしているか"
+  - "運用枠Decisionゲートとオーケストレータ実装ゲート（#1804 / PR #1806）を満たしているか"
+  - "収集が親オーケストレータ経由であるか（個別CLI本線化していないか）"
   - "secret実値・schedule有効化・GHA楽天liveが混入していないか"
   - "§5.3.5見直し（維持含む）が記録されているか"
+  - "実crontab登録・BATCH-009〜015定期化が混入していないか"
 
 notes:
-  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue/PRは /start-task・/create-pr 後に反映"
+  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops"
+  - "先行: design #1803/#1805・impl #1804/#1806 MERGED"
   - "Human Reviewは省略しない"
