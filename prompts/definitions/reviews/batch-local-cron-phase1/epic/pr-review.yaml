@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1815
   issue:
     number: 1811
   task_definition: "prompts/definitions/epics/batch-local-cron-phase1/epic.yaml"
@@ -54,4 +54,4 @@ review_points:
 
 notes:
   - "機能・領域単位Epic（例外）。Human Reviewは省略しない"
-  - "Epic Issue #1811 / Branch chore/epic-1811-batch-local-cron-phase1。PR番号は Epic PR 作成後に反映"
+  - "Epic Issue #1811 / Branch chore/epic-1811-batch-local-cron-phase1 / 中間PR #1815（Closesしない。Related to）"
