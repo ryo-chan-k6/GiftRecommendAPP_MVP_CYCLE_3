@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1800
   issue:
     number: 1799
   task_definition: "prompts/definitions/tasks/batch-data-collect-ops/ops-plan-decision.yaml"
@@ -49,5 +49,5 @@ review_points:
   - "正本docsと矛盾していないか"
 
 notes:
-  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue/PRは /start-task・/create-pr 後に反映"
+  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops。Task Issue #1799 / PR #1800"
   - "Human Reviewは省略しない"
