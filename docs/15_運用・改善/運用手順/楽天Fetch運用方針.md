@@ -420,6 +420,7 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - 実行記録正本: [結果 #1801](./batch-data-collect-ops_local継続収集結果_1801.md) / [結果 #1808](./batch-data-collect-ops_local継続収集結果_1808.md)
 - **2026-08-01:** 段階1着手〜進行条件充足（BATCH-003 成功累計3・429なし）。Human方針は **継続**
 - **2026-08-01 (#1808):** 段階2充足・段階3完了・段階4初回ローテーション成功。§5.3.5 本見直し結果は **維持**。BATCH-003 累計20超で追加Run停止。Human採択 **案A（一旦終了）**（Run上限引き上げなし）
+- **2026-08-01 次本線:** [local cron 全BATCH自動運用 Decision](../../../ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md)。対象 **001〜016**（018/019除外）。GHA schedule / #1607 / GHA楽天live は先送り
 
 ### 11.4 local薄いオーケストレータ（実行制御）
 
@@ -482,3 +483,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-08-01 | #1804: §11.4 に親シェル実装パス（`scripts/batch/local_*_orchestrator.sh`）を反映 |
 | 2026-08-01 | #1801: §11.3 に継続収集結果docs・§5.3.5維持（見直し時点未達）・§11.4 genre伝播を反映 |
 | 2026-08-01 | #1808: 段階3完了・段階4運用。§5.3.5本見直し **維持**。`--genre-ids` / `--ranking-genre-ids` 分離を§11.4へ反映 |
+| 2026-08-01 | 次本線 Decision（local cron 001〜016・GHA/#1607先送り・018/019除外）を§11.3へ接続 |
