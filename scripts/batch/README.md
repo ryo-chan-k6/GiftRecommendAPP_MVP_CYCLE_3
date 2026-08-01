@@ -48,6 +48,8 @@ set -a && source .env && set +a
 | `--no-update-sort` / `--allow-update-sort` | BATCH-003 update_sort（既定は除外） |
 | `--max-qps` | BATCH-003 安全側 QPS 上書き |
 
+葉 Batch の `--job-run-id` は段ごとに UUID を発行する（`pipeline_batch_run_id` を複数葉の `batch_run_log` PK に共用しない）。業務紐付けは `--diff-batch-run-id` / `--batch-run-id` 等で pipeline ID を渡す。
+
 **実 crontab 登録は Human**（例は設計・運用手順 §7）。本スクリプト群は crontab へ書き込まない。
 
 Phase1 に BATCH-009〜015 は含めない。Airflow 等は導入しない。

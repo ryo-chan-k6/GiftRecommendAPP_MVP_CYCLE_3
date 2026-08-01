@@ -254,7 +254,9 @@ lor_run_batch_module() {
   return 0
 }
 
-# Modules that use --job-run-id as primary business id (no --batch-run-id)
+# Modules that use --job-run-id as primary run id（--batch-run-id を持たない葉）
+# 葉ごとに UUID を発行する。pipeline_batch_run_id は業務紐付け用に別引数（--diff-batch-run-id 等）で渡す。
+# （同一 pipeline ID を複数葉の batch_run_log PK に使うと UniqueViolation になる）
 lor_run_batch_module_job_only() {
   local step_name="$1"
   local module="$2"
@@ -265,8 +267,9 @@ lor_run_batch_module_job_only() {
     return 0
   fi
 
-  local job_run_id="${LOR_PIPELINE_ID}"
-  lor_log INFO "STEP start name=${step_name} module=${module} job_run_id=${job_run_id}"
+  local job_run_id
+  job_run_id="$(lor_generate_uuid)"
+  lor_log INFO "STEP start name=${step_name} module=${module} pipeline_batch_run_id=${LOR_PIPELINE_ID} job_run_id=${job_run_id}"
 
   if [[ "${LOR_DRY_RUN}" -eq 1 ]]; then
     lor_log INFO "DRY-RUN would run: uv run python -m ${module} --job-run-id ${job_run_id} $*"

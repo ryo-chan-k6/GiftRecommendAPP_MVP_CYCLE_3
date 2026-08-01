@@ -9,7 +9,7 @@
 | 前提Decision | [本格収集運用枠](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) / [オーケストレータ導入ゲート](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md) / [fetch_plan](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) |
 | 記録日 | 2026-08-01 |
 | 実行経路 | `scripts/batch/local_daily_orchestrator.sh --live-rakuten`（個別CLI本線化なし） |
-| 段階 | 段階1（開始）。Humanにより Planned Start（2026-08-05）前の早期着手を承認 |
+| 段階 | 段階1（進行中）。Humanにより Planned Start（2026-08-05）前の早期着手を承認 |
 
 secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値は本ドキュメントに含めない。
 
@@ -24,6 +24,7 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | egress IP 照合 | MATCH（値は非記載） |
 | worktree `.env` | メイン `.env` への symlink（gitignore） |
 | 早期 live 開始 | Human 承認（2026-08-01） |
+| Object Storage live | Human が endpoint 実値投入後、`object_storage_live_verify` **Go**（2026-08-01） |
 
 ---
 
@@ -31,9 +32,9 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 背景 | 親シェルが `--genre-ids` を渡さず、BATCH-002 既定 `100` / 未指定で Ranking 失敗 |
-| 既知事実（#1765） | Ranking API は `100000`/`100003`/`100004` が HTTP 400。`100005` は成功 |
-| 対応 | `scripts/batch` に `--genre-ids`（既定 `100005`）・`--no-update-sort`（既定オン）・`--max-qps` を追加し、002/003（および weekly の 001）へ伝播 |
+| genre 伝播 | `--genre-ids`（既定 `100005`）・`--no-update-sort`・`--max-qps` を追加。#1765 Ranking実測に整合 |
+| job_run_id | 葉ごとに UUID 発行。`pipeline_batch_run_id` を複数葉の `batch_run_log` PK に共用しない（007/008 UniqueViolation 解消） |
+| live OS | daily/weekly の 001/002 にも `--live-object-storage` を付与 |
 
 ---
 
@@ -46,30 +47,40 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | 時刻 | 2026-08-01 14:25 JST 付近 |
 | `pipeline_batch_run_id` | `fa67f2b8-406a-40dc-bdc5-07435f2cf122` |
 | 結果 | FAILED at `ranking_snapshot` |
-| 観測 | BATCH-002 `failed=1`。後続停止（設計どおり） |
 | 原因 | Ranking 対象ジャンル不正（親シェルが genre 未伝播） |
 
-### 4.2 段階1 Run（genre=100005）
+### 4.2 失敗 Run（Object Storage プレースホルダ）
 
 | 項目 | 内容 |
 | ---- | ---- |
 | 時刻 | 2026-08-01 14:41 JST 付近 |
 | `pipeline_batch_run_id` | `64676aae-be0a-4409-b948-7cda1de1dfbe` |
-| ノブ | `pages_per_run=10` / `cursors_per_run=1` / `genre_ids=100005` / `no_update_sort=1` / `max_qps=1` |
-| BATCH-002 | **succeeded**（`succeeded=1 failed=0`。`rakuten_backend=http`） |
-| BATCH-003 | **failed**（`GRS-RAW-001` object storage put HTTP 400） |
-| 後続 import | 未起動（失敗停止） |
-| 429 | 本 Run 内では未観測。直前の `rakuten_live_verify` で ItemSearch page2 が GRS-EXT-102（初回）。15分クールダウン後に本 Run を実施 |
+| BATCH-002 | succeeded（`100005`） |
+| BATCH-003 | failed（`GRS-RAW-001` / HTTP 400 / `Project not specified.`） |
+| 原因 | `OBJECT_STORAGE_ENDPOINT` が `.env.example` 系プレースホルダのまま（#1765 §4.6 と同症状） |
 
-### 4.3 Object Storage 切り分け
+### 4.3 段階1 Run（OS復旧後・途中 UniqueViolation → 再開成功）
 
 | 項目 | 内容 |
 | ---- | ---- |
-| ハーネス | `object_storage_live_verify.py --live-object-storage` |
-| 判定 | Block（put/get 失敗） |
-| HTTP | 400 / 応答本文 `Project not specified.` |
-| 原因（事実） | local `.env` の `OBJECT_STORAGE_ENDPOINT` が `.env.example` 系プレースホルダ（`your-project` を含む）のまま |
-| 参照 | #1765 §4.6 第1回と同一症状。実プロジェクト endpoint / S3 キー投入後に解消した前例あり |
+| 時刻 | 2026-08-01 14:50〜14:51 JST |
+| `pipeline_batch_run_id` | `531b6cbc-41e7-4052-a2e0-61ac1e60167a` |
+| ノブ | `pages_per_run=10` / `cursors_per_run=1` / `genre_ids=100005` / `max_qps=1` / `no_update_sort` |
+| BATCH-002〜006 | succeeded（002 `storage_backend=http`、003 `pages=1 budget_stopped=True`） |
+| BATCH-007 初回 | failed（`batch_run_log_pkey` UniqueViolation。pipeline ID 共用が原因） |
+| 修正後再開 | `--from-step item_apply` で 007/008/017 **succeeded**。scenario **SUCCEEDED** |
+| 429 | なし |
+
+### 4.4 段階1 Run（通し成功）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 時刻 | 2026-08-01 14:51 JST |
+| `pipeline_batch_run_id` | `7b6c491e-db87-4d6b-b060-40f72b40a716` |
+| ノブ | 同上 |
+| 結果 | local-daily **SUCCEEDED**（002→003→005→006→007→008→017 すべて succeeded） |
+| BATCH-003 | `pages=1 budget_stopped=True`（予算10に対し1ページで停止。cursor/route 側の進行量） |
+| 429 | なし |
 
 ---
 
@@ -78,8 +89,8 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | 項目 | 内容 |
 | ---- | ---- |
 | 見直し時点（運用枠） | 段階2完了、または本格収集開始から7日のどちらか早い方 |
-| 現状 | 段階1未完了（BATCH-003 未成功）。見直し時点未達 |
-| 暫定 | 閾値変更なし（維持）。実測レビューは Object Storage 復旧後の継続収集後に実施 |
+| 現状 | 段階1進行中（BATCH-003 成功 Run 2）。見直し時点未達 |
+| 暫定 | 閾値変更なし（**維持**） |
 
 ---
 
@@ -87,9 +98,8 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 現在 | **追加の本格収集 Run を一時停止**（Object Storage 未復旧） |
-| 保持 | fetch_cursor / ranking 成功分の DB 状態は破棄しない |
-| 再開条件 | Human が `OBJECT_STORAGE_ENDPOINT` / Access / Secret / bucket を実プロジェクト向けに修正し、`object_storage_live_verify` が Go 相当になった後 |
+| Object Storage ブロッカー | **解消**（Human endpoint 実値投入） |
+| 現在 | 段階1継続可。追加 Run は同一親シェル経由 |
 | 再開コマンド例 | `./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --max-qps 1` |
 
 ---
@@ -100,8 +110,9 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 | ---- | ---- |
 | 本格収集開始日 | 2026-08-01 |
 | 期間上限 | 開始から最大7日、または BATCH-003 累計 Run 20回 |
-| BATCH-003 成功 Run 累計 | **0**（失敗1） |
-| 段階1 進行条件 | 2〜3 Run・429なし・失敗なし・ログ追跡可能 → **未達** |
+| BATCH-003 成功 Run 累計 | **2**（`531b6cbc-…` / `7b6c491e-…`） |
+| 段階1 進行条件 | 2〜3 Run・429なし・失敗なし・ログ追跡可能 → **ほぼ充足**（通し成功1＋再開成功1。追加1 Run 推奨） |
+| 段階2移行 | Human判断（通常継続ノブ `pages_per_run=60`） |
 
 ---
 
@@ -109,4 +120,5 @@ secret・token・APIキー・egress IP・`DATABASE_URL`・Object Storage 実値�
 
 | 日付 | 内容 |
 | ---- | ---- |
-| 2026-08-01 | 初版。ゲート確認・genre伝播修正・段階1試行・OSプレースホルダによる停止を記録 |
+| 2026-08-01 | 初版。ゲート確認・genre伝播・OSプレースホルダ停止を記録 |
+| 2026-08-01 | OS復旧後の段階1成功・job_run_id UniqueViolation修正・通し SUCCEEDED を追記 |
