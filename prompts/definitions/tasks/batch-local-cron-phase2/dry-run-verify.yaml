@@ -102,7 +102,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "phase2-dry-run-verify"
-  name: null
+  name: "test/task-1824-phase2-dry-run-verify"
   base: "chore/epic-1818-batch-local-cron-phase2"
   target: "chore/epic-1818-batch-local-cron-phase2"
   worktree_required: true
@@ -117,6 +117,7 @@ project:
     due_date: "2026-08-03"
 
 issue:
+  number: 1824
   unit: "task"
   type: "test"
   area: "batch"

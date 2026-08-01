@@ -7,14 +7,14 @@
 | 文書種別 | 設計・運用手順正本（Phase1 実装済 ＋ Phase2 配線設計） |
 | 対象 | GHA親オーケストレータ相当を local で薄く再現する親シェル |
 | 作成日 | 2026-08-01 |
-| 関連Issue | [#1803](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1803)（Phase1設計） / [#1804](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1804)（Phase1実装） / [#1820](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1820)（Phase2配線設計） / [#1822](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1822)（Phase2実装） / [#1813](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1813)（crontab運用手順） |
+| 関連Issue | [#1803](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1803)（Phase1設計） / [#1804](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1804)（Phase1実装） / [#1820](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1820)（Phase2配線設計） / [#1822](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1822)（Phase2実装） / [#1824](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1824)（Phase2 dry-run検証） / [#1813](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1813)（crontab運用手順） |
 | 親Epic | [#1798](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1798)（本線#6） / [#1811](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1811)（local cron Phase1） / [#1818](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1818)（local cron Phase2） |
 | ゲート正本 | [2026-08-01-local-batch-orchestrator-gate](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md)（`decided`） |
 | 運用枠正本 | [2026-07-31-batch-data-collect-ops-plan](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md)（`decided`） |
 | cron次本線 | [2026-08-01-batch-local-cron-ops-next](../../../ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md)（`decided`） |
-| 状態 | Phase1 Implemented（#1804）。Phase2 配線設計は #1820。Phase2 親シェル配線実装は #1822（`--run-meaning` opt-in / 既定 Phase1 互換）。crontab 運用手順正本は [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md)（#1813）。実 crontab 登録・Phase2 載せ替えは Human |
+| 状態 | Phase1 Implemented（#1804）。Phase2 配線設計は #1820。Phase2 親シェル配線実装は #1822（`--run-meaning` opt-in / 既定 Phase1 互換）。Phase2 dry-run 本記録は [local_cron_Phase2_dry-run検証結果](./local_cron_Phase2_dry-run検証結果.md)（#1824）。crontab 運用手順正本は [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md)（#1813）。実 crontab 登録・Phase2 載せ替えは Human |
 
-本書は設計・運用手順の正本である。§1〜§10 は Phase1（001〜008/+017任意）および関連資料。§11〜§15 は Phase2（009〜016 親シェル配線）。§16 は変更履歴。親シェル実装は #1804 / Phase2 配線は #1822（`scripts/batch/local_*_orchestrator.sh`）。dry-run 本記録・crontab 載せ替えは後続 Task。実 crontab 登録は Human。
+本書は設計・運用手順の正本である。§1〜§10 は Phase1（001〜008/+017任意）および関連資料。§11〜§15 は Phase2（009〜016 親シェル配線）。§16 は変更履歴。親シェル実装は #1804 / Phase2 配線は #1822（`scripts/batch/local_*_orchestrator.sh`）。dry-run 本記録は #1824。crontab 載せ替えは後続 cron-cutover / Human。実 crontab 登録は Human。
 secret・接続文字列・token・egress IP の実値は記載しない。
 
 ---
@@ -617,10 +617,20 @@ Phase1 §6 に加え:
 - `scripts/batch/README.md` の最小更新
 - 本書との実装差分の最小同期
 
-### 15.2 dry-run-verify
+### 15.2 dry-run-verify — #1824
 
-- AI live なしで dry-run 結果を docs / experiments 等へ本記録
-- Phase1 観測を濁さないこと
+| No | 条件 |
+| --: | ---- |
+| 1 | AI live なしで dry-run 結果を docs へ本記録する |
+| 2 | Phase2 配線 ON（`--run-meaning`）と Phase1 互換スキップ（既定）の双方を記録する |
+| 3 | Phase1 観測を濁さない（実 crontab 変更・追加 live なし） |
+| 4 | cron-cutover は Human ゲートである旨を再確認記載する |
+
+検証成果物（#1824）:
+
+- 正本: [local_cron_Phase2_dry-run検証結果](./local_cron_Phase2_dry-run検証結果.md)
+- daily / weekly ×（既定 skip / `--run-meaning`）の `--dry-run` がいずれも exit 0 / SUCCEEDED
+- secret 実値なし。`--live-rakuten` / 実 crontab 変更なし
 
 ### 15.3 cron-cutover（Human ゲート）
 
@@ -630,6 +640,7 @@ Phase1 §6 に加え:
 | 実施者 | **Human**（AI は実 crontab を変更しない） |
 | 内容 | cron 行へ `--run-meaning` 追加等。Phase1 ノブ・親シェル経由・個別 cron 禁止を維持 |
 | 禁止 | 観測中の勝手な載せ替え、AI `--live-rakuten`、018/019 混入 |
+| 前提材料 | #1824 dry-run 本記録済み。載せ替え判断・実施は本節の Human ゲートを通過してから |
 
 ### 15.4 明示的に引き渡さないもの
 
@@ -652,3 +663,4 @@ Phase1 §6 に加え:
 | 2026-08-01 | #1813。§7 を Phase1 定常ノブ付き例へ更新し、crontab運用手順正本への参照を追加 |
 | 2026-08-01 | #1820。§11〜§15 を追加（Phase2: 009〜016 配線設計、GHA needs 対応、Phase1互換・観測非干渉、後続 Task 引き渡し）。変更履歴を §16 へ移動 |
 | 2026-08-02 | #1822。親シェルへ 009〜016 配線実装（`--run-meaning` opt-in）。§1 / §12.2 / §13.3 CLI / §15.1 を実装差分で最小同期 |
+| 2026-08-02 | #1824。Phase2 dry-run 双方モード検証を本記録化（[local_cron_Phase2_dry-run検証結果](./local_cron_Phase2_dry-run検証結果.md)）。§1 / §15.2 / §15.3 を最小同期 |
