@@ -415,6 +415,8 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - 実行は **local 楽天liveのみ**。GHA楽天HTTP・`on.schedule` 有効化（#1792）・#1607 は含めない
 - 期間/Run上限到達後の継続は Epic #1798 内で Human 再判断する
 - §5.3.5の実測見直し（維持含む）は収集Task側でdocsへ反映する
+- 実行記録正本: [batch-data-collect-ops_local継続収集結果_1801](./batch-data-collect-ops_local継続収集結果_1801.md)
+- **2026-08-01:** 段階1着手〜進行条件充足（BATCH-003 成功累計3・429なし）。Human方針は **継続**（同一Issue/PRで段階1→4）。§5.3.5 は見直し時点未達のため **維持**。詳細は結果docs
 
 ### 11.4 local薄いオーケストレータ（実行制御）
 
@@ -424,6 +426,7 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - 起動は親シナリオ（日次相当 / 週次相当）のみ。子 Batch の個別 cron は禁止
 - 排他は本線 flock ＋楽天 live 横断1本。失敗時は後続停止。`pipeline_batch_run_id` を親で生成して伝播
 - 実 crontab 登録・PC常時起動は **Human**。親シェル実装は #1804（`scripts/batch/local_*_orchestrator.sh`）、収集実行は #1801（#1804 完了後）
+- 親シェルは `--genre-ids`（段階1既定 `100005`。#1765 Ranking実測）を 001/002/003 へ伝播する
 - GHA 楽天 live・#1607・schedule 有効化は対象外のまま
 
 ---
@@ -474,3 +477,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-07-31 | #1799: §10 No.10 / §11.3 / §12 に本格収集運用枠（案A・最大7日または累計20 Run）を接続 |
 | 2026-08-01 | #1803: §11.4 / §12 に local薄いオーケストレータ設計・ゲートを接続 |
 | 2026-08-01 | #1804: §11.4 に親シェル実装パス（`scripts/batch/local_*_orchestrator.sh`）を反映 |
+| 2026-08-01 | #1801: §11.3 に継続収集結果docs・§5.3.5維持（見直し時点未達）・§11.4 genre伝播を反映 |

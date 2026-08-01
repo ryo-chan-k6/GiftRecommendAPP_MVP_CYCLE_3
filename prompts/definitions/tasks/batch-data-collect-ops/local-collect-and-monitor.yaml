@@ -23,10 +23,13 @@ parent:
     - 1804
     - 1792
     - 1607
-  related_prs: []
+  related_prs:
+    - 1802
+    - 1805
+    - 1806
 
 commands:
-  primary: "/start-task"
+  primary: "/work-issue"
   allowed:
     - "/start-task"
     - "/work-issue"
@@ -50,8 +53,11 @@ background: |
   前Task（ops-plan-decision / #1799）で運用枠が decided であることが着手ゲート。
   採択正本: ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md（案A。
   ジャンル段階1→4。期間最大7日または BATCH-003累計 Run 20回。§5.3.4ノブ維持。加速不使用）。
-  追加ゲート: 2026-08-01-local-batch-orchestrator-gate。local薄いオーケストレータ
-  （design → impl）完了後に本Taskの収集実行を開始する。場当たり個別CLIを本線としない。
+  追加ゲート: 2026-08-01-local-batch-orchestrator-gate。
+  local薄いオーケストレータは design #1803 / PR #1805 および impl #1804 / PR #1806 が
+  親Epic Branchへ MERGED 済みのため、本Taskの収集実行は着手可。
+  本線は親シェル経由（例: scripts/batch/local_daily_orchestrator.sh --live-rakuten）。
+  場当たり個別CLIを本線としない。
   local live の実secretは Human 環境。値は commit / docs / PR に出さない。
   #1791のschedule最小手順の再作成ではなく、本格収集の実行と閾値実測が成果。
 
@@ -60,7 +66,7 @@ objective: |
   結果と§5.3.5見直し（維持含む）を正本docsへ残す。
 
 scope:
-  - "local-orchestrator-impl 完了後、親シェル経由での BATCH-001〜004 local live 継続収集の実施"
+  - "親シェル経由での BATCH-001〜004 local live 継続収集の実施（必要なら import 005〜008）"
   - "運用枠（2026-07-31-batch-data-collect-ops-plan）に従ったジャンル段階1→4・期間/Run上限・停止条件の遵守"
   - "fetch_cursor進捗・paused/failed再開の記録（secretなし）"
   - "§5.3.3指標の観測と§5.3.5閾値の見直し提案→Human採択反映（段階2完了または開始7日のどちらか早い時点）"
@@ -69,7 +75,7 @@ scope:
 
 out_of_scope:
   - "運用枠Decisionの再定義（ops-plan-decision）"
-  - "local薄いオーケストレータの設計・新規実装（先行 design/impl Task）"
+  - "local薄いオーケストレータの設計・新規実装（先行 design/impl Task・完了済）"
   - "実crontab登録・PC常時起動（Human）"
   - "#1792 schedule有効化"
   - "#1607 / GHA楽天live"
@@ -83,6 +89,8 @@ out_of_scope:
 input:
   docs:
     - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
       required: true
     - path: "ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md"
       required: true
@@ -115,7 +123,7 @@ output:
 
 acceptance_criteria:
   - "着手前に 2026-07-31-batch-data-collect-ops-plan が decided"
-  - "着手前に local-orchestrator-impl が親Epic Branchへ反映済み"
+  - "着手前に local-orchestrator-impl（#1804 / PR #1806）が親Epic Branchへ反映済み"
   - "収集がオーケストレータ経由であり、同Logのジャンル段階・期間/Run上限・停止条件に従っている"
   - "local継続収集の結果docsがあり secret 実値を含まない"
   - "§5.3.5見直し（維持含む）が運用方針に反映されている"
@@ -149,10 +157,13 @@ dependencies:
     - 1745
     - 1763
     - 1799
+    - 1803
     - 1804
-  prs: []
+  prs:
+    - 1806
   tasks:
     - "task-batch-data-collect-ops-ops-plan-decision"
+    - "task-batch-data-collect-ops-local-orchestrator-design"
     - "task-batch-data-collect-ops-local-orchestrator-impl"
   blocking: true
 
@@ -193,6 +204,7 @@ review:
     security: true
   review_points:
     - "運用枠Decisionゲートとオーケストレータ実装ゲートを満たしているか"
+    - "収集が親オーケストレータ経由であるか（個別CLI本線化していないか）"
     - "secret実値・schedule有効化・GHA楽天liveが混入していないか"
     - "閾値見直しの根拠が実測に基づくか"
 
@@ -209,8 +221,9 @@ stop_conditions:
 
 notes:
   - "依存: ops-plan-decision（#1799）完了かつ 2026-07-31-batch-data-collect-ops-plan が decided"
-  - "依存: local-orchestrator-impl 完了（親Epic Branch反映）後に収集実行開始"
-  - "ゲート: 2026-08-01-local-batch-orchestrator-gate（#1801本作業はimpl完了まで停止）"
+  - "依存: local-orchestrator-design（#1803 / PR #1805 MERGED）・local-orchestrator-impl（#1804 / PR #1806 MERGED）→ 収集着手可"
+  - "ゲート: 2026-08-01-local-batch-orchestrator-gate decided"
+  - "起動例: ./scripts/batch/local_daily_orchestrator.sh --live-rakuten （secretは.env、値をログに出さない）"
   - "運用枠の正本は ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md（案A・最大7日または累計20 Run）"
   - "local実行はHuman環境。AIは手順・記録・docs同期を担当"
-  - "Issue #1801 / Branch chore/task-1801-local-collect-and-monitor。Planned Start 2026-08-05（Definition明示値・後ろ倒し）"
+  - "Issue #1801 / Branch chore/task-1801-local-collect-and-monitor。Planned Start 2026-08-05（Definition明示値）"

@@ -44,6 +44,11 @@ set -a && source .env && set +a
 | `--skip-import-summary` | BATCH-017 スキップ |
 | `--no-import-chain` | 003/004 後の 005〜008 スキップ |
 | `--max-items` / `--pages-per-run` / `--cursors-per-run` | 予算ノブ |
+| `--genre-ids` | 対象ジャンル（既定 `100005`。#1765: Ranking API は `100000`/`100003`/`100004` が 400） |
+| `--no-update-sort` / `--allow-update-sort` | BATCH-003 update_sort（既定は除外） |
+| `--max-qps` | BATCH-003 安全側 QPS 上書き |
+
+葉 Batch の `--job-run-id` は段ごとに UUID を発行する（`pipeline_batch_run_id` を複数葉の `batch_run_log` PK に共用しない）。業務紐付けは `--diff-batch-run-id` / `--batch-run-id` 等で pipeline ID を渡す。
 
 **実 crontab 登録は Human**（例は設計・運用手順 §7）。本スクリプト群は crontab へ書き込まない。
 
