@@ -132,8 +132,9 @@ BATCH-004 → 005 → 006 → 007 → 008（→ 017 任意）
 
 | 概念 | GHA | local Phase1 |
 | ---- | --- | ------------ |
-| `pipeline_batch_run_id` | 複合子 `resolve-run-id` が UUID 生成、各葉へ `batch_run_id` 等で伝播 | **親シェルがシナリオ開始時に UUID を1つ生成**し、各 Batch CLI / 連鎖段へ渡す |
-| 葉ごとの `job_run_id` | 葉側で新規 UUID（意味生成連鎖の教訓どおり分離） | Phase1 では親の `pipeline_batch_run_id` を業務紐付けの主キーとする。葉固有 ID が CLI 必須なら親が段ごとに派生 UUID を発行してよい（実装で確定） |
+| `pipeline_batch_run_id` | 複合子 `resolve-run-id` が UUID 生成、各葉へ `batch_run_id` 等で伝播 | **親シェルがシナリオ開始時に UUID を1つ生成**し、003 import 連鎖へ渡す |
+| existing-item business ID | GHA `existing_item_pipeline` の `resolve-run-id` | weekly の 004〜017 用に **別 UUID を発行**。BATCH-004 は object_key に `job_run_id` を埋めるため、004 の `--job-run-id` と 005 以降の `--batch-run-id` を同一にする（シナリオ ID と混在させると empty staging_plan） |
+| 葉ごとの `job_run_id` | 葉側で新規 UUID（意味生成連鎖の教訓どおり分離） | 003 import 側の 005〜017・007/008 等は葉 UUID＋`--batch-run-id`（業務 ID）。004 本体は business ID を `--job-run-id` に使う |
 | 空入力時 | GHA が新規 UUID | local も未指定時は親が生成。手動再開時は既存 ID を明示指定可 |
 
 参照: [BATCH import連鎖 GHA live化メモ C3](./BATCH_import連鎖_GHA_live化メモ_C3.md)
@@ -318,6 +319,8 @@ CLI 慣例（実装で確定してよい）:
 | `--live-rakuten` | 楽天 HTTP live 明示 |
 | `--from-step=<name>` | 再開時の開始段（任意） |
 | `--pipeline-batch-run-id=<uuid>` | 既存 ID の継続（省略時は新規） |
+| `--genre-ids` | BATCH-003（および weekly BATCH-001）向け。段階3で拡大する側（既定 `100005`） |
+| `--ranking-genre-ids` | BATCH-002 Ranking 向け（既定 `100005`。#1765: Ranking 非対応ジャンルと分離） |
 | `MAX_ITEMS` | 005〜008 件数上限（GHA `max_items` 相当） |
 | Run 予算ノブ | BATCH-003 は運用枠・§5.3.4（段階1は初期 live 相当） |
 
@@ -347,3 +350,5 @@ CLI 慣例（実装で確定してよい）:
 | ---- | ---- |
 | 2026-08-01 | 初版（#1803）。Phase1 範囲、GHA↔local 対応表、排他・失敗停止・再開・観測、安全要件、crontab 例と Human 境界、#1804 / #1801 引き渡し、推奨スクリプト名 |
 | 2026-08-01 | #1804 実装反映。`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh` / `lib/local_orchestrator_common.sh` を配置。`--dry-run` で順序・flock・Run ID 確認可 |
+| 2026-08-01 | #1808。`--genre-ids` / `--ranking-genre-ids` 分離を CLI 表へ反映 |
+| 2026-08-01 | #1808。weekly existing 連鎖の business run ID 分離（004 object_key ↔ 005 選定）を追記 |

@@ -81,7 +81,8 @@ lor_release_lock() {
 
 lor_parse_common_args() {
   # Sets: LOR_DRY_RUN LOR_LIVE_RAKUTEN LOR_PIPELINE_ID LOR_FROM_STEP LOR_SKIP_017 LOR_MAX_ITEMS
-  #        LOR_INCLUDE_IMPORT LOR_PAGES_PER_RUN LOR_CURSORS_PER_RUN LOR_GENRE_IDS
+  #        LOR_INCLUDE_IMPORT LOR_PAGES_PER_RUN LOR_CURSORS_PER_RUN
+  #        LOR_GENRE_IDS（BATCH-003/001 取得・同期） LOR_RANKING_GENRE_IDS（BATCH-002）
   #        LOR_NO_UPDATE_SORT LOR_MAX_QPS
   LOR_DRY_RUN=0
   LOR_LIVE_RAKUTEN=0
@@ -93,8 +94,11 @@ lor_parse_common_args() {
   # 段階1初期live相当（運用枠 Decision）
   LOR_PAGES_PER_RUN="${PAGES_PER_RUN:-10}"
   LOR_CURSORS_PER_RUN="${CURSORS_PER_RUN:-1}"
-  # Ranking API が受け付ける段階1ジャンル（#1765: 100000/100003/100004 は Ranking 400）
+  # BATCH-003（および weekly の BATCH-001）向け。段階3でジャンル拡大する側。
   LOR_GENRE_IDS="${GENRE_IDS:-100005}"
+  # BATCH-002 Ranking 専用（#1765: 100000/100003/100004 は Ranking HTTP 400）
+  # --genre-ids を変えても Ranking 側は既定のまま残す（段階3拡大のため分離）
+  LOR_RANKING_GENRE_IDS="${RANKING_GENRE_IDS:-100005}"
   LOR_NO_UPDATE_SORT=1
   LOR_MAX_QPS="${MAX_QPS:-}"
 
@@ -162,6 +166,14 @@ lor_parse_common_args() {
         ;;
       --genre-ids)
         LOR_GENRE_IDS="${2:-}"
+        shift 2
+        ;;
+      --ranking-genre-ids=*)
+        LOR_RANKING_GENRE_IDS="${1#*=}"
+        shift
+        ;;
+      --ranking-genre-ids)
+        LOR_RANKING_GENRE_IDS="${2:-}"
         shift 2
         ;;
       --no-update-sort)
@@ -356,21 +368,54 @@ lor_run_import_chain() {
 
 lor_run_existing_item_chain() {
   # 004→005→006→007→008→(017)
+  # GHA batch-rakuten-existing-item-pipeline の resolve-run-id 相当を別発行する。
+  # BATCH-004 は object_key に job_run_id を埋める（--batch-run-id なし）。
+  # 葉ごとに別 UUID を渡すと 005 がシナリオ pipeline ID で Raw を探せなくなり
+  # empty staging_plan (GRS-BAT-001) になるため、004〜017 は同一 business ID を使う。
+  # シナリオ全体の LOR_PIPELINE_ID（003 import 用）とは分離する。
+  local scenario_pipeline_id="${LOR_PIPELINE_ID}"
+  local existing_pipeline_id
+  existing_pipeline_id="$(lor_generate_uuid)"
+  lor_log INFO "existing_item_chain business_run_id=${existing_pipeline_id} scenario_pipeline_id=${scenario_pipeline_id}"
+
   local live_flags=()
   if [[ "${LOR_LIVE_RAKUTEN}" -eq 1 ]]; then
     live_flags+=(--live-rakuten --live-object-storage)
   fi
 
-  lor_run_batch_module_job_only "item_recheck" "batch.application.item_recheck" \
-    "${live_flags[@]}" \
-    --max-items "${LOR_MAX_ITEMS}" \
-    || return $?
+  if lor_step_reached "item_recheck"; then
+    lor_log INFO "STEP start name=item_recheck module=batch.application.item_recheck pipeline_batch_run_id=${existing_pipeline_id} job_run_id=${existing_pipeline_id}"
+    if [[ "${LOR_DRY_RUN}" -eq 1 ]]; then
+      lor_log INFO "DRY-RUN would run: uv run python -m batch.application.item_recheck --job-run-id ${existing_pipeline_id} ${live_flags[*]:-} --max-items ${LOR_MAX_ITEMS}"
+      lor_log INFO "STEP ok (dry-run) name=item_recheck"
+    else
+      (
+        cd "${REPO_ROOT}/apps/batch"
+        # shellcheck disable=SC2068
+        uv run python -m batch.application.item_recheck \
+          --job-run-id "${existing_pipeline_id}" \
+          ${live_flags[@]+"${live_flags[@]}"} \
+          --max-items "${LOR_MAX_ITEMS}"
+      )
+      local recheck_rc=$?
+      if [[ "${recheck_rc}" -ne 0 ]]; then
+        lor_log ERROR "STEP failed name=item_recheck exit=${recheck_rc} pipeline_batch_run_id=${existing_pipeline_id}"
+        return "${recheck_rc}"
+      fi
+      lor_log INFO "STEP ok name=item_recheck"
+    fi
+  else
+    lor_log INFO "skip step (before --from-step): item_recheck"
+  fi
 
   if [[ "${LOR_INCLUDE_IMPORT}" -eq 0 ]]; then
     lor_log INFO "import chain after 004 skipped (--no-import-chain)"
     return 0
   fi
 
+  # 005〜017 の --batch-run-id / --diff-batch-run-id を existing business ID に合わせる
+  LOR_PIPELINE_ID="${existing_pipeline_id}"
+  local chain_rc=0
   local storage_flags=()
   if [[ "${LOR_LIVE_RAKUTEN}" -eq 1 ]]; then
     storage_flags+=(--live-object-storage)
@@ -378,27 +423,38 @@ lor_run_existing_item_chain() {
 
   lor_run_batch_module "raw_staging" "batch.application.raw_staging" \
     "${storage_flags[@]}" \
-    || return $?
+    || chain_rc=$?
 
-  lor_run_batch_module "product_diff" "batch.application.product_diff" \
-    || return $?
-
-  lor_run_batch_module_job_only "item_apply" "batch.application.item_apply" \
-    --max-items "${LOR_MAX_ITEMS}" \
-    --diff-batch-run-id "${LOR_PIPELINE_ID}" \
-    || return $?
-
-  lor_run_batch_module_job_only "item_active_status" "batch.application.item_active_status" \
-    --max-items "${LOR_MAX_ITEMS}" \
-    --batch-run-id "${LOR_PIPELINE_ID}" \
-    || return $?
-
-  if [[ "${LOR_SKIP_017}" -eq 0 ]]; then
-    lor_run_batch_module "import_summary" "batch.application.import_summary" \
-      || return $?
-  else
-    lor_log INFO "skip BATCH-017 import_summary (--skip-import-summary)"
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    lor_run_batch_module "product_diff" "batch.application.product_diff" \
+      || chain_rc=$?
   fi
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    lor_run_batch_module_job_only "item_apply" "batch.application.item_apply" \
+      --max-items "${LOR_MAX_ITEMS}" \
+      --diff-batch-run-id "${LOR_PIPELINE_ID}" \
+      || chain_rc=$?
+  fi
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    lor_run_batch_module_job_only "item_active_status" "batch.application.item_active_status" \
+      --max-items "${LOR_MAX_ITEMS}" \
+      --batch-run-id "${LOR_PIPELINE_ID}" \
+      || chain_rc=$?
+  fi
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    if [[ "${LOR_SKIP_017}" -eq 0 ]]; then
+      lor_run_batch_module "import_summary" "batch.application.import_summary" \
+        || chain_rc=$?
+    else
+      lor_log INFO "skip BATCH-017 import_summary (--skip-import-summary)"
+    fi
+  fi
+
+  LOR_PIPELINE_ID="${scenario_pipeline_id}"
+  return "${chain_rc}"
 }
 
 lor_begin_scenario() {
@@ -408,7 +464,7 @@ lor_begin_scenario() {
     LOR_LOG_FILE="${OUTPUT_DIR}/${scenario}-$(date +%Y%m%dT%H%M%S).log"
   fi
   lor_log INFO "scenario=${scenario} pipeline_batch_run_id=${LOR_PIPELINE_ID} dry_run=${LOR_DRY_RUN} live_rakuten=${LOR_LIVE_RAKUTEN}"
-  lor_log INFO "max_items=${LOR_MAX_ITEMS} pages_per_run=${LOR_PAGES_PER_RUN} cursors_per_run=${LOR_CURSORS_PER_RUN} genre_ids=${LOR_GENRE_IDS:-"(unset)"} no_update_sort=${LOR_NO_UPDATE_SORT} max_qps=${LOR_MAX_QPS:-"(batch-default)"} from_step=${LOR_FROM_STEP:-"(start)"}"
+  lor_log INFO "max_items=${LOR_MAX_ITEMS} pages_per_run=${LOR_PAGES_PER_RUN} cursors_per_run=${LOR_CURSORS_PER_RUN} genre_ids=${LOR_GENRE_IDS:-"(unset)"} ranking_genre_ids=${LOR_RANKING_GENRE_IDS:-"(unset)"} no_update_sort=${LOR_NO_UPDATE_SORT} max_qps=${LOR_MAX_QPS:-"(batch-default)"} from_step=${LOR_FROM_STEP:-"(start)"}"
   if [[ -n "${LOR_FROM_STEP}" ]]; then
     LOR_SKIPPING=1
   else

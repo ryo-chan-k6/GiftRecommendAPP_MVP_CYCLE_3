@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-data-collect-ops-stage2-to4-and-threshold-review"
+  title: "batch-data-collect-ops:段階2〜4継続収集と§5.3.5本見直し Task PRレビュー"
+  summary: "段階2〜4継続収集と§5.3.5本見直し Task PR を AI Review する。Human live実行・AI記録同期の役割分担、親オーケストレータ経由、secret非露出を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1809
+  issue:
+    number: 1808
+  task_definition: "prompts/definitions/tasks/batch-data-collect-ops/stage2-to4-and-threshold-review.yaml"
+  target_branch: "chore/epic-1798-batch-data-collect-ops"
+  parent_epic_issue: "[Epic]batch-data-collect-ops:本格収集と運用監視改善"
+  parent_epic_branch: "chore/epic-1798-batch-data-collect-ops"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "方針B（#1801 reopenなし・新Task #1808）と役割分担（Human live / AI記録）が守られているか"
+  - "段階2〜4が運用枠Decisionに従っているか"
+  - "収集が親オーケストレータ経由であるか（個別CLI本線化していないか）"
+  - "secret実値・schedule有効化・GHA楽天liveが混入していないか"
+  - "§5.3.5本見直し（維持含む）が記録されているか"
+  - "実crontab登録・BATCH-009〜015定期化・AIによるlive実行が混入していないか"
+
+notes:
+  - "parent Epic #1798 / Branch chore/epic-1798-batch-data-collect-ops"
+  - "先行: #1801 / PR #1807（段階1）・#1804 / PR #1806（親シェル）"
+  - "target.pr は /create-pr 後に実番号へ更新する"
+  - "Human Reviewは省略しない"
