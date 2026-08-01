@@ -8,7 +8,7 @@
 | 前提 | [本格収集運用枠](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) / [段階1結果](./batch-data-collect-ops_local継続収集結果_1801.md) |
 | 記録日 | 2026-08-01 |
 | 実行主体 | **Human**（`--live-rakuten`）。AI は手順・記録同期・阻害時最小修正・PR/Review |
-| 段階 | 段階2 **充足** → 段階3着手（`100003` weekly 途中失敗 → existing 連鎖 ID 修正） |
+| 段階 | 段階2 **充足** → 段階3: `100003` **安定**（次: `100004`） |
 
 secret・token・APIキー・egress IP・接続文字列実値は記載しない。
 
@@ -151,6 +151,34 @@ set -a && source .env && set +a
   --pages-per-run=60 --max-qps 1
 ```
 
+### 5.4 `100003` daily（数回・すべて成功・Human報告）
+
+| 項目 | 内容 |
+| ---- | ---- |
+| コマンド | `local_daily_orchestrator.sh --live-rakuten --genre-ids 100003 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1` |
+| 結果 | **数回実行・すべて成功** |
+| 429 | **なし**（Human報告） |
+| 個別 `pipeline_batch_run_id` | Human 環境ログに保持。本docsへは一覧未転記 |
+| 判定 | `100003` の段階3拡大は **安定**。次ジャンルへ進めてよい |
+
+### 5.5 次ジャンル（`100004`）手順
+
+Ranking は常に `100005`。未同期なら weekly 1回 → daily 継続。
+
+```bash
+# 初回（ジャンル同期）
+./scripts/batch/local_weekly_orchestrator.sh --live-rakuten \
+  --genre-ids 100004 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+
+# 継続
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 100004 --ranking-genre-ids 100005 \
+  --pages-per-run=60 --max-qps 1
+```
+
+その後 `100000` も同様（1ジャンルずつ）。
+
 ---
 
 ## 6. §5.3.5 本見直し
@@ -170,3 +198,4 @@ set -a && source .env && set +a
 | 2026-08-01 | 初版。段階2充足（Human: 10回以上成功・429なし）。Ranking/取得ジャンル分離と段階3手順 |
 | 2026-08-01 | 段階3 `100003` weekly 失敗を記録。existing 連鎖の business run ID 分離を親シェルへ反映 |
 | 2026-08-01 | weekly 成功（5.2）と 2回目空 Items 失敗（5.3）を記録。BATCH-005 空 Items skip 化 |
+| 2026-08-01 | `100003` daily 数回すべて成功（Human報告）。次ジャンル `100004` 手順を追記 |
