@@ -1,0 +1,209 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-local-cron-phase2-impl"
+  title: "batch-local-cron-phase2:親シェル009〜016実装"
+  summary: "designに従い local_daily / local_weekly へ009〜016を配線実装する。--dry-run対応とPhase1互換モード（009〜016スキップ）を必須。AI live・実crontab変更は禁止。"
+  workstream_key: "batch-local-cron-phase2"
+  phase: "impl"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-local-cron-phase2:local cron Phase2親シェル配線（009〜016）"
+  epic_issue_number: 1818
+  epic_branch: "chore/epic-1818-batch-local-cron-phase2"
+  related_issues:
+    - 1745
+    - 1811
+    - 1798
+    - 1792
+    - 1607
+  related_prs:
+    - 1810
+    - 1815
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  前Task design で配置・境界・互換モードが正本化された後に着手する。
+  Phase1観測と並行して実装してよいが、実crontabへ載せない / AI liveしない。
+  観測安全性のため Phase1互換モード（--skip-meaning 等で009〜016スキップ）を残す。
+
+objective: |
+  local親シェルに009〜016配線を実装し、--dry-runとPhase1互換モードで安全に検証可能な状態にする。
+
+scope:
+  - "scripts/batch/local_daily_orchestrator.sh / local_weekly_orchestrator.sh への009〜016配線"
+  - "--dry-run 対応"
+  - "Phase1互換モード（009〜016スキップ。feature flag / --skip-meaning 等）"
+  - "flock・失敗停止の実装整合"
+  - "scripts/batch/README.md の最小更新"
+  - "設計docsとの実装差分の最小同期（必要時）"
+
+out_of_scope:
+  - "設計方針の新規確定（前Task design）"
+  - "dry-run結果の運用docs本記録（後続dry-run-verify）"
+  - "実crontab変更・載せ替え（cron-cutover / Human）"
+  - "AIによる --live-rakuten 実行 / 実Batch live"
+  - "BATCH-018 / 019"
+  - "#1792 schedule有効化 / #1607 / GHA楽天live"
+  - "secret実値の表示・変更"
+  - "OpenAPI / generated / apps/web|api|reco"
+  - "GHA workflow の scheduleコメント解除"
+  - "Phase1 #1811 の再開・完了扱い"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md"
+      required: true
+    - path: "scripts/batch/README.md"
+      required: true
+  files:
+    - path: "scripts/batch/local_daily_orchestrator.sh"
+      required: true
+    - path: "scripts/batch/local_weekly_orchestrator.sh"
+      required: true
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "update"
+      required: false
+  files:
+    - path: "scripts/batch/**"
+      action: "update"
+      required: true
+
+acceptance_criteria:
+  - "親シェルに009〜016配線があり --dry-run で確認できる"
+  - "Phase1互換モードで009〜016をスキップできる"
+  - "Phase1の001〜008連鎖を壊さない"
+  - "実crontab変更・AI live・018/019・GHA schedule・#1607・secret実値を含まない"
+  - "個別cron追加がない"
+
+branch:
+  no_branch: false
+  summary: "phase2-impl"
+  name: null
+  base: "chore/epic-1818-batch-local-cron-phase2"
+  target: "chore/epic-1818-batch-local-cron-phase2"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-01"
+    due_date: "2026-08-03"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1745
+    - 1811
+    - 1798
+  prs:
+    - 1810
+    - 1815
+  tasks:
+    - "task-batch-local-cron-phase2-design"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-local-cron-phase2-design"
+  blocks:
+    - "task-batch-local-cron-phase2-dry-run-verify"
+  exclusive_files:
+    - "scripts/batch/local_daily_orchestrator.sh"
+    - "scripts/batch/local_weekly_orchestrator.sh"
+    - "scripts/batch/README.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "親シェル --dry-run（Phase2配線ON）"
+    - "親シェル --dry-run（Phase1互換スキップ）"
+  commands: []
+  manual_checks:
+    - "AIが --live-rakuten を実行していない"
+    - "実crontabを変更していない"
+  not_required:
+    - "AIによる --live-rakuten 実行"
+    - "実crontab載せ替え"
+  skip_reason:
+    "AIによる --live-rakuten 実行": "AI禁止"
+    "実crontab載せ替え": "Humanゲート・後続cron-cutover"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "009〜016配線と--dry-runが実装されているか"
+    - "Phase1互換モードが残っているか"
+    - "001〜008連鎖を壊していないか"
+    - "crontab live変更・AI liveが混入していないか"
+    - "secret実値がないか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "scripts変更。横断影響・blocked時記録"
+
+human_decision_points:
+  - "Phase1互換モードの既定値（default skip推奨）"
+
+stop_conditions:
+  - "AI liveや実crontab変更が必要に見えた場合"
+  - "GHA schedule有効化が必要に見えた場合"
+  - "secret実値が必要に見える場合"
+  - "design未mergeで実装方針が確定できない場合"
+
+notes:
+  - "着手条件: design Taskが親Epic Branchへ反映済み"
+  - "後続: dry-run-verify"
+  - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"

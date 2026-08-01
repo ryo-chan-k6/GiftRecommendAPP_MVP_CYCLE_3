@@ -1,0 +1,198 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-local-cron-phase2-dry-run-verify"
+  title: "batch-local-cron-phase2:dry-run検証とdocs同期"
+  summary: "親シェルの--dry-run（Phase2配線ON / Phase1互換スキップ）を実施し結果をdocs同期する。AI live・実crontab変更は禁止。"
+  workstream_key: "batch-local-cron-phase2"
+  phase: "dry-run-verify"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-local-cron-phase2:local cron Phase2親シェル配線（009〜016）"
+  epic_issue_number: 1818
+  epic_branch: "chore/epic-1818-batch-local-cron-phase2"
+  related_issues:
+    - 1745
+    - 1811
+    - 1798
+    - 1792
+    - 1607
+  related_prs:
+    - 1810
+    - 1815
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  impl後、liveなしで --dry-run により009〜016配線とPhase1互換スキップを検証しdocsへ残す。
+  cron-cutover（実crontab載せ替え）はHumanゲートであり本Taskでは行わない。
+
+objective: |
+  dry-run結果をsecretなしで正本docsへ同期し、載せ替え判断の材料を揃える。
+
+scope:
+  - "親シェル --dry-run（Phase2配線ON）の実行と結果記録"
+  - "親シェル --dry-run（Phase1互換スキップ）の実行と結果記録"
+  - "運用手順docs / 必要なら experiments log への同期"
+  - "cron-cutover着手条件（Phase1観測完了 or Human明示承認）の再確認記載"
+
+out_of_scope:
+  - "scripts新規配線の本実装（前Task impl）"
+  - "実crontab変更・載せ替え"
+  - "AIによる --live-rakuten 実行 / 実Batch live"
+  - "BATCH-018 / 019"
+  - "#1792 schedule有効化 / #1607 / GHA楽天live"
+  - "secret実値の表示・変更"
+  - "Phase1 #1811 の再開・完了扱い"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md"
+      required: true
+    - path: "scripts/batch/README.md"
+      required: true
+  files:
+    - path: "scripts/batch/local_daily_orchestrator.sh"
+      required: true
+    - path: "scripts/batch/local_weekly_orchestrator.sh"
+      required: true
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+
+acceptance_criteria:
+  - "Phase2配線ONとPhase1互換スキップの双方のdry-run結果がdocsにある"
+  - "secret / token / 接続文字列実値がない"
+  - "実crontab変更・AI liveを含まない"
+  - "cron-cutoverはHumanゲートである旨が明記されている"
+
+branch:
+  no_branch: false
+  summary: "phase2-dry-run-verify"
+  name: null
+  base: "chore/epic-1818-batch-local-cron-phase2"
+  target: "chore/epic-1818-batch-local-cron-phase2"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-01"
+    due_date: "2026-08-03"
+
+issue:
+  unit: "task"
+  type: "test"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1745
+    - 1811
+    - 1798
+  prs:
+    - 1810
+    - 1815
+  tasks:
+    - "task-batch-local-cron-phase2-impl"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-local-cron-phase2-impl"
+  blocks:
+    - "task-batch-local-cron-phase2-cron-cutover"
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "local_daily / local_weekly --dry-run（Phase2 ON）"
+    - "local_daily / local_weekly --dry-run（Phase1互換スキップ）"
+  commands: []
+  manual_checks:
+    - "AIが --live-rakuten を実行していない"
+    - "実crontabを変更していない"
+  not_required:
+    - "AIによる --live-rakuten 実行"
+    - "実crontab載せ替え"
+  skip_reason:
+    "AIによる --live-rakuten 実行": "AI禁止"
+    "実crontab載せ替え": "Humanゲート・後続cron-cutover"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "dry-run結果が再現可能に記録されているか"
+    - "Phase1互換スキップが確認されているか"
+    - "live / crontab変更が混入していないか"
+    - "secret実値がないか"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: true
+  reason: "検証結果をexperimentsに残してよい"
+
+human_decision_points:
+  - "dry-run結果を踏まえたcrontab載せ替え可否（後続cron-cutover）"
+
+stop_conditions:
+  - "AI liveや実crontab変更が必要に見えた場合"
+  - "impl未反映でdry-run対象が不明な場合"
+  - "secret実値が必要に見える場合"
+
+notes:
+  - "着手条件: impl Taskが親Epic Branchへ反映済み"
+  - "後続cron-cutoverはHumanゲート。本Taskでは着手しない"
+  - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"

@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-local-cron-phase2-design"
+  title: "batch-local-cron-phase2:009〜016親シェル配線設計 Task PRレビュー"
+  summary: "Phase2配線設計 Task PR を AI Review する。daily/weekly配置・GHA needs対応・Phase1互換・観測非干渉を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/batch-local-cron-phase2/design.yaml"
+  target_branch: "chore/epic-1818-batch-local-cron-phase2"
+  parent_epic_issue: "[Epic]batch-local-cron-phase2:local cron Phase2親シェル配線（009〜016）"
+  parent_epic_branch: "chore/epic-1818-batch-local-cron-phase2"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "daily/weekly配置とGHA needs対応が明確か"
+  - "Phase1互換モードと観測非干渉が設計に含まれるか"
+  - "個別cron禁止が守られているか"
+  - "実装・crontab live・AI liveが混入していないか"
+  - "secret実値がないか"
+
+notes:
+  - "Human Reviewは省略しない"
+  - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"
