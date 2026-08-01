@@ -71,7 +71,7 @@ secret・接続文字列・token・egress IP の実値は記載しない。
 | ファイル | 用途 |
 | -------- | ---- |
 | `scripts/batch/lib/local_orchestrator_common.sh` | flock・Run ID 生成・段階実行・ログ・終了コード規約 |
-| `scripts/batch/locks/`（gitignored 想定） | flock 用 lock ファイル置き場 |
+| `scripts/batch/output-local-orchestrator/locks/`（`scripts/batch/output-*/` で gitignored） | flock 用 lock ファイル置き場 |
 
 ### 3.3 Phase1 実行順序
 
