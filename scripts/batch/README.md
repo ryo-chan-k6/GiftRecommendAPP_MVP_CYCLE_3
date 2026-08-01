@@ -11,13 +11,13 @@ Batch 手動実行・dry-run・再実行補助、および local 薄いオーケ
 | [local薄いオーケストレータ設計・運用手順](../../docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md) | local 親シェルの設計正本 |
 | [local_cron_Phase1_crontab運用手順](../../docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md) | Phase1 crontab 運用手順・定常ノブ（#1813） |
 
-## local 薄いオーケストレータ（#1804）
+## local 薄いオーケストレータ（#1804 / Phase2 #1822）
 
 | スクリプト | 用途 |
 | ---------- | ---- |
-| `local_daily_orchestrator.sh` | 日次相当 Phase1（002 → import 連鎖） |
-| `local_weekly_orchestrator.sh` | 週次相当 Phase1（001 → 002 → import → existing） |
-| `lib/local_orchestrator_common.sh` | flock / Run ID / 段実行 / 失敗停止 |
+| `local_daily_orchestrator.sh` | 日次相当（002 → import 連鎖 → 任意で meaning → 016） |
+| `local_weekly_orchestrator.sh` | 週次相当（001 → 002 → import → existing → 任意で meaning → 016） |
+| `lib/local_orchestrator_common.sh` | flock / Run ID / 段実行 / 失敗停止 / Phase2 意味連鎖 |
 
 | ディレクトリ | 用途 |
 | ------------ | ---- |
@@ -27,11 +27,17 @@ Batch 手動実行・dry-run・再実行補助、および local 薄いオーケ
 
 ```bash
 # dry-run（順序・flock・pipeline_batch_run_id のみ。楽天HTTPなし）
+# 既定は Phase1 互換（009〜016 スキップ）
 ./scripts/batch/local_daily_orchestrator.sh --dry-run
 ./scripts/batch/local_weekly_orchestrator.sh --dry-run
 
+# Phase2 配線確認（009〜016 も含む dry-run。live ではない）
+./scripts/batch/local_daily_orchestrator.sh --dry-run --run-meaning
+./scripts/batch/local_weekly_orchestrator.sh --dry-run --run-meaning
+
 # live（明示フラグ必須。secret は .env から読み、値をエコーしない）
 # 実行場所: 登録済み egress IP の WSL/local のみ。GHA 禁止。
+# Phase2 意味生成を live で回す場合は Human が --run-meaning を追加（crontab cutover 後）。
 set -a && source .env && set +a
 ./scripts/batch/local_daily_orchestrator.sh --live-rakuten
 ```
@@ -40,10 +46,15 @@ set -a && source .env && set +a
 | ------ | ---- |
 | `--dry-run` | 外部副作用なしで順序・lock・Run ID を確認 |
 | `--live-rakuten` | 楽天 HTTP live 明示（`--dry-run` と排他） |
-| `--pipeline-batch-run-id` | 既存 ID の継続 |
+| `--pipeline-batch-run-id` | 既存 ID の継続（import 連鎖） |
 | `--from-step` | 再開開始段 |
-| `--skip-import-summary` | BATCH-017 スキップ |
+| `--skip-import-summary` | import 連鎖末尾の BATCH-017 スキップ |
 | `--no-import-chain` | 003/004 後の 005〜008 スキップ |
+| `--run-meaning` | Phase2: 009〜016 を実行（**既定はスキップ＝Phase1 互換**） |
+| `--skip-meaning` | Phase2: 009〜016 を明示スキップ（既定と同義。`--run-meaning` と排他） |
+| `--skip-meaning-summary` | 意味連鎖末尾の BATCH-017 スキップ |
+| `--meaning-pipeline-batch-run-id` | 意味連鎖の既存 pipeline ID 継続 |
+| `--source` | 意味生成 source（既定 `rakuten`） |
 | `--max-items` / `--pages-per-run` / `--cursors-per-run` | 予算ノブ |
 | `--genre-ids` | BATCH-003（および weekly BATCH-001）向け。段階3で拡大する側（既定 `100005`） |
 | `--ranking-genre-ids` | BATCH-002 Ranking 向け（既定 `100005`。#1765: `100000`/`100003`/`100004` は Ranking 400） |
@@ -76,7 +87,8 @@ Phase1 定常ノブ例（Human・ジャンルは1本ローテ）:
   --pages-per-run=60 --max-qps 1
 ```
 
-Phase1 に BATCH-009〜015 は含めない。Airflow 等は導入しない。
+Phase2（#1822）で 009〜016 配線を親シェルへ追加済み。**既定はスキップ**（`--run-meaning` opt-in）。
+観測中の実 crontab への `--run-meaning` 追加・AI による live 実行は禁止（正本: 設計書 §14）。Airflow 等は導入しない。018/019 は載せない。
 
 ## ハーネス（明示 live のみ）
 
@@ -123,4 +135,5 @@ uv run python ../../scripts/batch/object_storage_live_verify.py \
 | ---- | ---- |
 | 本格収集キャンペーン（オーケストレータ経由） | #1801（完了側） |
 | local cron Phase1（crontab運用・無人観測） | #1811 / #1813（手順）→ 後続 verify |
+| local cron Phase2（009〜016 親シェル配線） | #1818 / #1822（実装）→ 後続 dry-run-verify / cron-cutover（Human） |
 | 本番 egress IP 設計 | **Backlog: #1607**・未検討（GHA楽天liveは禁止維持） |

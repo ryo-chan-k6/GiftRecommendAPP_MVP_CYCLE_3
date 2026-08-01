@@ -16,8 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1822
   task_definition: "prompts/definitions/tasks/batch-local-cron-phase2/impl.yaml"
+  source_branch: "chore/task-1822-phase2-impl"
   target_branch: "chore/epic-1818-batch-local-cron-phase2"
   parent_epic_issue: "[Epic]batch-local-cron-phase2:local cron Phase2親シェル配線（009〜016）"
   parent_epic_branch: "chore/epic-1818-batch-local-cron-phase2"
@@ -54,3 +55,4 @@ review_points:
 notes:
   - "Human Reviewは省略しない"
   - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"
+  - "Task Issue #1822 / Branch chore/task-1822-phase2-impl"
