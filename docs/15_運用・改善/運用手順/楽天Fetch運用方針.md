@@ -449,7 +449,8 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - **定常cron非干渉:** [Phase1 crontab運用手順](./local_cron_Phase1_crontab運用手順.md) の daily/weekly（#1811）および Phase2（#1818）は**変更しない**。キャンペーンは葉 BATCH-001 CLI（または専用ラッパ）のみ。**weekly親全体は回さない**
 - **AIは `--live-rakuten` しない。** liveは Human。GHA楽天HTTP・#1607・schedule有効化は対象外維持
 - inventory / runner / collect-docs は本枠 `decided` 後に着手する
-- **途中時点の Human live 結果:** [ジャンル地図キャンペーン_live実行結果_途中](./ジャンル地図キャンペーン_live実行結果_途中.md)（#1839。2026-08-03 スナップショット。queue 残・未完了）
+- **途中時点の Human live 結果:** [ジャンル地図キャンペーン_live実行結果_途中](./ジャンル地図キャンペーン_live実行結果_途中.md)（#1839。履歴）
+- **完了（全階層取り切り）:** [ジャンル地図キャンペーン_live実行結果_完了](./ジャンル地図キャンペーン_live実行結果_完了.md)（#1841。`external_genre` **16,537** / queue=0 / level0–5）
 
 ---
 
@@ -468,7 +469,8 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | [local薄いオーケストレータ導入ゲート](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md) | §11.4。local親シェル導入・Phase1・cron Human境界 |
 | [local薄いオーケストレータ設計・運用手順](./local薄いオーケストレータ設計・運用手順.md) | GHA needs / 排他 / Run ID の local 対応表・運用手順 |
 | [ジャンル地図キャンペーン運用枠 Human Decision Log](../../../ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md) | §10 No.11 / §11.5。`decided`。root 0 BFS・全階層取り切り・容量 soft/hard・Slack・cron非干渉・Human live境界 |
-| [ジャンル地図キャンペーン_live実行結果_途中](./ジャンル地図キャンペーン_live実行結果_途中.md) | §11.5。Human live 途中スナップショット（#1839）。件数・level・queue/expanded |
+| [ジャンル地図キャンペーン_live実行結果_途中](./ジャンル地図キャンペーン_live実行結果_途中.md) | §11.5。Human live 途中スナップショット（#1839・履歴） |
+| [ジャンル地図キャンペーン_live実行結果_完了](./ジャンル地図キャンペーン_live実行結果_完了.md) | §11.5。Human live 完了（#1841）。16,537件・queue空・level0–5 |
 | [local cron Phase1 crontab運用手順](./local_cron_Phase1_crontab運用手順.md) | 定常cron正本。ジャンル地図キャンペーンは変更・混在させない |
 | [バッチ外部API本実装ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md) | 外部API実装状態 |
 | [バッチ実行スケジュール設計書](../../05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md) | 親子workflow・concurrency |
@@ -508,3 +510,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-08-03 | #1829: §10 No.11 / §11.5 / §12 にジャンル地図キャンペーン運用枠（推奨案・Human採択待ち）を接続 |
 | 2026-08-03 | #1829: ジャンル地図枠を Human採択反映（`decided`）。全階層取り切り・soft Slack / hard自動停止・hard初期値を§11.5へ反映 |
 | 2026-08-03 | #1839: §11.5 / §12 に Human live 途中結果docs（件数2,286・queue残）を接続 |
+| 2026-08-03 | #1841: §11.5 / §12 に Human live 完了結果docs（16,537件・queue空・level0–5）を接続 |
