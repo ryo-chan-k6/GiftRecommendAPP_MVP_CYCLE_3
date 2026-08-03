@@ -168,5 +168,5 @@ operation_logging:
   reason: "必要時のみ experiments に実行サマリ（secretなし）"
 
 notes:
-  - "runner / Decision 枠確定後が本線。Human live 実施待ちで着手"
+  - "runner / Decision 枠（#1829 Log）Human採択後が本線。Human live 実施待ちで着手"
   - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"

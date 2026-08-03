@@ -386,8 +386,9 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 8 | 安全側QPS=1 | 全Runの既定 / 長時間・再開時のみ / 不採用 | **Human採択**。長時間Run、BATCH-003/004、429後の再開時のみ適用。常用QPS=2は変更しない |
 | 9 | クールダウン | 15分 / 30分 / 60分 / 別値 | **Human採択**。初回15分、再発時60分以上 |
 | 10 | 本格収集運用枠（B-0下 local） | 段階・期間/Run数・停止・監視見直し | **Human採択（2026-07-31）**。[本格収集運用枠 Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md)。案A。ジャンル段階1→4。期間 **最大7日または BATCH-003累計 Run 20回**（どちらか先）で一旦停止し Epic内再判断。Run予算は§5.3.4維持。加速ノブ不使用。§5.3.5見直しは段階2完了または開始7日のどちらか早い時点 |
+| 11 | ジャンル地図キャンペーン運用枠 | 起点BFS・1 Run上限・停止・cron非干渉 | **推奨案（2026-08-03・Human採択待ち）**。[ジャンル地図キャンペーン運用枠 Decision Log](../../../ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md)。root `0` BFS、1 Run上限20 genre、安全側QPS=1（常用2維持）、定常cron非干渉、AI live禁止。詳細は§11.5 |
 
-採択の正本は[楽天Fetch運用値 Human Decision Log](../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md)とする。No.1の具体的 `fetch_plan` は [2026-07-31 Log](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) で承認済み。local 実楽天HTTP（パターンB）は [検証結果](./楽天Fetch_local_live検証結果_1765.md) で実施済み。secret投入・追加実行は引き続き Human 環境での判断とする。GHA楽天HTTP live化は当面禁止のまま（No.7）。本格収集の段階・期間上限は No.10 / [本格収集運用枠 Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) を正とする。
+採択の正本は[楽天Fetch運用値 Human Decision Log](../../../ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md)とする。No.1の具体的 `fetch_plan` は [2026-07-31 Log](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) で承認済み。local 実楽天HTTP（パターンB）は [検証結果](./楽天Fetch_local_live検証結果_1765.md) で実施済み。secret投入・追加実行は引き続き Human 環境での判断とする。GHA楽天HTTP live化は当面禁止のまま（No.7）。本格収集の段階・期間上限は No.10 / [本格収集運用枠 Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) を正とする。ジャンル地図キャンペーン枠（No.11）は [2026-08-03 Log](../../../ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md) の推奨案であり、最終採択は Human Review とする。
 
 ---
 
@@ -433,6 +434,19 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - 親シェルは `--genre-ids`（BATCH-003 / weekly BATCH-001）と `--ranking-genre-ids`（BATCH-002・既定 `100005`）を分離して伝播する（#1808）
 - GHA 楽天 live・#1607・schedule 有効化は対象外のまま
 
+### 11.5 ジャンル地図キャンペーン（#1827）
+
+- [ジャンル地図キャンペーン運用枠 Decision Log](../../../ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md) が **`recommended`**（Human採択待ち）である（#1829）
+- 目的は楽天ジャンル全体像（ID・階層・件数）の段階把握。**MVP fetch_plan 4ID（`100000` / `100003` / `100004` / `100005`）は置き換えない**（拡大情報源）
+- **推奨枠（Human採択前は運用既定にしない）:**
+  - 起点: root `0` からの BFS（未同期 children を次 Run の `--genre-ids` へ）
+  - 1 Run 上限: **20 genre**（調整可）
+  - QPS: 常用 **2** 維持。キャンペーン BATCH-001 は安全側 **`max_qps=1`**。商品収集 cron と同時 live 禁止
+  - 停止: 429連続 / `paused`増 / 予定Run消化 / Human中断（＋egress不一致・secret疑い・同時live検知）
+- **定常cron非干渉:** [Phase1 crontab運用手順](./local_cron_Phase1_crontab運用手順.md) の daily/weekly（#1811）および Phase2（#1818）は**変更しない**。キャンペーンは葉 BATCH-001 CLI（または専用ラッパ）のみ。**weekly親全体は回さない**
+- **AIは `--live-rakuten` しない。** liveは Human。GHA楽天HTTP・#1607・schedule有効化は対象外維持
+- inventory / runner / collect-docs の大規模 live は、本枠の Human採択（`decided`）後を着手ゲートとする
+
 ---
 
 ## 12. 関連資料
@@ -449,6 +463,8 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | [本格収集運用枠 Human Decision Log](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) | §10 No.10。B-0下 local 本格収集の段階・期間/Run上限・停止・監視見直し |
 | [local薄いオーケストレータ導入ゲート](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md) | §11.4。local親シェル導入・Phase1・cron Human境界 |
 | [local薄いオーケストレータ設計・運用手順](./local薄いオーケストレータ設計・運用手順.md) | GHA needs / 排他 / Run ID の local 対応表・運用手順 |
+| [ジャンル地図キャンペーン運用枠 Human Decision Log](../../../ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md) | §10 No.11 / §11.5。root 0 BFS・1 Run上限・停止・cron非干渉・Human live境界 |
+| [local cron Phase1 crontab運用手順](./local_cron_Phase1_crontab運用手順.md) | 定常cron正本。ジャンル地図キャンペーンは変更・混在させない |
 | [バッチ外部API本実装ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md) | 外部API実装状態 |
 | [バッチ実行スケジュール設計書](../../05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md) | 親子workflow・concurrency |
 | [バッチ親workflow schedule有効化ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md) | schedule無効・Human決定 |
@@ -484,3 +500,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-08-01 | #1801: §11.3 に継続収集結果docs・§5.3.5維持（見直し時点未達）・§11.4 genre伝播を反映 |
 | 2026-08-01 | #1808: 段階3完了・段階4運用。§5.3.5本見直し **維持**。`--genre-ids` / `--ranking-genre-ids` 分離を§11.4へ反映 |
 | 2026-08-01 | 次本線 Decision（local cron 001〜016・GHA/#1607先送り・018/019除外）を§11.3へ接続 |
+| 2026-08-03 | #1829: §10 No.11 / §11.5 / §12 にジャンル地図キャンペーン運用枠（推奨案・Human採択待ち）を接続 |
