@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: 1827
+    number: 1829
   task_definition: "prompts/definitions/tasks/batch-genre-map-campaign/ops-plan-decision.yaml"
   target_branch: "chore/epic-1827-batch-genre-map-campaign"
   parent_epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
@@ -50,3 +50,4 @@ review_points:
 
 notes:
   - "親Epic #1827 / Branch chore/epic-1827-batch-genre-map-campaign。Task Issue番号は /start-task 後に反映。Human Reviewは省略しない"
+  - "Task Issue #1829 / Branch chore/task-1829-ops-plan-decision"

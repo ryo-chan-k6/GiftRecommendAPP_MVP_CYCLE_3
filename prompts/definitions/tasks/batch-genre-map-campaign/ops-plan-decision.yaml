@@ -106,7 +106,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "ops-plan-decision"
-  name: "chore/task-PENDING-ops-plan-decision"
+  name: "chore/task-1829-ops-plan-decision"
   base: "chore/epic-1827-batch-genre-map-campaign"
   target: "chore/epic-1827-batch-genre-map-campaign"
   worktree_required: true
@@ -190,3 +190,4 @@ operation_logging:
 notes:
   - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
   - "本Task完了後、inventory へ（枠未決のまま大規模 live は禁止）"
+  - "Task Issue #1829 / Branch chore/task-1829-ops-plan-decision"
