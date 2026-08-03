@@ -1,0 +1,188 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-genre-map-campaign-runner-design-or-impl"
+  title: "batch-genre-map-campaign:BFS段階同期手順または最小ラッパ"
+  summary: "root起点のBFS/段階同期の手順、または葉CLI向け最小ラッパ（--dry-run可）を整備する。weekly親全体は使わない。AIはliveしない。"
+  workstream_key: "batch-genre-map-campaign"
+  phase: "design-or-impl"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  epic_issue_number: 1827
+  epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+  related_issues:
+    - 1811
+    - 1818
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  BATCH-001 は --genre-ids 起点＋直下 children のみ。全地図化には未同期 children を次 Run の --genre-ids に載せる段階実行が必要。
+  weekly 親は 001 に加え 002 以降も回るため、キャンペーンでは葉 CLI または専用ラッパを使う。
+  local_daily / local_weekly 親シェル本体は forbidden（定常cron非干渉）。
+
+objective: |
+  Human が Decision 枠内で安全に段階同期できる手順、または最小ラッパ（dry-run可）を提供する。
+
+scope:
+  - "BFS/段階同期の運用手順docs（次Run用 genre-ids の作り方、1 Run上限遵守、停止条件）"
+  - "必要なら scripts/batch 配下の専用ラッパ最小実装（--dry-run可。weekly親を呼ばない）"
+  - "葉 CLI（python -m batch.application.genre_sync）呼び出し例の正本化"
+  - "定常cron・#1811/#1818 との時間分離・非干渉の注意書き"
+
+out_of_scope:
+  - "AIによる --live-rakuten 実行"
+  - "local_daily_orchestrator.sh / local_weekly_orchestrator.sh の改修"
+  - "定常crontab変更"
+  - "商品収集大規模拡大"
+  - "GHA schedule / #1607 / GHA楽天live"
+  - "OpenAPI / generated / apps/web|api|reco"
+  - "#1811 / #1818 の変更・完了操作"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "scripts/batch/README.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-genre-map-campaign/epic.yaml"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/genre_sync/__main__.py"
+      required: true
+    - path: "scripts/batch/local_weekly_orchestrator.sh"
+      required: false
+      purpose: "非使用確認用参照（改修しない）"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "scripts/batch/**"
+      action: "create_or_update"
+      required: false
+
+deliverables:
+  - "BFS/段階同期手順docs、または専用最小ラッパ（dry-run可）"
+  - "葉CLI実行例（Human live境界明記）"
+
+acceptance_criteria:
+  - "weekly親全体を実行経路に含めていない"
+  - "1 Run上限・停止条件の遵守方法が手順に書かれている"
+  - "AI live禁止 / Human live境界が明記されている"
+  - "local_daily / local_weekly 親シェル本体を改修していない"
+  - "secret実値がない"
+
+branch:
+  no_branch: false
+  summary: "runner-design-or-impl"
+  name: "chore/task-PENDING-runner-design-or-impl"
+  base: "chore/epic-1827-batch-genre-map-campaign"
+  target: "chore/epic-1827-batch-genre-map-campaign"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-03"
+    due_date: "2026-08-05"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "scripts/batch/**"
+    - "docs/15_運用・改善/運用手順/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "dry-run または手順レビューによる非live確認"
+  commands: []
+  manual_checks:
+    - "ラッパが weekly 親を呼び出していない"
+    - "AIが live を実行していない"
+  not_required:
+    - "GHA楽天live E2E"
+  skip_reason:
+    "GHA楽天live E2E": "out of scope"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "weekly親全体・定常crontab変更が混入していないか"
+    - "1 Run上限・停止条件の遵守が手順にあるか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "手順docsのみか、最小ラッパ実装まで行うか（Epic枠内で調整可）"
+
+stop_conditions:
+  - "weekly親改修が必須に見える"
+  - "AI liveが必須に見える"
+  - "secret実値が必要に見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "親シェル非干渉の横断影響が必要時のみ記録"
+
+notes:
+  - "ops-plan-decision の枠（上限・停止条件）を前提。未決なら実装を止め Human 確認"
+  - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"

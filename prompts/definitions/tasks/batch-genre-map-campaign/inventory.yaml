@@ -1,0 +1,175 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-genre-map-campaign-inventory"
+  title: "batch-genre-map-campaign:external_genre棚卸し"
+  summary: "現状 external_genre の件数・level分布などの棚卸し手順と結果docsを作成する。secret / 接続文字列実値なし。live同期実行は含まない。"
+  workstream_key: "batch-genre-map-campaign"
+  phase: "inventory"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  epic_issue_number: 1827
+  epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+  related_issues:
+    - 1811
+    - 1818
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  external_genre は約15件で極小との観測がある。キャンペーンの現状把握として、件数・level分布・代表IDを secret なしで docs 化する。
+  DB読取は Human 環境で実行し、AIは手順と結果docs同期を担当してよい（接続文字列実値は書かない）。
+
+objective: |
+  external_genre の棚卸し手順と結果docsを正本化し、後続 BFS/段階同期の起点把握に使える状態にする。
+
+scope:
+  - "棚卸し手順の docs 化（集計クエリ方針・出力項目。secretなし）"
+  - "件数・level分布・代表レコード概要の結果docs（実測値はHuman実行結果を反映）"
+  - "MVP fetch_plan 4ID との差分観点（置き換えないことの確認記載）"
+
+out_of_scope:
+  - "楽天API live 同期"
+  - "定常crontab変更"
+  - "BFSラッパ実装"
+  - "商品収集拡大"
+  - "secret / 接続文字列実値の記載"
+  - "#1811 / #1818 の変更・完了操作"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-genre-map-campaign/epic.yaml"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+
+deliverables:
+  - "external_genre 棚卸し手順docs"
+  - "件数・level分布の結果docs（secretなし）"
+
+acceptance_criteria:
+  - "件数・level分布が結果docsに記載されている（未測の場合は未実施理由と再測手順がある）"
+  - "secret / token / 接続文字列実値がない"
+  - "MVP 4ID置き換えを提案していない"
+  - "live同期・定常crontab変更を含まない"
+
+branch:
+  no_branch: false
+  summary: "inventory"
+  name: "chore/task-PENDING-inventory"
+  base: "chore/epic-1827-batch-genre-map-campaign"
+  target: "chore/epic-1827-batch-genre-map-campaign"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-03"
+    due_date: "2026-08-05"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認（secretなし）"
+  commands: []
+  manual_checks:
+    - "結果docsに接続文字列・tokenがない"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "棚卸しdocsのみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "secret実値がないか"
+    - "件数・level分布が読めるか"
+    - "MVP 4ID置き換え提案が混入していないか"
+
+human_decision_points:
+  - "棚卸し実測の実行タイミング（Human DB読取）"
+
+stop_conditions:
+  - "secret実値が必要に見える"
+  - "DB破壊的操作が必要に見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "必要時のみ experiments に集計メモ（secretなし）"
+
+notes:
+  - "ops-plan-decision と並列可だが、枠決定前の大規模 live は禁止"
+  - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"

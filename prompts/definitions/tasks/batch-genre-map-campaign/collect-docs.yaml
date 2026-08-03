@@ -1,0 +1,172 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-genre-map-campaign-collect-docs"
+  title: "batch-genre-map-campaign:Human live実行結果docs同期"
+  summary: "Humanが実施したジャンル地図キャンペーン live 実行結果を docs へ同期する。AIは --live-rakuten を実行しない。"
+  workstream_key: "batch-genre-map-campaign"
+  phase: "collect-docs"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  epic_issue_number: 1827
+  epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+  related_issues:
+    - 1811
+    - 1818
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  live は Human。AIは結果の docs 同期のみ。後続 BATCH-002/003 取得計画の土台として、取得済みジャンル階層・件数の要約を残す。
+
+objective: |
+  Human live 実行結果を secret なしで正本docs化し、地図キャンペーンの進捗と次Run候補を追跡可能にする。
+
+scope:
+  - "Human live 実行結果docs（Run単位の genre-ids、件数増減、level分布差分、停止理由。secretなし）"
+  - "次Run候補 genre-ids の記録（未同期 children 等）"
+  - "後続 BATCH-002/003 向け参照メモ（MVP 4IDは置き換えない）"
+  - "定常cron非干渉だったことの確認記載"
+
+out_of_scope:
+  - "AIによる --live-rakuten 実行"
+  - "定常crontab変更"
+  - "商品収集大規模拡大の実行"
+  - "GHA schedule / #1607 / GHA楽天live"
+  - "#1811 / #1818 の変更・完了操作"
+  - "secret実値の記載"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-genre-map-campaign/epic.yaml"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+
+deliverables:
+  - "Human live 実行結果docs（secretなし）"
+  - "次Run候補・BATCH-002/003向け参照メモ"
+
+acceptance_criteria:
+  - "実行結果docsがあり、AI live実行を主張していない"
+  - "secret / token / 接続文字列実値がない"
+  - "MVP 4ID置き換えを含まない"
+  - "定常crontab変更記録を含まない"
+
+branch:
+  no_branch: false
+  summary: "collect-docs"
+  name: "chore/task-PENDING-collect-docs"
+  base: "chore/epic-1827-batch-genre-map-campaign"
+  target: "chore/epic-1827-batch-genre-map-campaign"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "medium"
+    planned_start: "2026-08-03"
+    due_date: "2026-08-07"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認（secretなし）"
+  commands: []
+  manual_checks:
+    - "AIが live を実行した痕跡がない"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "結果docs同期のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "AI live実行の痕跡がないか"
+    - "secret実値がないか"
+    - "次Run候補が追跡できるか"
+
+human_decision_points:
+  - "キャンペーン継続 / 一時停止 / 完了の判断"
+  - "結果を BATCH-002/003 計画へどう反映するか"
+
+stop_conditions:
+  - "Human live結果が不足し推測で埋めるしかない場合"
+  - "secret実値が必要に見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "必要時のみ experiments に実行サマリ（secretなし）"
+
+notes:
+  - "runner / Decision 枠確定後が本線。Human live 実施待ちで着手"
+  - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"

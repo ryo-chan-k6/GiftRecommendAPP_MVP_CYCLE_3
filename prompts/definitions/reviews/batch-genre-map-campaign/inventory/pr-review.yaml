@@ -1,0 +1,52 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-genre-map-campaign-inventory"
+  title: "batch-genre-map-campaign:external_genre棚卸し Task PRレビュー"
+  summary: "external_genre 棚卸し Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1827
+  task_definition: "prompts/definitions/tasks/batch-genre-map-campaign/inventory.yaml"
+  target_branch: "chore/epic-1827-batch-genre-map-campaign"
+  parent_epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  parent_epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "件数・level分布が読めるか（または未測理由があるか）"
+  - "secret / 接続文字列実値がないか"
+  - "MVP 4ID置き換え提案が混入していないか"
+
+notes:
+  - "親Epic #1827 / Branch chore/epic-1827-batch-genre-map-campaign。Task Issue番号は /start-task 後に反映。Human Reviewは省略しない"
