@@ -394,8 +394,9 @@ PY
 }
 
 gmc_discover_children_from_db() {
-  # After syncing parents, enqueue non-leaf children not yet expanded.
-  # Uses: children of expanded parents that are is_leaf=false and not in expanded.
+  # After a successful leaf Run, enqueue known non-leaf rows not yet expanded.
+  # SQL は is_leaf=false の全件を候補化し、gmc_enqueue_ids が seen/queue/expanded で重複排除する。
+  # （親子リンク限定の SQL ではない。キャンペーン全地図化向けの収束方針。）
   if ! gmc_db_available; then
     gmc_log WARN "DB unavailable; cannot discover children for queue"
     return 0

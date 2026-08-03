@@ -131,6 +131,10 @@ cd apps/batch && RAKUTEN_MAX_QPS=1 uv run python -m batch.application.genre_sync
 
 `genre_sync` に `--max-qps` CLI が無いため、キャンペーン QPS は **`RAKUTEN_MAX_QPS=1`** で渡す。
 
+**live 失敗時の状態:** 葉 CLI が非0のとき、当該チャンクはキューから消費しない（失敗前に take しない）。Slack 通知（env 設定時）と明示ログのあと非0で停止する。再開時は同じ先頭チャンクから再試行できる。
+
+**DB からの候補追加:** Run 成功後、`is_leaf = false` の既知ジャンルをキュー候補化し、`seen` / `queue` / `expanded` で重複排除する（親子リンク限定の SQL ではない）。
+
 ### 5.3 Slack フック
 
 | env | 用途 |
@@ -189,6 +193,7 @@ RAKUTEN_MAX_QPS=1 uv run python -m batch.application.genre_sync \
 - [ ] 葉コマンドに親シェルが含まれない
 - [ ] AI 実行ログに `--live-rakuten` が無い
 - [ ] soft で Slack（または skip ログ）、hard で停止
+- [ ] live 葉失敗時はキュー未消費のまま停止し、再開できる
 - [ ] secret 実値がログ・docs に出ていない
 - [ ] MVP 4ID を置き換えていない
 
