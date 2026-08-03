@@ -90,7 +90,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "collect-docs"
-  name: "chore/task-PENDING-collect-docs"
+  name: "docs/task-1839-collect-docs"
   base: "chore/epic-1827-batch-genre-map-campaign"
   target: "chore/epic-1827-batch-genre-map-campaign"
   worktree_required: true
@@ -168,5 +168,6 @@ operation_logging:
   reason: "必要時のみ experiments に実行サマリ（secretなし）"
 
 notes:
-  - "runner / Decision 枠（#1829 Log）Human採択後が本線。Human live 実施待ちで着手"
+  - "途中時点スナップショット（2026-08-03）。正本: docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_live実行結果_途中.md"
   - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
+  - "Task Issue: #1839 / Branch docs/task-1839-collect-docs"

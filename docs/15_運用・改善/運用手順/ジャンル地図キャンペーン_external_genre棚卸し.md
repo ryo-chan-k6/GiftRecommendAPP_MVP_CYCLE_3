@@ -184,12 +184,14 @@ df -h /
 
 ## 6. 後続 runner 向け要点（推論を含む）
 
+> 本節は **着手前棚卸し時点（15件）** の記録である。Human live 途中の最新件数は [live実行結果_途中](./ジャンル地図キャンペーン_live実行結果_途中.md)（#1839）を正とする。
+
 | 区分 | 内容 |
 | ---- | ---- |
-| 事実 | root `0` は未登録。現状は `100000` / `100005` 起点の親＋直下 children 相当（計15行） |
-| 事実 | non-leaf は `100000` と `100005` の2件のみ。level≥3 は未取得 |
-| 推論 | Decision 採択どおり BFS 初回は `--genre-ids 0`（1 Run）で root＋直下 children を入れるのが自然 |
-| 推論 | 現状件数 15 ≪ soft 80,000 / hard 100,000。容量は余裕 |
+| 事実（着手前） | root `0` は未登録。現状は `100000` / `100005` 起点の親＋直下 children 相当（計15行） |
+| 事実（着手前） | non-leaf は `100000` と `100005` の2件のみ。level≥3 は未取得 |
+| 推論（着手前） | Decision 採択どおり BFS 初回は `--genre-ids 0`（1 Run）で root＋直下 children を入れるのが自然 |
+| 推論（着手前） | 現状件数 15 ≪ soft 80,000 / hard 100,000。容量は余裕 |
 | 禁止 | MVP 4ID の置き換え提案、AI live、定常crontab変更、weekly/daily 親全体実行 |
 
 ---
@@ -200,6 +202,7 @@ df -h /
 | ---- | ---- |
 | [ジャンル地図キャンペーン運用枠 Decision](../../../ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md) | 起点・1 Run上限・容量 soft/hard・cron非干渉 |
 | [楽天Fetch運用方針](./楽天Fetch運用方針.md) §11.5 | 運用方針側のキャンペーン枠要約 |
+| [live実行結果_途中](./ジャンル地図キャンペーン_live実行結果_途中.md) | Human live 途中スナップショット（#1839） |
 | [MVP fetch_plan Decision](../../../ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md) | 4ID 承認（置き換えない） |
 | Epic #1827 / Task #1831 | 作業計画 |
 
@@ -210,3 +213,4 @@ df -h /
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-08-03 | #1831: 初版。local Docker 実測（15件）・再測手順・Human再測欄・容量確認コマンドを正本化 |
+| 2026-08-03 | #1839: 着手前記録である旨と live 途中結果へのリンクを追加 |

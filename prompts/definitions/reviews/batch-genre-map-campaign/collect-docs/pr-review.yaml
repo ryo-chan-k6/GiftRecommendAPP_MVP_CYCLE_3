@@ -16,8 +16,9 @@ branch:
 target:
   pr: null
   issue:
-    number: 1827
+    number: 1839
   task_definition: "prompts/definitions/tasks/batch-genre-map-campaign/collect-docs.yaml"
+  source_branch: "docs/task-1839-collect-docs"
   target_branch: "chore/epic-1827-batch-genre-map-campaign"
   parent_epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
   parent_epic_branch: "chore/epic-1827-batch-genre-map-campaign"
@@ -50,4 +51,4 @@ review_points:
   - "MVP 4ID置き換えや定常crontab変更が混入していないか"
 
 notes:
-  - "親Epic #1827 / Branch chore/epic-1827-batch-genre-map-campaign。Task Issue番号は /start-task 後に反映。Human Reviewは省略しない"
+  - "親Epic #1827。Task Issue #1839 / Branch docs/task-1839-collect-docs。Human Reviewは省略しない"
