@@ -16,7 +16,8 @@ parent:
   epic_branch: "chore/epic-1827-batch-genre-map-campaign"
   related_issues:
     - 1839
-  related_prs: []
+  related_prs:
+    - 1842
 
 commands:
   primary: "/start-task"
