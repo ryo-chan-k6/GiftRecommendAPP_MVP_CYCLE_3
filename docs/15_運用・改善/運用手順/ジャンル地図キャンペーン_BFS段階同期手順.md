@@ -90,8 +90,11 @@ root `0` 起点の BFS で `external_genre` を全階層取り切りつつ、Dec
 # リポジトリルートで
 ./scripts/batch/genre_map_campaign_runner.sh --dry-run --reset-state
 
-# 複数チャンクのキュー消費プレビュー（DB があれば non-leaf enqueue も試す）
+# 複数チャンクのキュー消費プレビュー（DB があれば展開済み親の children enqueue も試す）
 ./scripts/batch/genre_map_campaign_runner.sh --dry-run --reset-state --max-runs-this-invocation 3
+
+# 既存 state で queue が空のとき（root 同期後など）は、起動時に DB discover で回復する
+./scripts/batch/genre_map_campaign_runner.sh --dry-run --max-runs-this-invocation 1
 ```
 
 dry-run で見えるもの:
@@ -120,7 +123,7 @@ set -a && source .env && set +a   # 値はエコーしない
 | `--reset-state` | キューを root `0` から初期化 |
 | `--max-runs-this-invocation N` | この起動での Run 数上限 |
 | `--seed-queue IDS` | 初期キュー上書き（通常不要） |
-| `--skip-db-discover` | Run 後の DB non-leaf enqueue をスキップ |
+| `--skip-db-discover` | 起動時・Run 後の DB children enqueue（親子リンク discover）をスキップ |
 
 live 時の葉呼び出し概要（ラッパが生成）:
 
@@ -135,7 +138,8 @@ cd apps/batch && RAKUTEN_MAX_QPS=1 uv run python -m batch.application.genre_sync
 
 **root `0` のジャンル名:** 楽天 API は root の `nameJa` / `genreName` を空にすることがある。BATCH-001 adapt は root に限り `genre_name='root'` へフォールバックする（#1835）。非 root の名称欠落は従来どおり `GRS-EXT-103`。
 
-**DB からの候補追加:** Run 成功後、`is_leaf = false` の既知ジャンルをキュー候補化し、`seen` / `queue` / `expanded` で重複排除する（親子リンク限定の SQL ではない）。
+**DB からの候補追加:** BATCH-001 は直下 children を常に `is_leaf=true` で upsert する。そのため discover は **`is_leaf` を使わず**、`parent_external_genre_id ∈ expanded` の未展開 children をキュー候補化する（`seen` / `queue` / `expanded` で重複排除）。起動時に queue が空なら同じ discover で回復する（#1837）。  
+あわせて `gmc_enqueue_ids` は heredoc と stdin pipe の競合を避け、ID 一覧を引数/環境経由で渡す（旧実装では enqueue が常に空になっていた）。
 
 ### 5.3 Slack フック
 
@@ -164,7 +168,7 @@ RAKUTEN_MAX_QPS=1 uv run python -m batch.application.genre_sync \
 ```
 
 - `--genre-ids` は **最大 20** 個まで。
-- 次 Run の ID は、DB の non-leaf かつ未展開をキュー化し、先頭から最大 20 を載せる（§3）。
+- 次 Run の ID は、展開済み親の未展開 children をキュー化し、先頭から最大 20 を載せる（§3 / #1837）。
 - AI はこのコマンドを live 実行しない。
 
 ---

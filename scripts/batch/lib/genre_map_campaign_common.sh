@@ -342,11 +342,17 @@ PY
 }
 
 gmc_enqueue_ids() {
-  # stdin: newline-separated genre ids to append (dedupe against seen+queue)
-  GMC_STATE_FILE="${GMC_STATE_FILE}" gmc_python <<'PY'
-import json, os, sys
+  # newline-separated genre ids via env（heredoc 利用時は stdin pipe が使えないため）。
+  # 重複は seen / queue / expanded で排除する。
+  local ids_text="${1-}"
+  if [[ -z "${ids_text}" && ! -t 0 ]]; then
+    # 後方互換: pipe 呼び出しも受け付ける（ただし heredoc 内 python には渡さない）
+    ids_text="$(cat || true)"
+  fi
+  GMC_STATE_FILE="${GMC_STATE_FILE}" GMC_ENQUEUE_IDS="${ids_text}" gmc_python <<'PY'
+import json, os
 path = os.environ["GMC_STATE_FILE"]
-new_ids = [line.strip() for line in sys.stdin if line.strip()]
+new_ids = [line.strip() for line in os.environ.get("GMC_ENQUEUE_IDS", "").splitlines() if line.strip()]
 with open(path, encoding="utf-8") as f:
     data = json.load(f)
 queue = [str(x) for x in data.get("queue") or []]
@@ -394,27 +400,73 @@ PY
 }
 
 gmc_discover_children_from_db() {
-  # After a successful leaf Run, enqueue known non-leaf rows not yet expanded.
-  # SQL は is_leaf=false の全件を候補化し、gmc_enqueue_ids が seen/queue/expanded で重複排除する。
-  # （親子リンク限定の SQL ではない。キャンペーン全地図化向けの収束方針。）
+  # After a successful leaf Run（または起動時の空キュー回復）:
+  # BATCH-001 は直下 children を常に is_leaf=true で upsert するため、is_leaf=false では
+  # 次チャンクを発見できない。展開済みジャンルの子（parent_external_genre_id ∈ expanded）
+  # を候補化し、gmc_enqueue_ids が seen/queue/expanded で重複排除する（BFS frontier）。
   if ! gmc_db_available; then
     gmc_log WARN "DB unavailable; cannot discover children for queue"
     return 0
   fi
-  local sql
-  sql="SELECT external_genre_id FROM external_genre WHERE is_leaf = false ORDER BY genre_level, external_genre_id;"
   local ids
-  ids="$(gmc_db_psql "${sql}" 2>/dev/null || true)"
+  ids="$(
+    GMC_STATE_FILE="${GMC_STATE_FILE}" GMC_DB_CONTAINER="${GMC_DB_CONTAINER}" gmc_python <<'PY'
+import json
+import os
+import subprocess
+import sys
+
+path = os.environ["GMC_STATE_FILE"]
+container = os.environ["GMC_DB_CONTAINER"]
+with open(path, encoding="utf-8") as f:
+    data = json.load(f)
+expanded = [str(x) for x in data.get("expanded") or []]
+if not expanded:
+    sys.exit(0)
+for gid in expanded:
+    if not gid.isdigit():
+        print(f"invalid expanded genre id: {gid!r}", file=sys.stderr)
+        sys.exit(2)
+arr = ",".join(expanded)
+sql = (
+    "SELECT external_genre_id FROM external_genre "
+    f"WHERE parent_external_genre_id = ANY(ARRAY[{arr}]::bigint[]) "
+    "ORDER BY genre_level NULLS LAST, external_genre_id;"
+)
+try:
+    out = subprocess.check_output(
+        [
+            "docker",
+            "exec",
+            container,
+            "psql",
+            "-U",
+            "postgres",
+            "-d",
+            "postgres",
+            "-At",
+            "-c",
+            sql,
+        ],
+        text=True,
+    )
+except subprocess.CalledProcessError:
+    sys.exit(0)
+sys.stdout.write(out)
+PY
+  )" || true
   if [[ -z "${ids}" ]]; then
-    gmc_log INFO "no non-leaf genres in DB to enqueue"
+    gmc_log INFO "no children of expanded genres in DB to enqueue"
     return 0
   fi
   local added
-  added="$(printf '%s\n' "${ids}" | gmc_enqueue_ids)"
+  added="$(gmc_enqueue_ids "${ids}")"
   if [[ -n "${added}" ]]; then
-    gmc_log INFO "enqueued non-leaf candidates: ${added}"
+    local added_n
+    added_n="$(awk -F',' '{print NF}' <<<"${added}")"
+    gmc_log INFO "enqueued children of expanded parents: count=${added_n}"
   else
-    gmc_log INFO "no new non-leaf candidates to enqueue"
+    gmc_log INFO "no new children of expanded parents to enqueue"
   fi
 }
 
