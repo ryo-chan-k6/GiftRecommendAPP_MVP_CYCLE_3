@@ -14,10 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1828
   issue:
     number: 1827
   task_definition: "prompts/definitions/epics/batch-genre-map-campaign/epic.yaml"
+  source_branch: "chore/epic-1827-batch-genre-map-campaign"
   target_branch: "develop"
   parent_epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
   parent_epic_branch: "chore/epic-1827-batch-genre-map-campaign"
@@ -53,5 +54,5 @@ review_points:
   - "Epic PR target が develop、Closes が親Epic Issue か（最終Epic PR時）"
 
 notes:
-  - "Epic Issue #1827 / Branch chore/epic-1827-batch-genre-map-campaign。Human Reviewは省略しない"
-  - "Definition中間PRは Closes なし"
+  - "Epic Issue #1827 / Branch chore/epic-1827-batch-genre-map-campaign / PR #1828（develop反映・完了PR）。Human Reviewは省略しない"
+  - "Issue close は Human。PR本文は Related to #1827（自動 Closes に依存しない）"
