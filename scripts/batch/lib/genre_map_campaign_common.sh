@@ -263,9 +263,11 @@ gmc_slack_notify() {
 
   SLACK_BOT_TOKEN="${token}" GMC_SLACK_CHANNEL="${channel}" \
   GMC_SLACK_LEVEL="${level}" GMC_SLACK_TITLE="${title}" GMC_SLACK_SUMMARY="${summary}" \
+  GMC_REPO_ROOT="${GMC_REPO_ROOT}" \
   node -e '
 const path = require("path");
-const slack = require(path.join(process.cwd(), ".github/scripts/slack-notify.cjs"));
+const root = process.env.GMC_REPO_ROOT || process.cwd();
+const slack = require(path.join(root, ".github/scripts/slack-notify.cjs"));
 (async () => {
   const text = slack.buildSlackText({
     level: process.env.GMC_SLACK_LEVEL,
