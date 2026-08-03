@@ -17,7 +17,8 @@ parent:
   related_issues:
     - 1833
     - 1835
-  related_prs: []
+  related_prs:
+    - 1838
 
 commands:
   primary: "/start-task"
