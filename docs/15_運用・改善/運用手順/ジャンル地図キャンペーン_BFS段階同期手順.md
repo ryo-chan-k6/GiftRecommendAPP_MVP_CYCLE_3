@@ -133,6 +133,8 @@ cd apps/batch && RAKUTEN_MAX_QPS=1 uv run python -m batch.application.genre_sync
 
 **live 失敗時の状態:** 葉 CLI が非0のとき、当該チャンクはキューから消費しない（失敗前に take しない）。Slack 通知（env 設定時）と明示ログのあと非0で停止する。再開時は同じ先頭チャンクから再試行できる。
 
+**root `0` のジャンル名:** 楽天 API は root の `nameJa` / `genreName` を空にすることがある。BATCH-001 adapt は root に限り `genre_name='root'` へフォールバックする（#1835）。非 root の名称欠落は従来どおり `GRS-EXT-103`。
+
 **DB からの候補追加:** Run 成功後、`is_leaf = false` の既知ジャンルをキュー候補化し、`seen` / `queue` / `expanded` で重複排除する（親子リンク限定の SQL ではない）。
 
 ### 5.3 Slack フック

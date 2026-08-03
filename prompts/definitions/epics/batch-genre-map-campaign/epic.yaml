@@ -80,6 +80,8 @@ epic_scope:
     - "docs/06_実装設計/database/external_genre_テーブル定義書.md"
     - "scripts/batch/**"
     - "apps/batch/src/batch/application/genre_sync/**"
+    - "apps/batch/src/batch/infrastructure/rakuten/adapter.py"
+    - "apps/batch/tests/unit/application/test_genre_sync.py"
   forbidden_paths:
     - "packages/contracts/**"
     - "apps/web/**"
