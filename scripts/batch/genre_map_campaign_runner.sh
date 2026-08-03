@@ -151,6 +151,16 @@ PY
   gmc_log INFO "seed queue applied"
 fi
 
+# live 成功後に is_leaf ベース discover で queue が空になった場合などの回復:
+# expanded 済み親の未展開 children を DB から再シードする（--reset-state 不要）。
+if [[ "${GMC_SKIP_DB_DISCOVER}" != "1" ]]; then
+  _startup_peek="$(gmc_peek_chunk 1 || true)"
+  if [[ -z "${_startup_peek}" ]]; then
+    gmc_log INFO "queue empty at start — discovering children of expanded parents from DB"
+    gmc_discover_children_from_db
+  fi
+fi
+
 echo "=== Genre map campaign runner ==="
 echo "mode: $([[ "${GMC_DRY_RUN}" == "1" ]] && echo dry-run || echo live-human)"
 echo "max_genre_ids_per_run: ${GMC_MAX_GENRE_IDS_PER_RUN}"
