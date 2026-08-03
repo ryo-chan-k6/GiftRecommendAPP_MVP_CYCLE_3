@@ -171,5 +171,5 @@ operation_logging:
   reason: "必要時のみ experiments に集計メモ（secretなし）"
 
 notes:
-  - "ops-plan-decision と並列可だが、枠決定前の大規模 live は禁止"
+  - "ops-plan-decision（#1829 / `2026-08-03-batch-genre-map-campaign-ops-plan`）と並列可だが、枠 Human採択前の大規模 live は禁止"
   - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
