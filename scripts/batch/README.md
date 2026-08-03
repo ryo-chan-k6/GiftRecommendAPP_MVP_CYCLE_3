@@ -11,6 +11,7 @@ Batch 手動実行・dry-run・再実行補助、および local 薄いオーケ
 | [local薄いオーケストレータ設計・運用手順](../../docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md) | local 親シェルの設計正本 |
 | [local_cron_Phase1_crontab運用手順](../../docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md) | Phase1 crontab 運用手順・定常ノブ（#1813） |
 | [local_cron_Phase2_dry-run検証結果](../../docs/15_運用・改善/運用手順/local_cron_Phase2_dry-run検証結果.md) | Phase2 dry-run 双方モード検証記録（#1824） |
+| [fetch_plan拡大_第1波_1ジャンル手動実行手順](../../docs/15_運用・改善/運用手順/fetch_plan拡大_第1波_1ジャンル手動実行手順.md) | 案B第1波・1ジャンル手動起動・切替ゲート（#1846。crontab変更なし） |
 
 ## local 薄いオーケストレータ（#1804 / Phase2 #1822）
 
@@ -80,6 +81,20 @@ set -a && source .env && set +a
 ./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
   --genre-ids 100003 --ranking-genre-ids 100005 \
   --pages-per-run=60 --max-qps 1
+```
+
+第1波拡大（案B・Human・`--genre-ids` 常に1本。詳細は [手動実行手順](../../docs/15_運用・改善/運用手順/fetch_plan拡大_第1波_1ジャンル手動実行手順.md)）:
+
+```bash
+# dry-run（AI可）
+./scripts/batch/local_daily_orchestrator.sh --dry-run \
+  --genre-ids 101381 --ranking-genre-ids 100005 \
+  --pages-per-run=1 --max-qps 1
+
+# smoke live（Humanのみ。案Bを複数並べない。定常crontabは変更しない）
+./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
+  --genre-ids 101381 --ranking-genre-ids 100005 \
+  --pages-per-run=1 --max-qps 1
 ```
 
 葉 Batch の `--job-run-id` は段ごとに UUID を発行する（`pipeline_batch_run_id` を複数葉の `batch_run_log` PK に共用しない）。業務紐付けは `--diff-batch-run-id` / `--batch-run-id` 等で pipeline ID を渡す。
