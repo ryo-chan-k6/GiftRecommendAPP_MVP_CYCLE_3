@@ -19,10 +19,16 @@ Batch 手動実行・dry-run・再実行補助、および local 薄いオーケ
 | `local_daily_orchestrator.sh` | 日次相当（002 → import 連鎖 → 任意で meaning → 016） |
 | `local_weekly_orchestrator.sh` | 週次相当（001 → 002 → import → existing → 任意で meaning → 016） |
 | `lib/local_orchestrator_common.sh` | flock / Run ID / 段実行 / 失敗停止 / Phase2 意味連鎖 |
+| `genre_map_campaign_runner.sh` | ジャンル地図キャンペーン専用 BFS ラッパ（葉 BATCH-001 のみ。親シェル非使用） |
+| `lib/genre_map_campaign_common.sh` | キャンペーン用キュー / soft-hard ゲート / Slack フック |
 
 | ディレクトリ | 用途 |
 | ------------ | ---- |
 | `output-local-orchestrator/` | 親シェルログ＋flock（`locks/` 配下。`scripts/batch/output-*/` で gitignored） |
+| `output-genre-map-campaign/` | ジャンル地図キャンペーン状態・ログ（gitignored） |
+
+ジャンル地図キャンペーン（#1827 / #1833）の手順正本: [ジャンル地図キャンペーン_BFS段階同期手順](../../docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_BFS段階同期手順.md)。
+AI は `--dry-run` のみ。`--live-rakuten` は Human 専用（`--i-am-human` 必須）。weekly/daily 親シェルは呼ばない。
 
 ### 起動例
 
@@ -135,6 +141,7 @@ uv run python ../../scripts/batch/object_storage_live_verify.py \
 | 対象 | 担当 |
 | ---- | ---- |
 | 本格収集キャンペーン（オーケストレータ経由） | #1801（完了側） |
+| ジャンル地図キャンペーン（BFS ラッパ・葉001） | #1827 / #1833（本 README 追記）→ Human live / collect-docs |
 | local cron Phase1（crontab運用・無人観測） | #1811 / #1813（手順）→ 後続 verify |
 | local cron Phase2（009〜016 親シェル配線） | #1818 / #1822（実装） / #1824（dry-run記録）→ 後続 cron-cutover（Human） |
 | 本番 egress IP 設計 | **Backlog: #1607**・未検討（GHA楽天liveは禁止維持） |

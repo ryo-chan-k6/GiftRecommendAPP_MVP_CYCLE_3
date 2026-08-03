@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-genre-map-campaign-discover-parent-link-fix"
+  title: "batch-genre-map-campaign:BFS discoverを親子リンクへ修正"
+  summary: "BATCH-001 が children を is_leaf=true 固定で入れる前提に合わせ、discover を parent∈expanded の children enqueue へ変更する。起動時の空キュー回復も含む。AI live なし。"
+  workstream_key: "batch-genre-map-campaign"
+  phase: "fix"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  epic_issue_number: 1827
+  epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+  related_issues:
+    - 1833
+    - 1835
+  related_prs:
+    - 1838
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Human live（root 0）成功後、external_genre=53 だが campaign queue が空で BFS 停止。
+  BATCH-001 は直下 children を is_leaf=true 固定。旧 discover の is_leaf=false では次候補が出ない。
+
+objective: |
+  親子リンク discover と起動時再シードにより、root 同期後も BFS を継続できる。
+
+scope:
+  - "gmc_discover_children_from_db を parent∈expanded の children enqueue へ変更"
+  - "起動時 queue 空なら discover で回復"
+  - "BFS手順docs同期"
+  - "dry-run で enqueue 確認（AI live なし）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "AIによる --live-rakuten 実行"
+  - "BATCH-001 の is_leaf=true 固定方針変更"
+  - "定常crontab / 親シェル改修"
+  - "GHA / OpenAPI / MVP 4ID 置き換え"
+  - "secret実値"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_BFS段階同期手順.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md"
+      required: true
+  files:
+    - path: "scripts/batch/lib/genre_map_campaign_common.sh"
+      required: true
+    - path: "scripts/batch/genre_map_campaign_runner.sh"
+      required: true
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_BFS段階同期手順.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/batch/lib/genre_map_campaign_common.sh"
+      action: "update"
+      required: true
+    - path: "scripts/batch/genre_map_campaign_runner.sh"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-genre-map-campaign/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/batch-genre-map-campaign/**"
+      action: "create_or_update"
+      required: false
+
+deliverables:
+  - "親子リンク discover + 起動時再シード"
+  - "docs同期"
+  - "dry-run 確認結果"
+
+acceptance_criteria:
+  - "discover が is_leaf に依存しない"
+  - "expanded=[0]・queue=[] 相当から dry-run で level1 が enqueue / peek できる"
+  - "AI live / crontab / 親シェル変更がない"
+  - "secret実値がない"
+
+branch:
+  no_branch: false
+  summary: "discover-parent-link-fix"
+  name: "fix/task-1837-discover-parent-link-fix"
+  base: "chore/epic-1827-batch-genre-map-campaign"
+  target: "chore/epic-1827-batch-genre-map-campaign"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-03"
+    due_date: "2026-08-04"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1833
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "scripts/batch/lib/genre_map_campaign_common.sh"
+    - "scripts/batch/genre_map_campaign_runner.sh"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "dry-run: empty queue + expanded root recovers children"
+  commands:
+    - "./scripts/batch/genre_map_campaign_runner.sh --dry-run --max-runs-this-invocation 1"
+  manual_checks:
+    - "AIが --live-rakuten を実行していない"
+  not_required:
+    - "GHA楽天live E2E"
+  skip_reason:
+    "GHA楽天live E2E": "out of scope。Human live 継続は merge 後"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "is_leaf 依存が除去されているか"
+    - "SQL に非digit expanded id が混入しないか"
+    - "起動時再シードが --reset-state なしで動くか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "merge 後の live 継続 Run 実施タイミング"
+
+stop_conditions:
+  - "AI liveが必須に見える"
+  - "secret実値が必要に見える"
+  - "BATCH-001 is_leaf 方針変更が必須に見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "BFS 継続ブロッカー解消"
+
+notes:
+  - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
+  - "Task Issue: #1837 / Branch fix/task-1837-discover-parent-link-fix"
