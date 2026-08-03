@@ -1,0 +1,173 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-genre-map-campaign-collect-docs-final"
+  title: "batch-genre-map-campaign:Human live完了結果docs同期"
+  summary: "全階層取り切り完了後の Human live 結果を docs へ同期する。AIは --live-rakuten を実行しない。"
+  workstream_key: "batch-genre-map-campaign"
+  phase: "collect-docs"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  epic_issue_number: 1827
+  epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+  related_issues:
+    - 1839
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Human live により queue 空・external_genre 16,537・level0–5 まで到達。途中 docs（#1839）に続く完了正本化。
+
+objective: |
+  完了結果を secret なしで正本docs化し、Epic 完了判断と BATCH-002/003 参照の土台にする。
+
+scope:
+  - "完了結果docs（件数・level・runs/queue=0・途中比）"
+  - "途中 docs / 運用方針への完了リンク"
+  - "experiments メモ（任意）"
+
+out_of_scope:
+  - "AIによる --live-rakuten 実行"
+  - "定常crontab変更"
+  - "BATCH-002/003 本格拡大実行"
+  - "Epic→develop merge 判断そのもの"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_live実行結果_途中.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/tasks/batch-genre-map-campaign/**"
+      action: "create_or_update"
+      required: false
+
+deliverables:
+  - "Human live 完了結果docs（secretなし）"
+  - "途中 docs / 運用方針からの完了リンク"
+
+acceptance_criteria:
+  - "完了・queue=0 が明記されている"
+  - "AI live実行を主張していない"
+  - "secret実値がない"
+  - "MVP 4ID置き換えを含まない"
+
+branch:
+  no_branch: false
+  summary: "collect-docs-final"
+  name: "docs/task-1841-collect-docs-final"
+  base: "chore/epic-1827-batch-genre-map-campaign"
+  target: "chore/epic-1827-batch-genre-map-campaign"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-03"
+    due_date: "2026-08-04"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1839
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認（secretなし）"
+  commands: []
+  manual_checks:
+    - "AIが live を実行した痕跡がない"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "結果docs同期のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "完了・queue=0 が明記されているか"
+    - "AI live / secret がないか"
+    - "途中 docs との関係が明確か"
+
+human_decision_points:
+  - "Epic #1827 を完了扱いにし develop PR へ進むか"
+  - "BATCH-002/003 計画 Task 化のタイミング"
+
+stop_conditions:
+  - "完了事実と矛盾する記載が必要に見える"
+  - "secret実値が必要に見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: true
+  reason: "完了サマリを experiments に残す（secretなし）"
+
+notes:
+  - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
+  - "Task Issue: #1841 / Branch docs/task-1841-collect-docs-final"
+  - "正本: docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_live実行結果_完了.md"

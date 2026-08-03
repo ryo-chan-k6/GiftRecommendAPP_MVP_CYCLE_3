@@ -12,7 +12,7 @@
 | スナップショット時刻 | **2026-08-03T05:46:10Z**（campaign-state `updated_at`） / 記録日 2026-08-03 |
 | 実測環境 | local Docker PostgreSQL（`supabase_db_gift-reco-local`） |
 | 実行主体 | **Human live**（`--live-rakuten --i-am-human`）。AI は本 docs 同期のみ（live なし） |
-| 状態 | **進行中（未完了）**。queue 残あり。完了判断は Human |
+| 状態 | **進行中（未完了）**だった途中記録。**完了後の正本は [live実行結果_完了](./ジャンル地図キャンペーン_live実行結果_完了.md)（#1841）** |
 
 secret・token・APIキー・接続文字列・`.env` 実値は本ドキュメントに含めない。
 
@@ -176,6 +176,7 @@ state は worktree の `scripts/batch/output-genre-map-campaign/campaign-state.j
 
 | ドキュメント | 関係 |
 | ------------ | ---- |
+| [live実行結果_完了](./ジャンル地図キャンペーン_live実行結果_完了.md) | **完了後の正本**（#1841）。本 docs は途中履歴 |
 | [楽天Fetch運用方針](./楽天Fetch運用方針.md) §11.5 | キャンペーン枠・本結果へのリンク |
 | [BFS段階同期手順](./ジャンル地図キャンペーン_BFS段階同期手順.md) | 実行手順正本 |
 | [棚卸し](./ジャンル地図キャンペーン_external_genre棚卸し.md) | 着手前ベースライン |

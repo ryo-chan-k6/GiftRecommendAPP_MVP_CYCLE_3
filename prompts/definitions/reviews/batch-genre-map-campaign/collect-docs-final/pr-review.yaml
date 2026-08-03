@@ -1,0 +1,55 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-genre-map-campaign-collect-docs-final"
+  title: "batch-genre-map-campaign:Human live完了結果docs同期 Task PRレビュー"
+  summary: "Human live 完了結果 docs 同期 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1841
+  task_definition: "prompts/definitions/tasks/batch-genre-map-campaign/collect-docs-final.yaml"
+  source_branch: "docs/task-1841-collect-docs-final"
+  target_branch: "chore/epic-1827-batch-genre-map-campaign"
+  parent_epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  parent_epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "完了・queue=0 が明記されているか"
+  - "AIが --live-rakuten を実行した痕跡がないか"
+  - "secret実値がないか"
+  - "途中 docs との関係が明確か"
+  - "MVP 4ID置き換えや定常crontab変更が混入していないか"
+
+notes:
+  - "親Epic #1827。Task Issue #1841。Human Reviewは省略しない"
