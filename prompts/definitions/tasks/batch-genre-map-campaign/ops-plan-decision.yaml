@@ -188,5 +188,5 @@ operation_logging:
   reason: "Decision Log を ai-logs/human-decisions に作成。通常作業ログは保存しない"
 
 notes:
-  - "親Epic: batch-genre-map-campaign。親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
+  - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
   - "本Task完了後、inventory へ（枠未決のまま大規模 live は禁止）"
