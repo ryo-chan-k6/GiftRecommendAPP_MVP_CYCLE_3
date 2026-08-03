@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1844
   task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/expansion-candidates-decision.yaml"
   target_branch: "chore/epic-1843-batch-fetch-plan-expand"
   parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
@@ -49,4 +49,4 @@ review_points:
   - "子・孫自動展開を仕様として導入していないか"
 
 notes:
-  - "親Epic #1843 / Branch chore/epic-1843-batch-fetch-plan-expand。Task番号は /start-task 後に反映。Human Reviewは省略しない"
+  - "親Epic #1843 / Task Issue #1844 / Branch chore/task-1844-expansion-candidates-decision。Human Reviewは省略しない"
