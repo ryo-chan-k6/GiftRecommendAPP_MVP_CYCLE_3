@@ -120,7 +120,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "expansion-candidates-decision"
-  name: "chore/task-PENDING-expansion-candidates-decision"
+  name: "chore/task-1844-expansion-candidates-decision"
   base: "chore/epic-1843-batch-fetch-plan-expand"
   target: "chore/epic-1843-batch-fetch-plan-expand"
   worktree_required: true
@@ -208,4 +208,4 @@ operation_logging:
 notes:
   - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
   - "本Task完了後、fetch_plan反映・段階収集を別Task化"
-  - "Task Issue番号 / Branch名は /start-task 後に本ファイルへ反映"
+  - "Task Issue #1844 / Branch chore/task-1844-expansion-candidates-decision"
