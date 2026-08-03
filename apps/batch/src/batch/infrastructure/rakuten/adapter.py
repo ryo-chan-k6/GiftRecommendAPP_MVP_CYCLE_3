@@ -48,11 +48,17 @@ def adapt_genre_raw_payload(payload: dict[str, object], *, requested_genre_id: s
         or _as_str(genre_obj.get("genreName"))
     )
     if not genre_name:
-        raise RakutenGenreApiError(
-            genre_id=genre_id,
-            code="GRS-EXT-103",
-            message="invalid genre payload: missing nameJa/jaName/genreName",
-        )
+        # 楽天 root (genreId=0) は nameJa/genreName が空文字になることがある。
+        # external_genre は root 行保持が正本のため、表示名のみ "root" にフォールバックする。
+        # 非 root の名称欠落は従来どおり GRS-EXT-103。
+        if genre_id == "0" or requested_genre_id.strip() == "0":
+            genre_name = "root"
+        else:
+            raise RakutenGenreApiError(
+                genre_id=genre_id,
+                code="GRS-EXT-103",
+                message="invalid genre payload: missing nameJa/jaName/genreName",
+            )
 
     parent_genre_id = _as_str(genre_obj.get("parentGenreId"))
     if parent_genre_id is None:

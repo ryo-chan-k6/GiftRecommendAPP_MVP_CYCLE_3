@@ -1,0 +1,55 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-genre-map-campaign-root-genre-name-fallback"
+  title: "batch-genre-map-campaign:rootジャンル名フォールバック Task PRレビュー"
+  summary: "root genreId=0 の名称フォールバック修正 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1835
+  task_definition: "prompts/definitions/tasks/batch-genre-map-campaign/root-genre-name-fallback.yaml"
+  source_branch: "fix/task-1835-root-genre-name-fallback"
+  target_branch: "chore/epic-1827-batch-genre-map-campaign"
+  parent_epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  parent_epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "フォールバックが root（genreId=0）に限定されているか"
+  - "非rootの名称欠落が従来どおり GRS-EXT-103 か"
+  - "Epic allowed_paths 拡張が最小か"
+  - "AI live / crontab / 親シェル変更が混入していないか"
+  - "secret実値がないか"
+
+notes:
+  - "親Epic #1827。Task Issue #1835。Human Reviewは省略しない"
