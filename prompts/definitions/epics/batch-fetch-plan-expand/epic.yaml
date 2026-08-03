@@ -279,6 +279,7 @@ operation_logging:
 notes:
   - "機能・領域単位Epic（例外）。artifact_id 空。Issue本文§2.1に例外理由を明記"
   - "#1811 / #1818 は Relationships で追跡言及のみ。勝手に完了・変更しない"
-  - "子Task: (1) expansion-candidates-decision（着手ゲート）→ 後続で fetch_plan反映・段階収集を別Task化"
+  - "子Task: (1) expansion-candidates-decision #1844 完了 → (2) fetch-plan-apply → (3) staged-collect-wave1"
+  - "crontab反映は #1811 別Task・Human承認（本Epicでは無断変更しない）"
   - "work_mode=ai-agent。live実行の実secretはHuman環境。値はcommitしない"
   - "Epic Issue #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"

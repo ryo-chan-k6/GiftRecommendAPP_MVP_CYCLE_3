@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-staged-collect-wave1"
+  title: "batch-fetch-plan-expand:第1波段階収集（Human live）と結果docs同期"
+  summary: "fetch_plan反映後、案B第1波を1ジャンル単位でHuman local liveし、切替ゲート付きの実行結果をdocs同期する。AIは--live-rakutenしない。定常crontab変更は含まない。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "ops-execution"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1844
+    - 1827
+    - 1811
+    - 1818
+  related_prs:
+    - 1845
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Decision 2026-08-04 decided（案B・1ジャンル単位・003優先）。
+  先行 Task fetch-plan-apply で実行手順が正本化されていることが着手ゲート。
+  liveはHumanのみ。AIは結果docs同期・手順遵守確認に限定する。
+  ジャンル切替は容量・429・Run失敗を見たHuman判断。同時楽天live禁止。
+  定常crontab（#1811/#1818）は変更しない。
+
+objective: |
+  第1波の少なくとも最初の1ジャンル（推奨 101381）について Human local live の実行記録を正本docs化し、
+  切替ゲートと監視観点を残す。可能なら案B内の追加ジャンルもHuman判断で段階実施し結果を同期する。
+
+scope:
+  - "fetch-plan-apply 手順に従った Human local live（1ジャンル単位）の実施支援・結果受領"
+  - "実行結果docs同期（件数・cursor・失敗・容量観点。secretなし）"
+  - "ジャンル切替ゲート（容量/429/失敗確認）の記録"
+  - "BATCH-003優先・必要時BATCH-002 max_pages=1 の扱いを結果docsに明示"
+  - "楽天Fetch運用方針 / 必要最小の運用手順への結果リンク同期"
+
+out_of_scope:
+  - "fetch_plan反映手順の再定義（先行 fetch-plan-apply）"
+  - "定常crontab変更（#1811 / #1818）"
+  - "AIによる --live-rakuten 実行"
+  - "#1792 / #1607 / GHA楽天live"
+  - "案B外ジャンル（第2波）の本Taskでの本格拡大"
+  - "MVP 4IDの置き換え"
+  - "子・孫自動展開の仕様変更"
+  - "secret実値の表示・変更"
+  - "apps/web|api|reco / OpenAPI / generated"
+  - "親シェル daily/weekly の無断変更"
+  - "#1811 / #1818 の Status・本文の完了操作"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-08-04-batch-fetch-plan-expansion-candidates.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/fetch-plan-apply.yaml"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/experiments/**"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "第1波段階収集の実行結果docs（secretなし）"
+  - "切替ゲート遵守の記録"
+  - "運用方針への結果リンク同期"
+
+acceptance_criteria:
+  - "Human live の痕跡が結果docsにあり、AIが --live-rakuten を実行した痕跡がない"
+  - "実行が1ジャンル単位であることが記録されている"
+  - "secret / token / 接続文字列実値がない"
+  - "定常crontab変更・GHA楽天live・#1607・MVP置き換えを含まない"
+  - "先行 fetch-plan-apply 完了（または同等の手順正本）を前提にしている"
+
+branch:
+  no_branch: false
+  summary: "staged-collect-wave1"
+  name: "chore/task-PENDING-staged-collect-wave1"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-04"
+    due_date: "2026-08-08"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1844
+    - 1843
+  prs:
+    - 1845
+  tasks:
+    - "task-batch-fetch-plan-expand-fetch-plan-apply"
+  blocking: false
+
+parallel_control:
+  depends_on:
+    - "task-batch-fetch-plan-expand-fetch-plan-apply"
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "docs整合確認（結果docs・secretなし）"
+    - "1ジャンル単位・Human live境界の記載確認"
+  commands: []
+  manual_checks:
+    - "AIが --live-rakuten を実行していない"
+    - "crontabを変更していない"
+    - "docsにsecret実値がない"
+  not_required:
+    - "AIによる --live-rakuten 実行"
+    - "GHA楽天live E2E"
+  skip_reason:
+    "AIによる --live-rakuten 実行": "liveはHuman。AIは結果docs同期"
+    "GHA楽天live E2E": "GHA楽天HTTPは禁止維持"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "AIが --live-rakuten を実行した痕跡がないか"
+    - "1ジャンル単位・切替ゲートが守られているか"
+    - "crontab / GHA live / secret実値が混入していないか"
+    - "先行 fetch-plan-apply 未完了のまま収集本線化していないか"
+
+human_decision_points:
+  - "最初の1IDの起動タイミング（推奨 101381）"
+  - "次ジャンルへの切替可否（容量・429・失敗確認後）"
+  - "案B内のどこまで本Taskで進めるか（最低1ジャンル）"
+
+stop_conditions:
+  - "先行 fetch-plan-apply が未完了で手順正本が無い場合"
+  - "AIによる --live-rakuten が必須に見える場合"
+  - "定常crontab変更が必須に見える場合"
+  - "secret実値が必要に見える場合"
+  - "429連続・容量hard相当でHuman中断が必要な場合（結果を記録して停止）"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "live結果の要約はdocs正本。incident/実験が必要なら ai-logs に限定記録"
+
+notes:
+  - "着手ゲート: fetch-plan-apply Task 完了（または手順正本がEpic Branchに存在）"
+  - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
+  - "crontab反映は #1811 別Task・Human承認（本Task外）"
+  - "Task Issue番号 / Branch名は /start-task 後に本ファイルへ反映"

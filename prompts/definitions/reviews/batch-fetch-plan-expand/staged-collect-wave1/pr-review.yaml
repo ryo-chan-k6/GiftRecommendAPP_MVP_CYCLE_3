@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-fetch-plan-expand-staged-collect-wave1"
+  title: "batch-fetch-plan-expand:第1波段階収集 Task PRレビュー"
+  summary: "第1波段階収集（Human live）と結果docs同期 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "draft"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/staged-collect-wave1.yaml"
+  target_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  parent_epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "AIが --live-rakuten を実行した痕跡がないか"
+  - "1ジャンル単位・切替ゲートが結果docsに残っているか"
+  - "crontab / GHA live / secret実値が混入していないか"
+  - "先行 fetch-plan-apply 未完了のまま本線化していないか"
+
+notes:
+  - "親Epic #1843。Task番号は /start-task 後に反映。Human Reviewは省略しない"

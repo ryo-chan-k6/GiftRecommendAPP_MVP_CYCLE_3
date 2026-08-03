@@ -1,0 +1,218 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-fetch-plan-apply"
+  title: "batch-fetch-plan-expand:第1波fetch_plan反映と1ジャンル実行手順"
+  summary: "拡大候補Decision（案B・6ID・1ジャンル単位）を運用手順・CLI伝播の正本へ反映する。定常crontab変更とlive実行は含まない。後続段階収集Taskの着手ゲートとする。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "ops-docs"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1844
+    - 1827
+    - 1811
+    - 1818
+    - 1798
+  related_prs:
+    - 1845
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Decision 2026-08-04（#1844 / PR #1845）が decided。第1波承認スコープは案B 6ID。
+  実行は承認スコープと分離し --genre-ids 常に1本。MVP 4ID維持。BATCH-003優先。
+  本Taskは設定/CLI/運用手順への伝播と手動1ジャンル実行手順の正本化。
+  定常crontab（#1811/#1818）は変更しない。AIは --live-rakuten しない。
+
+objective: |
+  案Bの追加IDと1ジャンル単位実行方針を、local薄いオーケストレータ手順・楽天Fetch運用方針・
+  必要最小の実行手順docsへ矛盾なく反映し、Humanが第1波の最初の1IDを安全に起動できる状態にする。
+
+scope:
+  - "第1波承認スコープ（案B 6ID）と実行単位（1ジャンル）の運用手順正本化"
+  - "BATCH-003優先・BATCH-002はsmoke後必要最小（max_pages=1）の手順記載"
+  - "手動実行例（--genre-ids 1本・初回低値smoke推奨・切替ゲート）のdocs化"
+  - "楽天Fetch運用方針 §11.6 / local薄いオーケストレータ手順への接続更新"
+  - "後続 staged-collect Task の着手条件を明記"
+
+out_of_scope:
+  - "拡大 live 収集の実行本体（後続 staged-collect Task・Human）"
+  - "定常crontab変更（#1811 / #1818。別Task・Human承認）"
+  - "scripts/batch/local_daily_orchestrator.sh / local_weekly_orchestrator.sh の無断変更"
+  - "AIによる --live-rakuten 実行"
+  - "#1792 / #1607 / GHA楽天live"
+  - "MVP 4IDの置き換え"
+  - "子・孫ジャンル自動展開の仕様変更"
+  - "keyword route 本格常用化"
+  - "secret実値の表示・変更"
+  - "apps/web|api|reco / OpenAPI / generated"
+  - "#1811 / #1818 の Status・本文の完了操作"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-08-04-batch-fetch-plan-expansion-candidates.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      action: "update"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+  files:
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+    - path: "scripts/batch/README.md"
+      action: "update"
+      required: false
+
+deliverables:
+  - "第1波 fetch_plan / 1ジャンル実行手順の正本docs"
+  - "後続段階収集Taskの着手ゲート明示"
+
+acceptance_criteria:
+  - "案B 6IDとMVP 4ID維持・明示指定のみ・1ジャンル単位が運用手順に明記されている"
+  - "Humanが最初の1ID（推奨例: 101381）を起動できるCLI/手順例がある（secretなし）"
+  - "定常crontab変更・親シェル無断変更・AI live・GHA楽天liveを含まない"
+  - "後続 staged-collect の着手条件が採択Decisionと整合する"
+
+branch:
+  no_branch: false
+  summary: "fetch-plan-apply"
+  name: "chore/task-PENDING-fetch-plan-apply"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-04"
+    due_date: "2026-08-06"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1844
+    - 1843
+  prs:
+    - 1845
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "task-batch-fetch-plan-expand-staged-collect-wave1"
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認"
+  commands: []
+  manual_checks:
+    - "docsにsecret実値がない"
+    - "crontab実変更がない"
+    - "親シェル（daily/weekly）無断差分がない"
+  not_required:
+    - "unit test"
+    - "AIによる --live-rakuten 実行"
+  skip_reason:
+    "unit test": "運用手順docs同期が本体"
+    "AIによる --live-rakuten 実行": "liveは後続TaskのHuman"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "案B 6IDと1ジャンル単位が曖昧になっていないか"
+    - "crontab / 親シェル無断変更・MVP置き換え・子孫自動展開が混入していないか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "第1波の最初に実行する1ID（推奨: 101381）。本Taskは手順化まで。起動判断はHuman"
+  - "定常cronへ案Bを載せるタイミングは #1811 別Task・Human承認（本Task外）"
+
+stop_conditions:
+  - "定常crontab変更や親シェル定常ノブ変更が必須に見える場合"
+  - "AIによる --live-rakuten が必須に見える場合"
+  - "MVP 4ID置き換えや子孫自動展開が必要に見える場合"
+  - "secret実値が必要に見える場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "運用手順docsが正本。通常作業ログは ai-logs に保存しない"
+
+notes:
+  - "前提: Decision #1844 / PR #1845 decided"
+  - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
+  - "後続: staged-collect-wave1（本Task完了後）"
+  - "Task Issue番号 / Branch名は /start-task 後に本ファイルへ反映"
