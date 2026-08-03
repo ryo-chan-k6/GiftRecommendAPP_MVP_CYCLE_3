@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1832
   issue:
     number: 1831
   task_definition: "prompts/definitions/tasks/batch-genre-map-campaign/inventory.yaml"
