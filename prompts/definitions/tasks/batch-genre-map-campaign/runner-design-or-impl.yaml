@@ -104,7 +104,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "runner-design-or-impl"
-  name: "chore/task-PENDING-runner-design-or-impl"
+  name: "chore/task-1833-runner-design-or-impl"
   base: "chore/epic-1827-batch-genre-map-campaign"
   target: "chore/epic-1827-batch-genre-map-campaign"
   worktree_required: true
@@ -184,5 +184,6 @@ operation_logging:
   reason: "親シェル非干渉の横断影響が必要時のみ記録"
 
 notes:
-  - "ops-plan-decision の枠（上限・停止条件）を前提。未決なら実装を止め Human 確認"
+  - "ops-plan-decision（#1829 / `2026-08-03-batch-genre-map-campaign-ops-plan`）の枠（上限・停止条件）を前提。Human採択済み（decided）。AI live禁止"
   - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
+  - "Task Issue: #1833 / Branch chore/task-1833-runner-design-or-impl"
