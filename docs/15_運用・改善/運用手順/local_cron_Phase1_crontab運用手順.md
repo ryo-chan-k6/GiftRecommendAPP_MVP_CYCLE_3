@@ -35,6 +35,7 @@ secret・token・APIキー・egress IP・接続文字列の実値は記載しな
 | BATCH-018 / 019 | 自動運用対象外 |
 | GHA `on.schedule` 有効化（#1792） | 先送り |
 | #1607 / GHA 楽天 live | 先送り・禁止維持 |
+| ジャンル地図キャンペーン（#1827） | **本手順・crontabは変更しない**。枠は [ジャンル地図キャンペーン運用枠 Decision Log](../../../ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md) / [楽天Fetch運用方針](./楽天Fetch運用方針.md) §11.5。実行は葉 BATCH-001 CLI（または専用ラッパ）のみ |
 
 ---
 
@@ -48,6 +49,7 @@ secret・token・APIキー・egress IP・接続文字列の実値は記載しな
 | 明示 live | cron 行には `--live-rakuten` を明示する（暗黙 live 禁止） |
 | 実行場所 | 登録済み egress の **local / WSL のみ**。GHA からの楽天 live は禁止 |
 | secret | `.env` 等から読み込む。値をログ・docs・Issue・PR に出さない |
+| ジャンル地図キャンペーン | daily/weekly 親と**混在・同時 live しない**。地図化に weekly親全体を使わない（#1827） |
 
 排他（flock）の詳細は [local薄いオーケストレータ設計・運用手順](./local薄いオーケストレータ設計・運用手順.md) §5。
 
