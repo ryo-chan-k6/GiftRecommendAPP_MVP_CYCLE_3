@@ -6,7 +6,7 @@ review:
   title: "batch-fetch-plan-expand:第1波段階収集 Task PRレビュー"
   summary: "第1波段階収集（Human live）と結果docs同期 Task PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -16,7 +16,7 @@ branch:
 target:
   pr: null
   issue:
-    number: null
+    number: 1847
   task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/staged-collect-wave1.yaml"
   target_branch: "chore/epic-1843-batch-fetch-plan-expand"
   parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
@@ -50,4 +50,4 @@ review_points:
   - "先行 fetch-plan-apply 未完了のまま本線化していないか"
 
 notes:
-  - "親Epic #1843。Task番号は /start-task 後に反映。Human Reviewは省略しない"
+  - "親Epic #1843 / Task Issue #1847 / Branch chore/task-1847-staged-collect-wave1。Depends on #1846。Human Reviewは省略しない"

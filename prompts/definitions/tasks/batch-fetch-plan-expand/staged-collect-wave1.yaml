@@ -16,6 +16,7 @@ parent:
   epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
   related_issues:
     - 1844
+    - 1846
     - 1827
     - 1811
     - 1818
@@ -117,7 +118,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "staged-collect-wave1"
-  name: "chore/task-PENDING-staged-collect-wave1"
+  name: "chore/task-1847-staged-collect-wave1"
   base: "chore/epic-1843-batch-fetch-plan-expand"
   target: "chore/epic-1843-batch-fetch-plan-expand"
   worktree_required: true
@@ -213,4 +214,4 @@ notes:
   - "着手ゲート: fetch-plan-apply Task 完了（または手順正本がEpic Branchに存在）"
   - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
   - "crontab反映は #1811 別Task・Human承認（本Task外）"
-  - "Task Issue番号 / Branch名は /start-task 後に本ファイルへ反映"
+  - "Task Issue #1847 / Branch chore/task-1847-staged-collect-wave1"
