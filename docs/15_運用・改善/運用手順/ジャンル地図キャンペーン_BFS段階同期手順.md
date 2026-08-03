@@ -11,8 +11,8 @@
 | ラッパ | `scripts/batch/genre_map_campaign_runner.sh` |
 | MVP fetch_plan | `100000` / `100003` / `100004` / `100005`（**置き換えない**） |
 
-本手順は **ジャンル地図把握の別枠キャンペーン**専用である。  
-`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh` 全体は使わない。定常crontab（#1811 / #1818）は変更しない。  
+本手順は **ジャンル地図把握の別枠キャンペーン**専用である。
+`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh` 全体は使わない。定常crontab（#1811 / #1818）は変更しない。
 AI Agent は `--live-rakuten` を実行しない。live は Human のみ。
 
 secret・token・APIキー・接続文字列・`.env` 実値は docs / Issue / PR / ログに含めない。
@@ -138,7 +138,7 @@ cd apps/batch && RAKUTEN_MAX_QPS=1 uv run python -m batch.application.genre_sync
 | `SLACK_BOT_TOKEN` | Slack API token（値をログに出さない） |
 | `SLACK_CAMPAIGN_CHANNEL` または `SLACK_OPS_CHANNEL` | 投稿先 channel ID |
 
-未設定時は通知を skip し、要約のみログする（失敗でキャンペーンを落とさない）。  
+未設定時は通知を skip し、要約のみログする（失敗でキャンペーンを落とさない）。
 実装は既存 `.github/scripts/slack-notify.cjs` の `postSlackMessage` を再利用する。
 
 ---

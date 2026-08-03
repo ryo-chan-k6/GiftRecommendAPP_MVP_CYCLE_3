@@ -27,7 +27,7 @@ Batch 手動実行・dry-run・再実行補助、および local 薄いオーケ
 | `output-local-orchestrator/` | 親シェルログ＋flock（`locks/` 配下。`scripts/batch/output-*/` で gitignored） |
 | `output-genre-map-campaign/` | ジャンル地図キャンペーン状態・ログ（gitignored） |
 
-ジャンル地図キャンペーン（#1827 / #1833）の手順正本: [ジャンル地図キャンペーン_BFS段階同期手順](../../docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_BFS段階同期手順.md)。  
+ジャンル地図キャンペーン（#1827 / #1833）の手順正本: [ジャンル地図キャンペーン_BFS段階同期手順](../../docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_BFS段階同期手順.md)。
 AI は `--dry-run` のみ。`--live-rakuten` は Human 専用（`--i-am-human` 必須）。weekly/daily 親シェルは呼ばない。
 
 ### 起動例
