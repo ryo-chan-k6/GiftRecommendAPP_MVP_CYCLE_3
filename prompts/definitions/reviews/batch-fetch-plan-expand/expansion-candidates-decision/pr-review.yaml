@@ -14,10 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1845
   issue:
     number: 1844
   task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/expansion-candidates-decision.yaml"
+  source_branch: "chore/task-1844-expansion-candidates-decision"
   target_branch: "chore/epic-1843-batch-fetch-plan-expand"
   parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
   parent_epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
