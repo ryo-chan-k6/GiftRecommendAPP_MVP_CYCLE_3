@@ -241,10 +241,13 @@ while [[ "${run_i}" -lt "${GMC_MAX_RUNS_THIS_INVOCATION}" ]]; do
   fi
 
   # ---- Human live path ----
-  chunk="$(gmc_take_chunk "${GMC_MAX_GENRE_IDS_PER_RUN}")"
+  # キュー消費は葉成功後のみ（失敗時に genre-ids が消失しないよう peek で実行し、成功後に take）。
+  chunk="${peek}"
   export RAKUTEN_MAX_QPS="${GMC_CAMPAIGN_MAX_QPS}"
   gmc_log INFO "starting leaf BATCH-001 live (qps=${GMC_CAMPAIGN_MAX_QPS}) genre-ids=${chunk}"
 
+  # set -e 下でも葉の非0を捕捉し、Slack / 明示停止へ到達させる。
+  leaf_rc=0
   (
     cd "${GMC_REPO_ROOT}/apps/batch"
     # shellcheck disable=SC2086
@@ -252,15 +255,19 @@ while [[ "${run_i}" -lt "${GMC_MAX_RUNS_THIS_INVOCATION}" ]]; do
       --job-run-id "${job_run_id}" \
       --genre-ids "${chunk}" \
       --live-rakuten
-  )
-  leaf_rc=$?
+  ) || leaf_rc=$?
   if [[ "${leaf_rc}" -ne 0 ]]; then
-    gmc_log ERROR "leaf BATCH-001 failed rc=${leaf_rc} — stopping campaign loop"
+    gmc_log ERROR "leaf BATCH-001 failed rc=${leaf_rc} — stopping campaign loop (queue unchanged; chunk not consumed)"
     gmc_slack_notify "error" "genre-map-campaign leaf failure" \
-      "BATCH-001 leaf failed (rc=${leaf_rc}). Campaign loop stopped. Check 429/paused." 0
+      "BATCH-001 leaf failed (rc=${leaf_rc}). Campaign loop stopped. Queue preserved for resume. Check 429/paused." 0
     exit "${leaf_rc}"
   fi
 
+  # 成功時のみキューからチャンクを確定消費し、expanded / discover へ進む。
+  consumed="$(gmc_take_chunk "${GMC_MAX_GENRE_IDS_PER_RUN}")"
+  if [[ "${consumed}" != "${chunk}" ]]; then
+    gmc_die "internal error: post-success take_chunk mismatch (expected=${chunk} got=${consumed})"
+  fi
   gmc_mark_expanded "${chunk}"
   if [[ "${GMC_SKIP_DB_DISCOVER}" != "1" ]]; then
     gmc_discover_children_from_db
