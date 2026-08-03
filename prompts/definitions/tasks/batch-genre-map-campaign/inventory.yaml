@@ -94,7 +94,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "inventory"
-  name: "chore/task-PENDING-inventory"
+  name: "chore/task-1831-inventory"
   base: "chore/epic-1827-batch-genre-map-campaign"
   target: "chore/epic-1827-batch-genre-map-campaign"
   worktree_required: true
@@ -173,3 +173,5 @@ operation_logging:
 notes:
   - "ops-plan-decision と並列可だが、枠決定前の大規模 live は禁止"
   - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
+  - "Task Issue: #1831 / Branch chore/task-1831-inventory"
+  - "正本結果docs: docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_external_genre棚卸し.md"
