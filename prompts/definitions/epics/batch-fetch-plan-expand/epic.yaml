@@ -80,6 +80,10 @@ epic_scope:
     - "apps/batch/src/batch/application/item_active_status/**"
     - "apps/batch/tests/unit/application/test_item_active_status.py"
     - "apps/batch/tests/unit/application/test_item_active_status_retention.py"
+    # 第1波 staging→item 反映ブロッカー（#1853 / BATCH-006）。diff_status live 同期
+    - "apps/batch/src/batch/application/product_diff/**"
+    - "apps/batch/tests/unit/application/test_product_diff.py"
+    - "docs/06_実装設計/batch/BATCH-006_*"
   forbidden_paths:
     - "packages/contracts/**"
     - "apps/web/**"

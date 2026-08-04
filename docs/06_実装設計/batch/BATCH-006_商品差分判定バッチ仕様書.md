@@ -243,6 +243,7 @@ Item 突合は **`staging_item.source` + `staging_item.external_item_code`** を
 | 正本 | **`product_diff_result.diff_status`**（#526 No.2 **確定**） |
 | Staging | BATCH-005 直後は NULL。BATCH-006 で **任意 UPDATE**（#517 No.4 **確定**） |
 | 実装既定（MVP） | persist 成功後に **常に** 同一値で UPDATE する（§18.1 No.10）。無効化は config 可 |
+| live 書込 | `DbWriter.update_rows` で `staging_item` を行指定 UPDATE する（scaffold / postgres 共通。#1853） |
 
 ---
 
@@ -399,6 +400,7 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 | ---- | -------- | -------------- |
 | 2026-07-16 | 初版作成 | Epic #1341 / Task #1342 |
 | 2026-07-16 | §18.1 No.7〜10 を Human 確定（旧 §18.2 No.1〜4 推奨案を MVP 初期採用）。§18.2 を解消 | Epic #1341 / Task #1342 |
+| 2026-08-05 | §9.4: live postgres でも `update_rows` で `staging_item.diff_status` 同期する旨を明記 | #1853 |
 
 ---
 

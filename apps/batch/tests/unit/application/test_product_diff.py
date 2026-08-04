@@ -309,7 +309,24 @@ def test_staging_diff_status_sync_on_by_default() -> None:
     assert result.status == "succeeded"
     assert result.staging_diff_status_sync_count == 1
     assert repos.staging_items["si_1"]["diff_status"] == "new"
-    assert any(c["table"] == "staging_item" for c in db.write_calls)
+    sync_updates = [c for c in db.update_calls if c["table"] == "staging_item"]
+    assert len(sync_updates) == 1
+    assert sync_updates[0]["set_values"]["diff_status"] == "new"
+    assert sync_updates[0]["equals"] == (("staging_item_id", "si_1"),)
+    assert not any(c["table"] == "staging_item" for c in db.write_calls)
+
+
+def test_staging_diff_status_sync_uses_update_rows_not_write_rows() -> None:
+    """live postgres 相当: sync は update_rows（INSERT の write_rows ではない）。"""
+
+    repos, db = _repos(staging=[_staging(diff_status=None)], items=[])
+    job = ProductDiffJob(repositories=repos)
+
+    result = job.run(job_run_id="run-sync-update")
+
+    assert result.status == "succeeded"
+    assert any(c["table"] == "staging_item" for c in db.update_calls)
+    assert not any(c["table"] == "staging_item" for c in db.write_calls)
 
 
 def test_staging_diff_status_sync_can_be_disabled() -> None:
@@ -323,6 +340,7 @@ def test_staging_diff_status_sync_can_be_disabled() -> None:
     assert repos.staging_items["si_1"]["diff_status"] is None
     assert ("run-nosync", "shop:gift-1") in repos.product_diff_results
     assert not any(c["table"] == "staging_item" for c in db.write_calls)
+    assert not any(c["table"] == "staging_item" for c in db.update_calls)
 
 
 def test_null_hash_fails_compare_and_is_excluded_from_plan() -> None:
@@ -429,6 +447,7 @@ def test_product_diff_result_is_canonical_when_staging_sync_off() -> None:
     # sync OFF のため Staging は未更新のまま
     assert repos.staging_items["si_1"]["diff_status"] is None
     assert not any(c["table"] == "staging_item" for c in db.write_calls)
+    assert not any(c["table"] == "staging_item" for c in db.update_calls)
 
     # Staging だけ別値に書き換えても、正本は product_diff_result
     repos.staging_items["si_1"]["diff_status"] = "updated"
