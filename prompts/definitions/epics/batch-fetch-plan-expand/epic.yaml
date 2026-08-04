@@ -80,6 +80,9 @@ epic_scope:
     - "apps/batch/src/batch/application/item_active_status/**"
     - "apps/batch/tests/unit/application/test_item_active_status.py"
     - "apps/batch/tests/unit/application/test_item_active_status_retention.py"
+    # 第1波運用ブロッカー解消（#1851 / BATCH-005 image_url 重複 upsert）
+    - "apps/batch/src/batch/application/raw_staging/**"
+    - "apps/batch/tests/unit/application/test_raw_staging.py"
     # 第1波 staging→item 反映ブロッカー（#1853 / BATCH-006）。diff_status live 同期
     - "apps/batch/src/batch/application/product_diff/**"
     - "apps/batch/tests/unit/application/test_product_diff.py"
