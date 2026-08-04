@@ -76,6 +76,10 @@ epic_scope:
     - "docs/05_アプリケーション設計/アプリ/batch/**"
     - "docs/06_実装設計/batch/BATCH-002_*"
     - "docs/06_実装設計/batch/BATCH-003_*"
+    # 第1波運用ブロッカー解消（#1849 / BATCH-008）。#1835 と同型の最小追加
+    - "apps/batch/src/batch/application/item_active_status/**"
+    - "apps/batch/tests/unit/application/test_item_active_status.py"
+    - "apps/batch/tests/unit/application/test_item_active_status_retention.py"
   forbidden_paths:
     - "packages/contracts/**"
     - "apps/web/**"
