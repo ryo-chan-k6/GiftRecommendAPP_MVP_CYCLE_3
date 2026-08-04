@@ -83,6 +83,10 @@ epic_scope:
     # 第1波運用ブロッカー解消（#1851 / BATCH-005 image_url 重複 upsert）
     - "apps/batch/src/batch/application/raw_staging/**"
     - "apps/batch/tests/unit/application/test_raw_staging.py"
+    # 第1波 staging→item 反映ブロッカー（#1853 / BATCH-006）。diff_status live 同期
+    - "apps/batch/src/batch/application/product_diff/**"
+    - "apps/batch/tests/unit/application/test_product_diff.py"
+    - "docs/06_実装設計/batch/BATCH-006_*"
   forbidden_paths:
     - "packages/contracts/**"
     - "apps/web/**"

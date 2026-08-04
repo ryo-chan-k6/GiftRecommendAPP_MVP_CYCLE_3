@@ -387,24 +387,23 @@ class ProductDiffRepositories:
         staging_item_id: str,
         diff_status: str,
     ) -> None:
+        """Persist optional staging_item.diff_status sync (spec §9.4 / §18.1 No.10).
+
+        正本は product_diff_result。Staging は選定補助（diff_status IS NULL）のため、
+        live postgres でも update_rows で同一値を書く（scaffold 限定だった実装を解消）。
+        """
+
         row = self.staging_items.get(staging_item_id)
         if row is None:
             return
         now = datetime.now(UTC)
         row["diff_status"] = diff_status
         row["updated_at"] = now
-        # staging_item 部分更新の本番 SQL は後続スライス。Scaffold では書込プローブのみ。
-        if self.db_writer.backend == "scaffold":
-            self.db_writer.write_rows(
-                "staging_item",
-                (
-                    {
-                        "staging_item_id": staging_item_id,
-                        "diff_status": diff_status,
-                        "updated_at": now,
-                    },
-                ),
-            )
+        self.db_writer.update_rows(
+            "staging_item",
+            set_values={"diff_status": diff_status, "updated_at": now},
+            equals=(("staging_item_id", staging_item_id),),
+        )
 
     def record_error(
         self,
