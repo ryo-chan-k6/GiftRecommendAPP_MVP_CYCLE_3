@@ -363,6 +363,47 @@ def test_image_sync_delete_on_rerun() -> None:
     )
 
 
+def test_duplicate_image_url_across_medium_and_small_is_deduped() -> None:
+    """同一 URL が medium/small 両方にあっても UNIQUE 1 行に正規化し upsert 成功する."""
+
+    shared = "https://img.example/shared.jpg"
+    payload = _item_search_payload(code="shop:dup-img")
+    item = payload["Items"][0]["Item"]  # type: ignore[index]
+    assert isinstance(item, dict)
+    item["mediumImageUrls"] = [
+        {"imageUrl": shared},
+        {"imageUrl": "https://img.example/m2.jpg"},
+        {"imageUrl": shared},  # within-array duplicate
+    ]
+    item["smallImageUrls"] = [
+        {"imageUrl": shared},  # cross-size duplicate → medium 優先で除外
+        {"imageUrl": "https://img.example/s2.jpg"},
+    ]
+    repos, _, db = _seed_repos(payloads={"rm_dup_img": payload})
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(job_run_id="job-dup-img", max_raw=1)
+
+    assert result.status == "succeeded"
+    urls = sorted({k[2] for k in repos.staging_item_images})
+    assert urls == [
+        "https://img.example/m2.jpg",
+        "https://img.example/s2.jpg",
+        shared,
+    ]
+    shared_row = next(
+        r for r in repos.staging_item_images.values() if r["image_url"] == shared
+    )
+    assert shared_row["image_size_type"] == "medium"
+    assert shared_row["is_primary_candidate"] is True
+    image_upsert = next(c for c in db.upsert_calls if c["table"] == "staging_item_image")
+    conflict_keys = [
+        (row["raw_metadata_id"], row["external_item_code"], row["image_url"])
+        for row in image_upsert["rows"]
+    ]
+    assert len(conflict_keys) == len(set(conflict_keys))
+
+
 def test_physical_column_mapping_excludes_affiliate_shop_name_source_api() -> None:
     """§16 No.2: price / external_genre_id あり。affiliate / shop_name / source_api 列なし。"""
 

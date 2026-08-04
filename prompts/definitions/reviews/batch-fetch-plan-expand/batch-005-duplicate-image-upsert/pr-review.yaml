@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-fetch-plan-expand-batch-005-duplicate-image-upsert"
+  title: "batch-fetch-plan-expand:BATCH-005同一image_url重複upsert修正 Task PRレビュー"
+  summary: "BATCH-005 raw_staging の同一 image_url 正規化（medium優先）と防御的 dedupe の修正 PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1851
+  task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/batch-005-duplicate-image-upsert.yaml"
+  source_branch: "fix/task-1851-batch-005-duplicate-image-upsert"
+  target_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  parent_epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "medium 優先の 1URL=1行正規化がテーブル定義書と一致するか"
+  - "防御的 dedupe が既存 sync-delete を壊していないか"
+  - "親Epic allowed_paths 拡張が最小か"
+  - "AI live / crontab / 親シェル変更が混入していないか"
+  - "secret実値がないか"
+  - "unit test が重複 URL ケースをカバーしているか"
+
+notes:
+  - "親Epic #1843。Task Issue #1851。Human Reviewは省略しない"
+  - "UNIQUE への image_size_type 追加は out of scope（別 Human 判断）"
