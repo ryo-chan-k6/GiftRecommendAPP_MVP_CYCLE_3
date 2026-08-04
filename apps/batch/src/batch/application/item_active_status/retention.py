@@ -120,9 +120,10 @@ class RetentionCleanupJob:
                     deleted_ids.append(row.candidate_id)
                 else:
                     # detected ガード等
-                    error_codes.append("GRS-DB-003")
+                    # DDL ^GRS-[A-Z]{3}-[0-9]{3}$ 準拠（GRS-DB-* は2文字で error_log 不可）
+                    error_codes.append("GRS-BAT-001")
                     self._repos.record_error(
-                        code="GRS-DB-003",
+                        code="GRS-BAT-001",
                         summary="retention delete rejected",
                         item_code=row.external_item_code,
                     )

@@ -129,6 +129,12 @@ class ItemActiveStatusJob:
             result.completed_phases.append("read_candidate")
             self._repos.record_phase(phase="read_candidate", status="succeeded")
 
+            # §9.2: new/updated/unchanged は制限提案なし。処理キーは
+            # candidates ∪ proposal 付き Diff（主に unavailable）に限定する。
+            # 全 Diff をキー化すると、BATCH-007 未反映の new 行で item 未解決になり
+            # 観測書き込み失敗まで連鎖しうる（運用で確認済み）。
+            actionable_diffs = [d for d in diffs if diff_to_proposal(d) is not None]
+
             if plan.max_items is not None:
                 # Item キー単位で上限
                 keys: list[tuple[str, str]] = []
@@ -138,21 +144,23 @@ class ItemActiveStatusJob:
                     if key not in seen:
                         seen.add(key)
                         keys.append(key)
-                for row in diffs:
+                for row in actionable_diffs:
                     key = (row.source, row.external_item_code)
                     if key not in seen:
                         seen.add(key)
                         keys.append(key)
                 allowed = set(keys[: plan.max_items])
                 candidates = [c for c in candidates if (c.source, c.external_item_code) in allowed]
-                diffs = [d for d in diffs if (d.source, d.external_item_code) in allowed]
+                actionable_diffs = [
+                    d for d in actionable_diffs if (d.source, d.external_item_code) in allowed
+                ]
 
             by_item_candidates: dict[tuple[str, str], list[CandidateRow]] = defaultdict(list)
             for row in candidates:
                 by_item_candidates[(row.source, row.external_item_code)].append(row)
 
             by_item_diffs: dict[tuple[str, str], list[DiffSuggestion]] = defaultdict(list)
-            for row in diffs:
+            for row in actionable_diffs:
                 by_item_diffs[(row.source, row.external_item_code)].append(row)
 
             item_keys = sorted(set(by_item_candidates) | set(by_item_diffs))
@@ -161,6 +169,7 @@ class ItemActiveStatusJob:
                 item_count=len(item_keys),
                 candidate_count=len(candidates),
                 diff_count=len(diffs),
+                actionable_diff_count=len(actionable_diffs),
             )
 
             decisions = []
@@ -173,9 +182,10 @@ class ItemActiveStatusJob:
                         self._repos.mark_candidate_discarded(cand.candidate_id)
                         result.candidate_discarded_count += 1
                     result.failed_item_codes.append(code)
-                    result.error_codes.append("GRS-DB-001")
+                    # DDL ^GRS-[A-Z]{3}-[0-9]{3}$ 準拠（GRS-DB-* は2文字で error_log 不可）
+                    result.error_codes.append("GRS-ITM-001")
                     self._repos.record_error(
-                        code="GRS-DB-001",
+                        code="GRS-ITM-001",
                         summary="item not found for active_status apply",
                         item_code=code,
                     )
@@ -215,9 +225,10 @@ class ItemActiveStatusJob:
                         )
                         if not ok:
                             result.failed_item_codes.append(code)
-                            result.error_codes.append("GRS-DB-002")
+                            # DDL 準拠。Item 反映失敗は GRS-BAT-005（定義書）
+                            result.error_codes.append("GRS-BAT-005")
                             self._repos.record_error(
-                                code="GRS-DB-002",
+                                code="GRS-BAT-005",
                                 summary="item active_status update failed",
                                 item_code=code,
                             )
