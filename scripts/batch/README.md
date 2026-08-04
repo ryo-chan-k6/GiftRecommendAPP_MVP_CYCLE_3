@@ -83,18 +83,29 @@ set -a && source .env && set +a
   --pages-per-run=60 --max-qps 1
 ```
 
-第1波拡大（案B・Human・`--genre-ids` 常に1本。詳細は [手動実行手順](../../docs/15_運用・改善/運用手順/fetch_plan拡大_第1波_1ジャンル手動実行手順.md)）:
+第1波拡大（案B・Human・Item と Ranking は **別 Run**。詳細は [手動実行手順](../../docs/15_運用・改善/運用手順/fetch_plan拡大_第1波_1ジャンル手動実行手順.md)）:
 
 ```bash
-# dry-run（AI可）
+# Item Run dry-run（AI可。Ranking 段なし）
 ./scripts/batch/local_daily_orchestrator.sh --dry-run \
-  --genre-ids 101381 --ranking-genre-ids 100005 \
+  --from-step item_pseudo_diff \
+  --genre-ids 101381 \
   --pages-per-run=1 --max-qps 1
 
-# smoke live（Humanのみ。案Bを複数並べない。定常crontabは変更しない）
+# Item smoke（Humanのみ）
 ./scripts/batch/local_daily_orchestrator.sh --live-rakuten \
-  --genre-ids 101381 --ranking-genre-ids 100005 \
+  --from-step item_pseudo_diff \
+  --genre-ids 101381 \
   --pages-per-run=1 --max-qps 1
+
+# Ranking Run（Humanのみ・別タイミング。親 daily の002→003連続は使わない）
+cd apps/batch
+uv run python -m batch.application.ranking_snapshot \
+  --job-run-id "$(uuidgen)" \
+  --genre-ids 101381 \
+  --max-pages 1 \
+  --live-rakuten \
+  --live-object-storage
 ```
 
 葉 Batch の `--job-run-id` は段ごとに UUID を発行する（`pipeline_batch_run_id` を複数葉の `batch_run_log` PK に共用しない）。業務紐付けは `--diff-batch-run-id` / `--batch-run-id` 等で pipeline ID を渡す。

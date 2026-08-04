@@ -465,8 +465,8 @@ secret漏えいの可能性がある場合は再実行せず、security incident
   - 親シェル（`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh`）の無断変更は含めない
 - **採択内容（正本は Decision Log）:**
   - 第1波承認スコープ（案B・6ID）: `101381` / `551167` / `510901` / `216129` / `558944` / `100939`
-  - BATCH-003（商品Item）優先。BATCH-002 は 003 smoke 後に新IDを `max_pages=1` で必要最小
-  - **実行は承認スコープと分離**: `--genre-ids` は常に **1本**。次ジャンル切替は容量・429・Run失敗を見た Human 判断（Phase1 1本ローテと整合）
+  - BATCH-003（商品Item）優先。BATCH-002 は 003 smoke 後の **別 Run** で案B各ジャンルを `max_pages=1` で収集（同一親 Run で Item+Ranking しない。手順: [手動実行手順](./fetch_plan拡大_第1波_1ジャンル手動実行手順.md)）
+  - **実行は承認スコープと分離**: ジャンルは常に **1本**。Item Run と Ranking Run のタイミングも分離。次ジャンル切替は容量・429・Run失敗を見た Human 判断（Phase1 1本ローテと整合）
   - Run予算ノブ（§5.3.4）・監視閾値（§5.3.5）・QPS・同時live1本は変更しない。総量増は Run回数・ジャンル切替ペースで吸収
 - **後続:** 段階収集（`staged-collect-wave1` / #1847）は本節＋手動実行手順の正本化後に着手。拡大 live は Human。本節は crontab を変更しない
 

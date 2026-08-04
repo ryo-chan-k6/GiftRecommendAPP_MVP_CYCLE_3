@@ -329,7 +329,7 @@ CLI 慣例（実装で確定してよい）:
 | `--from-step=<name>` | 再開時の開始段（任意） |
 | `--pipeline-batch-run-id=<uuid>` | 既存 ID の継続（省略時は新規） |
 | `--genre-ids` | BATCH-003（および weekly BATCH-001）向け。段階3で拡大する側（既定 `100005`）。**第1波拡大（案B）でも常に1本**（[手動実行手順](./fetch_plan拡大_第1波_1ジャンル手動実行手順.md)） |
-| `--ranking-genre-ids` | BATCH-002 Ranking 向け（既定 `100005`。#1765: Ranking 非対応ジャンルと分離） |
+| `--ranking-genre-ids` | BATCH-002 Ranking 向け（既定 `100005`。#1765: Ranking 非対応ジャンルと分離）。第1波拡大の Ranking は親連続起動ではなく **別 Run（葉）** |
 | `MAX_ITEMS` | 005〜008 件数上限（GHA `max_items` 相当） |
 | Run 予算ノブ | BATCH-003 は運用枠・§5.3.4（段階1は初期 live 相当）。新ID初回は smoke `pages_per_run=1` 推奨 |
 
@@ -341,7 +341,9 @@ CLI 慣例（実装で確定してよい）:
 | ---- | ---- |
 | Decision | [拡大候補 Log](../../../ai-logs/human-decisions/2026-08-04-batch-fetch-plan-expansion-candidates.md)（`decided`・案B） |
 | 手順正本 | [fetch_plan拡大_第1波_1ジャンル手動実行手順](./fetch_plan拡大_第1波_1ジャンル手動実行手順.md) |
-| 親シェル | **無断変更しない**。既存 CLI の `--genre-ids` 1本指定で手動起動 |
+| Item Run | 親 daily を `--from-step item_pseudo_diff` で手動起動（Ranking 段を踏まない） |
+| Ranking Run | 葉 BATCH-002 を **別起動**。親 daily 先頭からの 002→003 連続は第1波拡大では使わない |
+| 親シェル | **無断変更しない** |
 | 定常crontab（#1811 / #1818） | **変更しない**。案Bを cron 行へ載せない（別Task・Human承認） |
 | AI `--live-rakuten` | **禁止**。dry-run のみ可 |
 
