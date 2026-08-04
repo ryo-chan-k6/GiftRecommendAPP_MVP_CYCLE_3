@@ -6,7 +6,7 @@ review:
   title: "batch-fetch-plan-expand:fetch_plan反映 Task PRレビュー"
   summary: "第1波 fetch_plan反映と1ジャンル実行手順 Task PR を AI Review する。"
   type: "task_pr_review"
-  status: "draft"
+  status: "ready"
 
 work_mode: "ai-agent"
 
@@ -14,10 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1848
   issue:
-    number: null
+    number: 1846
   task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/fetch-plan-apply.yaml"
+  source_branch: "chore/task-1846-fetch-plan-apply"
   target_branch: "chore/epic-1843-batch-fetch-plan-expand"
   parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
   parent_epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
@@ -49,4 +50,4 @@ review_points:
   - "後続 staged-collect の着手ゲートが曖昧でないか"
 
 notes:
-  - "親Epic #1843。Task番号は /start-task 後に反映。Human Reviewは省略しない"
+  - "親Epic #1843 / Task Issue #1846 / Branch chore/task-1846-fetch-plan-apply。Human Reviewは省略しない"

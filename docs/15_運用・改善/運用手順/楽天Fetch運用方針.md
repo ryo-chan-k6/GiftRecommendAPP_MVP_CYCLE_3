@@ -454,19 +454,21 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 - **途中時点の Human live 結果:** [ジャンル地図キャンペーン_live実行結果_途中](./ジャンル地図キャンペーン_live実行結果_途中.md)（#1839。履歴）
 - **完了（全階層取り切り）:** [ジャンル地図キャンペーン_live実行結果_完了](./ジャンル地図キャンペーン_live実行結果_完了.md)（#1841。`external_genre` **16,537** / queue=0 / level0–5）
 
-### 11.6 batch-fetch-plan-expand（#1843 / #1844）
+### 11.6 batch-fetch-plan-expand（#1843 / #1844 / #1846）
 
 - [BATCH-002/003 拡大候補 Decision Log](../../../ai-logs/human-decisions/2026-08-04-batch-fetch-plan-expansion-candidates.md) が着手ゲート（#1844）。状態は **`decided`**（Human採択 2026-08-04）
 - 前提: ジャンル地図完了（§11.5）。地図は拡大情報源。**MVP 4IDは置き換えない（追加のみ）**
+- **手動実行手順正本:** [fetch_plan拡大_第1波_1ジャンル手動実行手順](./fetch_plan拡大_第1波_1ジャンル手動実行手順.md)（#1846）。Human が最初の1ID（推奨 `101381`）を起動する CLI・smoke・切替ゲートを記載
 - **境界:**
   - BATCH-003 genre ルートは **明示指定 ID のみ**（子・孫自動展開なし）
   - keyword 本格常用化・AI `--live-rakuten`・定常crontab変更（#1811 / #1818）・GHA楽天live / #1607 / schedule 有効化は含めない
+  - 親シェル（`local_daily_orchestrator.sh` / `local_weekly_orchestrator.sh`）の無断変更は含めない
 - **採択内容（正本は Decision Log）:**
   - 第1波承認スコープ（案B・6ID）: `101381` / `551167` / `510901` / `216129` / `558944` / `100939`
-  - BATCH-003（商品Item）優先。BATCH-002 は 003 smoke 後に新IDを `max_pages=1` で必要最小
-  - **実行は承認スコープと分離**: `--genre-ids` は常に **1本**。次ジャンル切替は容量・429・Run失敗を見た Human 判断（Phase1 1本ローテと整合）
+  - BATCH-003（商品Item）優先。BATCH-002 は 003 smoke 後の **別 Run** で案B各ジャンルを `max_pages=1` で収集（同一親 Run で Item+Ranking しない。手順: [手動実行手順](./fetch_plan拡大_第1波_1ジャンル手動実行手順.md)）
+  - **実行は承認スコープと分離**: ジャンルは常に **1本**。Item Run と Ranking Run のタイミングも分離。次ジャンル切替は容量・429・Run失敗を見た Human 判断（Phase1 1本ローテと整合）
   - Run予算ノブ（§5.3.4）・監視閾値（§5.3.5）・QPS・同時live1本は変更しない。総量増は Run回数・ジャンル切替ペースで吸収
-- **後続:** fetch_plan反映・段階収集を別Task化（着手可）。拡大 live は Human。本節は crontab を変更しない
+- **後続:** 段階収集（`staged-collect-wave1` / #1847）は本節＋手動実行手順の正本化後に着手。拡大 live は Human。本節は crontab を変更しない
 
 ---
 
@@ -488,7 +490,8 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | [ジャンル地図キャンペーン_live実行結果_途中](./ジャンル地図キャンペーン_live実行結果_途中.md) | §11.5。Human live 途中スナップショット（#1839・履歴） |
 | [ジャンル地図キャンペーン_live実行結果_完了](./ジャンル地図キャンペーン_live実行結果_完了.md) | §11.5。Human live 完了（#1841）。16,537件・queue空・level0–5 |
 | [BATCH-002/003 拡大候補 Human Decision Log](../../../ai-logs/human-decisions/2026-08-04-batch-fetch-plan-expansion-candidates.md) | §10 No.12 / §11.6。`decided`（案B・1ジャンル単位実行）。追加ID・第1波・003優先・明示指定境界 |
-| [local cron Phase1 crontab運用手順](./local_cron_Phase1_crontab運用手順.md) | 定常cron正本。ジャンル地図キャンペーンは変更・混在させない |
+| [fetch_plan拡大_第1波_1ジャンル手動実行手順](./fetch_plan拡大_第1波_1ジャンル手動実行手順.md) | §11.6。#1846。案B・1ジャンル CLI / smoke / 切替ゲート / staged-collect 着手条件 |
+| [local cron Phase1 crontab運用手順](./local_cron_Phase1_crontab運用手順.md) | 定常cron正本。ジャンル地図キャンペーン・第1波拡大の手動手順では変更・混在させない |
 | [バッチ外部API本実装ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ外部API本実装ギャップ一覧.md) | 外部API実装状態 |
 | [バッチ実行スケジュール設計書](../../05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md) | 親子workflow・concurrency |
 | [バッチ親workflow schedule有効化ギャップ一覧](../../05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md) | schedule無効・Human決定 |
@@ -530,3 +533,4 @@ secret漏えいの可能性がある場合は再実行せず、security incident
 | 2026-08-03 | #1841: §11.5 / §12 に Human live 完了結果docs（16,537件・queue空・level0–5）を接続 |
 | 2026-08-04 | #1844: §10 No.12 / §11.6 / §12 に BATCH-002/003 fetch_plan拡大候補（Human採択待ち・AI推奨第1波4ID）を接続 |
 | 2026-08-04 | #1844: 拡大候補を Human採択反映（`decided`・案B 6ID・実行は1ジャンル単位） |
+| 2026-08-04 | #1846: §11.6 / §12 に第1波1ジャンル手動実行手順を接続。staged-collect 着手ゲートを明示 |

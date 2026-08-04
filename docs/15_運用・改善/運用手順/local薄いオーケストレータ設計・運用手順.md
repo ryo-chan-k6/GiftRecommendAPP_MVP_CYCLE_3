@@ -328,12 +328,24 @@ CLI 慣例（実装で確定してよい）:
 | `--live-rakuten` | 楽天 HTTP live 明示 |
 | `--from-step=<name>` | 再開時の開始段（任意） |
 | `--pipeline-batch-run-id=<uuid>` | 既存 ID の継続（省略時は新規） |
-| `--genre-ids` | BATCH-003（および weekly BATCH-001）向け。段階3で拡大する側（既定 `100005`） |
-| `--ranking-genre-ids` | BATCH-002 Ranking 向け（既定 `100005`。#1765: Ranking 非対応ジャンルと分離） |
+| `--genre-ids` | BATCH-003（および weekly BATCH-001）向け。段階3で拡大する側（既定 `100005`）。**第1波拡大（案B）でも常に1本**（[手動実行手順](./fetch_plan拡大_第1波_1ジャンル手動実行手順.md)） |
+| `--ranking-genre-ids` | BATCH-002 Ranking 向け（既定 `100005`。#1765: Ranking 非対応ジャンルと分離）。第1波拡大の Ranking は親連続起動ではなく **別 Run（葉）** |
 | `MAX_ITEMS` | 005〜008 件数上限（GHA `max_items` 相当） |
-| Run 予算ノブ | BATCH-003 は運用枠・§5.3.4（段階1は初期 live 相当） |
+| Run 予算ノブ | BATCH-003 は運用枠・§5.3.4（段階1は初期 live 相当）。新ID初回は smoke `pages_per_run=1` 推奨 |
 
 シナリオ名・ファイル名の最終採否は Human 判断点（軽微な調整は実装前に可）。
+
+#### 9.1 第1波 fetch_plan 拡大（#1846）との接続
+
+| 項目 | 扱い |
+| ---- | ---- |
+| Decision | [拡大候補 Log](../../../ai-logs/human-decisions/2026-08-04-batch-fetch-plan-expansion-candidates.md)（`decided`・案B） |
+| 手順正本 | [fetch_plan拡大_第1波_1ジャンル手動実行手順](./fetch_plan拡大_第1波_1ジャンル手動実行手順.md) |
+| Item Run | 親 daily を `--from-step item_pseudo_diff` で手動起動（Ranking 段を踏まない） |
+| Ranking Run | 葉 BATCH-002 を **別起動**。親 daily 先頭からの 002→003 連続は第1波拡大では使わない |
+| 親シェル | **無断変更しない** |
+| 定常crontab（#1811 / #1818） | **変更しない**。案Bを cron 行へ載せない（別Task・Human承認） |
+| AI `--live-rakuten` | **禁止**。dry-run のみ可 |
 
 ---
 
@@ -346,6 +358,7 @@ CLI 慣例（実装で確定してよい）:
 | [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md) | crontab 運用手順正本（#1813） |
 | [本格収集運用枠 Decision](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md) | 段階・期間/Run 上限・停止 |
 | [楽天Fetch運用方針](./楽天Fetch運用方針.md) | QPS・egress・同時 live・監視 |
+| [fetch_plan拡大_第1波_1ジャンル手動実行手順](./fetch_plan拡大_第1波_1ジャンル手動実行手順.md) | #1846。案B・1ジャンル手動起動・切替ゲート（親シェル無断変更なし） |
 | [バッチ実行スケジュール設計書](../../05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md) | GHA 親子・needs・concurrency |
 | [BATCH import連鎖 GHA live化メモ C3](./BATCH_import連鎖_GHA_live化メモ_C3.md) | `pipeline_batch_run_id` |
 | [scripts/batch/README.md](../../../scripts/batch/README.md) | 既存ハーネス・配置 |
@@ -664,3 +677,4 @@ Phase1 §6 に加え:
 | 2026-08-01 | #1820。§11〜§15 を追加（Phase2: 009〜016 配線設計、GHA needs 対応、Phase1互換・観測非干渉、後続 Task 引き渡し）。変更履歴を §16 へ移動 |
 | 2026-08-02 | #1822。親シェルへ 009〜016 配線実装（`--run-meaning` opt-in）。§1 / §12.2 / §13.3 CLI / §15.1 を実装差分で最小同期 |
 | 2026-08-02 | #1824。Phase2 dry-run 双方モード検証を本記録化（[local_cron_Phase2_dry-run検証結果](./local_cron_Phase2_dry-run検証結果.md)）。§1 / §15.2 / §15.3 を最小同期 |
+| 2026-08-04 | #1846。§9 / §10 に第1波 fetch_plan 拡大（案B・1ジャンル手動実行手順）への接続を追加。親シェル・crontab 無断変更なし |

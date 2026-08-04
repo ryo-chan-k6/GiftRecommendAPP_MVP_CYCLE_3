@@ -123,7 +123,7 @@ acceptance_criteria:
 branch:
   no_branch: false
   summary: "fetch-plan-apply"
-  name: "chore/task-PENDING-fetch-plan-apply"
+  name: "chore/task-1846-fetch-plan-apply"
   base: "chore/epic-1843-batch-fetch-plan-expand"
   target: "chore/epic-1843-batch-fetch-plan-expand"
   worktree_required: true
@@ -215,4 +215,4 @@ notes:
   - "前提: Decision #1844 / PR #1845 decided"
   - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
   - "後続: staged-collect-wave1（本Task完了後）"
-  - "Task Issue番号 / Branch名は /start-task 後に本ファイルへ反映"
+  - "Task Issue #1846 / Branch chore/task-1846-fetch-plan-apply"
