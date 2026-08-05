@@ -401,6 +401,7 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 | 2026-07-16 | 初版作成 | Epic #1341 / Task #1342 |
 | 2026-07-16 | §18.1 No.7〜10 を Human 確定（旧 §18.2 No.1〜4 推奨案を MVP 初期採用）。§18.2 を解消 | Epic #1341 / Task #1342 |
 | 2026-08-05 | §9.4: live postgres でも `update_rows` で `staging_item.diff_status` 同期する旨を明記 | #1853 |
+| 2026-08-05 | §18.1 No.8: 選定スキャンを limit 拡張再読取する実装注記（#1855） | #1855 |
 
 ---
 
@@ -417,7 +418,7 @@ ON CONFLICT (batch_run_id, external_item_code) DO UPDATE SET
 | 5 | `source` 列 | **不採用**。突合は `staging_item.source` + `external_item_code` | Human（#526） | **確定** | §9.1 |
 | 6 | hash 算出タイミング | **BATCH-005 内で確定。BATCH-006 は比較のみ** | Human（#517 No.5） | **確定** | §2 / §9.3 |
 | 7 | 子 workflow 配置 | **独立 YAML `batch-rakuten-product-diff.yml`（`batch-rakuten-product-diff*.yml`）を正**とする。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Human | **確定**（2026-07-16・MVP 初期） | BATCH-005 同型。Epic `human_decision_points` / allowed_paths と整合。旧 §18.2 No.1 |
-| 8 | 処理対象 Staging 選定の既定 | **既定フィルタ:** (1) `normalized_hash IS NOT NULL` (2) `diff_status IS NULL`（未判定）を優先。再判定 force 時は NULL 以外も可 (3) 件数上限 `BATCH_PRODUCT_DIFF_MAX_ITEMS` (4) 任意で先行 Run / 明示 ID リスト。`source` 既定 `rakuten`。`import_status=staged` との Raw 経由結合は実装詳細でよい | Human | **確定**（2026-07-16・MVP 初期） | Epic / Task `human_decision_points`。旧 §18.2 No.2 |
+| 8 | 処理対象 Staging 選定の既定 | **既定フィルタ:** (1) `normalized_hash IS NOT NULL` (2) `diff_status IS NULL`（未判定）を優先。再判定 force 時は NULL 以外も可 (3) 件数上限 `BATCH_PRODUCT_DIFF_MAX_ITEMS` (4) 任意で先行 Run / 明示 ID リスト。`source` 既定 `rakuten`。`import_status=staged` との Raw 経由結合は実装詳細でよい。**実装注記（#1855）:** DbReader が equals/limit のみのため、先頭読取窓に未判定が無い場合は `limit` を拡張して再スキャンし、未判定が後ろにあっても拾う（ハード 5000 打ち切りはしない） | Human | **確定**（2026-07-16・MVP 初期） | Epic / Task `human_decision_points`。旧 §18.2 No.2 |
 | 9 | `unavailable` 判定条件の詳細 | 少なくとも (a) Staging 必須項目欠落の再検知 (b) `availability=0`（販売不可） (c) 取得不能相当の Staging フラグ／Validator 不合格引き継ぎ、を `unavailable` 候補とする。厳密な優先順位・BATCH-004 経路との分担の細部は BATCH-008 側で整合確認してよい | Human | **確定**（2026-07-16・MVP 初期） | 外部連携 §6.3。旧 §18.2 No.3 |
 | 10 | Staging `diff_status` 同期の実装既定 | persist 成功後に **常に** Staging へ同一値 UPDATE（任意の「採用」を MVP 既定 ON）。無効化フラグは config で持てる | Human | **確定**（2026-07-16・MVP 初期） | #517/#526 の「任意」に対する実装既定。§9.4。旧 §18.2 No.4 |
 
