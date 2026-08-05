@@ -246,9 +246,9 @@ uv run python -m batch.application.ranking_snapshot \
 | 2 | 本手順（fetch-plan-apply）が正本化され、Human が最初の1IDを起動できる CLI 例がある | **本docsで充足** |
 | 3 | 楽天Fetch運用方針 §11.6 が本手順へ接続されている | 本PRで同期 |
 | 4 | 定常crontab・親シェル無断変更・AI live・GHA楽天liveを含まない | 本Taskで維持 |
-| 5 | live 実行・結果docs同期 | **#1847 / Human**（本手順の範囲外） |
+| 5 | live 実行・結果docs同期 | **充足**（#1847 / [段階収集結果](./fetch_plan拡大_第1波_段階収集結果_1847.md)） |
 
-本手順の完了は **「起動できる状態」まで**。実際の `--live-rakuten` 起動判断・実行・結果記録は Human / 後続 Task。
+本手順の完了は **「起動できる状態」まで**。実際の `--live-rakuten` 起動・結果正本化は #1847（結果docs参照）。
 
 ---
 
@@ -264,6 +264,7 @@ uv run python -m batch.application.ranking_snapshot \
 | [BATCH-002仕様書](../../06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md) | Ranking |
 | [scripts/batch/README.md](../../../scripts/batch/README.md) | 起動例の入口 |
 | [ジャンル地図キャンペーン_live実行結果_完了](./ジャンル地図キャンペーン_live実行結果_完了.md) | 地図完了前提 |
+| [fetch_plan拡大_第1波_段階収集結果_1847](./fetch_plan拡大_第1波_段階収集結果_1847.md) | #1847。案B 6ID の Human live 結果 |
 
 ---
 
@@ -274,3 +275,4 @@ uv run python -m batch.application.ranking_snapshot \
 | 2026-08-04 | 初版（#1846）。案B 6ID・1ジャンル単位・003優先・smoke/切替ゲート・staged-collect 着手条件を正本化 |
 | 2026-08-04 | 案B各ジャンルで Ranking も収集する方針へ更新。003優先・Ranking 400 フォールバックを明記 |
 | 2026-08-04 | Item と Ranking を同一 Run 禁止・別起動（Item=daily `--from-step item_pseudo_diff` / Ranking=葉 BATCH-002）へ明示 |
+| 2026-08-05 | #1847 結果docsへリンク。着手ゲート No.5 を充足へ更新 |
