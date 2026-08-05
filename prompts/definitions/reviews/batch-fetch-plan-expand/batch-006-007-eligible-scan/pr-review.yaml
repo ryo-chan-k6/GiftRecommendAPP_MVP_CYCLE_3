@@ -1,0 +1,36 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-fetch-plan-expand-batch-006-007-eligible-scan"
+  title: "batch-fetch-plan-expand:BATCH-006/007選定スキャン上限解消 PR Review"
+  workstream_key: "batch-fetch-plan-expand"
+  related_task: "task-batch-fetch-plan-expand-batch-006-007-eligible-scan"
+  related_issue: 1855
+
+parent:
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  task_branch: "fix/task-1855-batch-006-007-eligible-scan"
+  pr_target: "chore/epic-1843-batch-fetch-plan-expand"
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+review_focus:
+  - "006/007 が先頭 PAGE 打ち切りで止まらないか"
+  - "007 の歴史的 new（item済み）スキップが妥当か"
+  - "unit が拡張スキャンを検証しているか"
+  - "allowed_paths / secret / live 混入"
+
+blocker_examples:
+  - "5000 ハードキャップが残っている"
+  - "updated/unchanged までスキップしている"
+  - "PR target が develop"
+
+acceptance_for_human_review:
+  - "Blocker / Must 解消"
+  - "pytest 通過が PR に記載"

@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-batch-008-active-status-error"
+  title: "batch-fetch-plan-expand:BATCH-008有効状態更新のerror_codeとDiff範囲修正"
+  summary: "第1波手動Item RunでBATCH-008がerror_log書込失敗により全体failedしたため、DDL準拠error_codeと提案なしDiffの処理キー除外で止血する。live再実行・crontab変更は含まない。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "fix"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1846
+    - 1844
+  related_prs:
+    - 1850
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  第1波1ジャンル手動 Item Run で BATCH-008 が failed。
+  error_log 書込時に `error_code must match GRS-XXX-NNN ... got 'GRS-DB-001'` となり resolve 前に Run 全体が失敗した。
+  原因は (1) GRS-DB-* が DDL（^GRS-[A-Z]{3}-[0-9]{3}$）非準拠 (2) 提案なし Diff（new 等）まで処理キーに含め、BATCH-007 未反映の item 未存在で失敗パスに入ること。
+  運用ブロッカー解消のため、親Epic allowed_paths に item_active_status 関連 path を最小追加する（#1835 と同型）。
+
+objective: |
+  BATCH-008 が運用 Run で観測書き込み失敗により全体 failed にならないようにし、
+  仕様 §9.2（提案なし Diff）と DDL 準拠エラーコードに実装を合わせる。
+
+scope:
+  - "item_active_status Applier: 処理キーを candidates ∪ 提案付き Diff に限定"
+  - "item 未解決 / update 失敗 / retention delete 拒否のエラーコードを DDL 準拠へ変更（GRS-ITM-001 / GRS-BAT-005 / GRS-BAT-001）"
+  - "関連 unit test の更新・回帰追加"
+  - "親Epic allowed_paths への item_active_status 関連 path 最小追加"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "エラー定義書全体の GRS-DB-* 見直し（Human判断・別Task）"
+  - "BATCH-007 の max_items / 適用順序変更"
+  - "live 再実行・fetch_plan 変更・crontab 変更"
+  - "BATCH-008 仕様書本文の全面改訂（必要なら別 docs Task）"
+  - "AIによる --live-rakuten 実行"
+  - "apps/web|api|reco / OpenAPI / generated"
+  - "secret実値の表示・変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-008_商品有効状態更新バッチ仕様書.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/item_active_status/job.py"
+      required: true
+    - path: "apps/batch/src/batch/application/item_active_status/retention.py"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_active_status.py"
+      required: true
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/item_active_status/job.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_active_status/retention.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_active_status.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/batch-008-active-status-error.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-fetch-plan-expand/batch-008-active-status-error/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "BATCH-008 Applier / retention の error_code と Diff 処理範囲修正"
+  - "unit test 更新"
+  - "親Epic allowed_paths 最小拡張"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "提案なし Diff のみ（item 未存在）で Run が succeeded になる"
+  - "item 未解決時は GRS-ITM-001、update 失敗は GRS-BAT-005 を記録する"
+  - "test_item_active_status*.py が通過する"
+  - "親Epic allowed_paths 拡張が item_active_status 関連に限定されている"
+  - "AI live / crontab / 親シェル変更がない"
+  - "secret実値がない"
+  - "PR target が親Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-008-active-status-error"
+  name: "fix/task-1849-batch-008-active-status-error"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-04"
+    due_date: "2026-08-06"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1843
+    - 1846
+  prs:
+    - 1850
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/item_active_status/job.py"
+    - "apps/batch/src/batch/application/item_active_status/retention.py"
+    - "apps/batch/tests/unit/application/test_item_active_status.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit: item_active_status"
+  commands:
+    - "cd apps/batch && uv run pytest tests/unit/application/test_item_active_status.py tests/unit/application/test_item_active_status_retention.py -q"
+  manual_checks:
+    - "AIが --live-rakuten を実行していない"
+    - "secret実値がない"
+  not_required:
+    - "live 再実行 E2E"
+  skip_reason:
+    "live 再実行 E2E": "merge 後の Human 運用確認。本Taskは実装止血"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "§9.2 に合わせた actionable Diff 限定が仕様意図と一致するか"
+    - "GRS-ITM-001 / GRS-BAT-005 / GRS-BAT-001 の割当が妥当か（定義書 GRS-DB-* とのギャップは別途 Human 判断）"
+    - "親Epic allowed_paths 拡張が最小か"
+    - "AI live / crontab / 親シェル変更が混入していないか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "親Epic allowed_paths への item_active_status 関連 path 最小追加の承認（#1835 同型）"
+  - "エラー定義書の GRS-DB-* 見直しを別Task化するか"
+  - "merge 後の live 008 再実行タイミング"
+
+stop_conditions:
+  - "エラー定義書全体の書き換えが本Task必須に見える場合"
+  - "BATCH-007 仕様変更が必須に見える場合"
+  - "AI liveが必須に見える場合"
+  - "secret実値が必要に見える場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "運用Run失敗のブロッカー解消。横断影響は BATCH-008 error_code / Diff キー範囲"
+
+notes:
+  - "発見経路: 第1波1ジャンル手動 Item Run での BATCH-008 failed"
+  - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
+  - "Task Issue: #1849 / Branch fix/task-1849-batch-008-active-status-error"
+  - "Review: prompts/definitions/reviews/batch-fetch-plan-expand/batch-008-active-status-error/pr-review.yaml"

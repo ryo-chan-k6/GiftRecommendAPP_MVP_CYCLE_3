@@ -1,0 +1,39 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-fetch-plan-expand-batch-006-staging-diff-sync"
+  title: "batch-fetch-plan-expand:BATCH-006 staging_item.diff_status postgres同期 PR Review"
+  workstream_key: "batch-fetch-plan-expand"
+  related_task: "task-batch-fetch-plan-expand-batch-006-staging-diff-sync"
+  related_issue: 1853
+
+parent:
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  task_branch: "fix/task-1853-batch-006-staging-diff-sync"
+  pr_target: "chore/epic-1843-batch-fetch-plan-expand"
+
+agent:
+  primary: "reviewer-ai"
+  support:
+    - "test-ai"
+    - "docs-reviewer-ai"
+
+review_focus:
+  - "sync_staging_diff_status が scaffold/postgres 共通で update_rows しているか"
+  - "update 対象が staging_item.diff_status / updated_at に限定されているか"
+  - "unit test が write_rows ではなく update_calls を検証しているか"
+  - "親Epic allowed_paths 拡張が最小か"
+  - "live / crontab / 親シェル変更が混入していないか"
+  - "secret実値がないか"
+
+blocker_examples:
+  - "postgres live でも sync が走らない（scaffold 限定が残っている）"
+  - "staging_item 以外・不要列を更新している"
+  - "PR target が develop / main"
+
+acceptance_for_human_review:
+  - "Blocker / Must が解消されている"
+  - "test_product_diff.py 通過が PR に記載されている"
+  - "Human 判断（バックフィル・再実行タイミング）が明示されている"

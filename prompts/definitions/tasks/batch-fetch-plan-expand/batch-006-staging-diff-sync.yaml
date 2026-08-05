@@ -1,0 +1,212 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-batch-006-staging-diff-sync"
+  title: "batch-fetch-plan-expand:BATCH-006 staging_item.diff_statusのpostgres同期修正"
+  summary: "BATCH-006 の staging_item.diff_status 同期が scaffold のみだったため、live postgres でも update_rows する。staging→item 反映の選定が進まない運用ブロッカーを解消する。live再実行・crontab変更は含まない。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "fix"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1846
+    - 1844
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  第1波 Item 収集後、staging distinct 約17k に対し item 約1k、product_diff 未判定約14k。
+  BATCH-006 仕様 §9.4 / §18.1 No.10 は persist 後に staging_item.diff_status を同一値 UPDATE（MVP 既定 ON）。
+  実装は db_writer.backend == "scaffold" のときだけ write_rows しており、postgres live では未同期。
+  選定条件（diff_status IS NULL）が同じ先頭行を繰り返し、未判定 staging へ進まない。
+
+objective: |
+  BATCH-006 が live postgres でも staging_item.diff_status を同期し、
+  未判定 staging の選定が進むようにする。
+
+scope:
+  - "ProductDiffRepositories.sync_staging_diff_status を update_rows（scaffold/postgres 共通）へ修正"
+  - "関連 unit test の更新・追加"
+  - "BATCH-006 仕様書 §9.4 / 変更履歴の最小追記"
+  - "親Epic allowed_paths への product_diff 関連 path 最小追加"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "BATCH-007 max_items / diff-batch-run-id 運用ノブ変更"
+  - "既存 DB の staging_item.diff_status バックフィル SQL 実行（Human 運用）"
+  - "live 再実行・fetch_plan 変更・crontab 変更"
+  - "AIによる --live-rakuten 実行"
+  - "apps/web|api|reco / OpenAPI / generated"
+  - "secret実値の表示・変更"
+  - "親オーケストレータ脚本の変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-006_商品差分判定バッチ仕様書.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/product_diff/repositories.py"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_product_diff.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-006_商品差分判定バッチ仕様書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/product_diff/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_product_diff.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/batch-006-staging-diff-sync.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-fetch-plan-expand/batch-006-staging-diff-sync/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "BATCH-006 staging_item.diff_status の live 同期修正"
+  - "unit test 更新"
+  - "仕様書 §9.4 最小追記"
+  - "親Epic allowed_paths 最小拡張"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "sync ON 時に staging_item が update_rows で同期される（unit）"
+  - "sync OFF 時に staging_item への write/update がない（unit）"
+  - "test_product_diff.py が通過する"
+  - "親Epic allowed_paths 拡張が product_diff / BATCH-006 docs 関連に限定されている"
+  - "AI live / crontab / 親シェル変更がない"
+  - "secret実値がない"
+  - "PR target が親Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-006-staging-diff-sync"
+  name: "fix/task-1853-batch-006-staging-diff-sync"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-05"
+    due_date: "2026-08-07"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1843
+    - 1846
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/product_diff/repositories.py"
+    - "apps/batch/tests/unit/application/test_product_diff.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit: product_diff"
+  commands:
+    - "cd apps/batch && uv run pytest tests/unit/application/test_product_diff.py -q"
+  manual_checks:
+    - "AIが --live-rakuten を実行していない"
+    - "secret実値がない"
+  not_required:
+    - "live 再実行 E2E"
+  skip_reason:
+    "live 再実行 E2E": "merge 後の Human 運用確認。本Taskは実装止血"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "update_rows の対象列が diff_status / updated_at に限定されているか"
+    - "scaffold 限定ガード除去が仕様 §9.4 / §18.1 No.10 と一致するか"
+    - "親Epic allowed_paths 拡張が最小か"
+    - "AI live / crontab / 親シェル変更が混入していないか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "親Epic allowed_paths への product_diff 関連 path 最小追加の承認（#1849 同型）"
+  - "merge 後の既存 staging_item.diff_status バックフィルを Human が実施するか"
+  - "merge 後の product_diff / item_apply 再実行タイミング"
+
+stop_conditions:
+  - "DDL / migration 変更が本Task必須に見える場合"
+  - "BATCH-007 仕様変更が必須に見える場合"
+  - "AI liveが必須に見える場合"
+  - "secret実値が必要に見える場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "運用で staging→item 反映が進まないブロッカー解消。横断影響は BATCH-006 sync"
+
+notes:
+  - "発見経路: 第1波取得完了後の staging/item 件数差調査"
+  - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
+  - "Task Issue: #1853 / Branch fix/task-1853-batch-006-staging-diff-sync"
+  - "Review: prompts/definitions/reviews/batch-fetch-plan-expand/batch-006-staging-diff-sync/pr-review.yaml"
