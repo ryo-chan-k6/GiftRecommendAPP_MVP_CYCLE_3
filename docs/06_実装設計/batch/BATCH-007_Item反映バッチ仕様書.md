@@ -495,6 +495,7 @@ WHERE source = :source
 | ---- | -------- | -------------- |
 | 2026-07-16 | 初版作成 | Epic #1356 / Task #1357 |
 | 2026-07-16 | §18.1 No.11〜16 を Human 確定（旧 §18.2 No.1〜6 推奨案を MVP 初期採用）。§18.2 を解消 | Epic #1356 / Task #1357 |
+| 2026-08-05 | §18.1 No.12: 選定スキャン拡張と歴史的 new スキップの実装注記（#1855） | #1855 |
 
 ---
 
@@ -517,7 +518,7 @@ WHERE source = :source
 | 9 | `unchanged` の Item 業務列 | **no-op**。`last_checked_at`（と `updated_at`）のみ | Human（item §12 / #526 後続分岐） | **確定** | §9.1 |
 | 10 | `unavailable` の有効状態 | **BATCH-008** で `active_status` 本更新 | Human（バッチ処理一覧 / BATCH-008 仕様） | **確定** | §2 / §9.1 |
 | 11 | 子 workflow 配置 | **独立 YAML `batch-rakuten-item-apply.yml`（`batch-rakuten-item-apply*.yml`）を正**とする。親 `batch-rakuten-item-import.yml` / `batch-rakuten-existing-item-recheck.yml` **全体改修は本 Epic 外**。将来親から `workflow_call` してよい | Human | **確定**（2026-07-16・MVP 初期） | BATCH-005 / BATCH-006 同型。Epic `human_decision_points`。旧 §18.2 No.1 |
-| 12 | `product_diff_result` 選定既定 | **既定フィルタ:** (1) 対象 `batch_run_id`（先行 BATCH-006 Run または明示） (2) `diff_status IN ('new','updated','unchanged')` を主処理。`unavailable` は skip 集計のみ (3) 件数上限 `BATCH_ITEM_APPLY_MAX_ITEMS` (4) 任意で明示 `external_item_code` リスト。`source` は Staging 経由で既定 `rakuten` | Human | **確定**（2026-07-16・MVP 初期） | 旧 §18.2 No.2 |
+| 12 | `product_diff_result` 選定既定 | **既定フィルタ:** (1) 対象 `batch_run_id`（先行 BATCH-006 Run または明示） (2) `diff_status IN ('new','updated','unchanged')` を主処理。`unavailable` は skip 集計のみ (3) 件数上限 `BATCH_ITEM_APPLY_MAX_ITEMS` (4) 任意で明示 `external_item_code` リスト。`source` は Staging 経由で既定 `rakuten`。**実装注記（#1855）:** DbReader 制約のため先頭読取窓で予算を満たせない場合は `limit` を拡張して再スキャン。歴史的 `new` で既に `item` がある行は選定スキップ（予算浪費防止）。`updated` / `unchanged` は対象のまま | Human | **確定**（2026-07-16・MVP 初期） | 旧 §18.2 No.2 |
 | 13 | `unchanged` 時の画像 / レビュー | **原則 no-op**（item 業務列と同趣旨。hash 一致なら子も変更なし想定）。再同期が必要な運用は force フラグまたは別 Run で `updated` 扱いを検討 | Human | **確定**（2026-07-16・MVP 初期） | 旧 §18.2 No.3 |
 | 14 | `unavailable` スキップ詳細 | **Item 業務列 / `item_image` / `item_review_summary` を一切更新しない**。`last_checked_at` も更新しない（存在確認・無効化は BATCH-008）。既存 Item が無い `unavailable` も Insert しない | Human | **確定**（2026-07-16・MVP 初期） | product_diff_result §12.3 と整合。旧 §18.2 No.4 |
 | 15 | 画像空集合の同期置換 | Staging 画像 0 件でも同期置換を実行し、既存 URL を DELETE しうる | Human | **確定**（2026-07-16・MVP 初期） | §9.3。旧 §18.2 No.5 |

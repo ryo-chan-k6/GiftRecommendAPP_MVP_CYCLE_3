@@ -5,7 +5,7 @@ Without a reader, in-memory ``seed_*`` remains for scaffold / UT.
 
 Production write path keeps:
 - product_diff_result UNIQUE upsert on (batch_run_id, external_item_code)
-- optional staging_item.diff_status sync (scaffold probe; full SQL later)
+- optional staging_item.diff_status sync via update_rows (scaffold / postgres)
 - NO writes to item / item_image / item.active_status
 - NO normalized_hash recalculation
 """
@@ -20,6 +20,9 @@ from batch.application.product_diff.models import DiffJudgment, ItemSeed, Stagin
 from batch.infrastructure.db import DbReader, DbWriter
 
 DEFAULT_SOURCE = "rakuten"
+# DbReader は equals/limit のみ。未判定が後ろにある場合は limit を広げて再読取する。
+ELIGIBLE_SCAN_PAGE_SIZE = 5000
+ELIGIBLE_SCAN_MAX_ROWS = 200_000
 _STAGING_COLUMNS = (
     "staging_item_id",
     "source",
@@ -226,22 +229,32 @@ class ProductDiffRepositories:
         if fetch_cap == 0:
             return []
         # Over-fetch then filter NULL semantics in-process (DbReader has no IS NULL).
-        fetch_limit = min(max(fetch_cap * 5, fetch_cap), 5000)
-        result = reader.fetch_rows(
-            "staging_item",
-            columns=_STAGING_COLUMNS,
-            equals=(("source", source),),
-            order_by=("staging_item_id",),
-            limit=fetch_limit,
-        )
-        eligible: list[StagingItemSeed] = []
-        for row in result.rows:
-            seed = self._cache_staging_row(row)
-            if not self._staging_passes_filters(seed, force=force):
-                continue
-            eligible.append(seed)
-        eligible.sort(key=lambda s: s.staging_item_id)
-        return eligible[:fetch_cap]
+        # 先頭 PAGE に未判定が無い場合は limit を広げて再スキャン（ハード 5000 打ち切りをしない）。
+        fetch_limit = min(max(fetch_cap * 5, fetch_cap), ELIGIBLE_SCAN_PAGE_SIZE)
+        while True:
+            result = reader.fetch_rows(
+                "staging_item",
+                columns=_STAGING_COLUMNS,
+                equals=(("source", source),),
+                order_by=("staging_item_id",),
+                limit=fetch_limit,
+            )
+            eligible: list[StagingItemSeed] = []
+            for row in result.rows:
+                seed = self._cache_staging_row(row)
+                if not self._staging_passes_filters(seed, force=force):
+                    continue
+                eligible.append(seed)
+                if len(eligible) >= fetch_cap:
+                    eligible.sort(key=lambda s: s.staging_item_id)
+                    return eligible[:fetch_cap]
+            if len(result.rows) < fetch_limit:
+                eligible.sort(key=lambda s: s.staging_item_id)
+                return eligible[:fetch_cap]
+            if fetch_limit >= ELIGIBLE_SCAN_MAX_ROWS:
+                eligible.sort(key=lambda s: s.staging_item_id)
+                return eligible[:fetch_cap]
+            fetch_limit = min(fetch_limit + ELIGIBLE_SCAN_PAGE_SIZE, ELIGIBLE_SCAN_MAX_ROWS)
 
     @staticmethod
     def _staging_passes_filters(seed: StagingItemSeed, *, force: bool) -> bool:
