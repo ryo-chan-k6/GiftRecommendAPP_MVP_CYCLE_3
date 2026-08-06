@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null  # fill after PR
+  pr: 1863
   issue:
     number: 1862
   task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/batch-013-current-generation-raw.yaml"
