@@ -11,6 +11,7 @@ import argparse
 import sys
 from datetime import UTC, datetime
 
+from batch.application.current_versions import CurrentVersionResolver
 from batch.application.distribution_metrics.job import (
     DEFAULT_SEMANTIC_CONFIG_VERSION,
     DistributionMetricsJob,
@@ -262,17 +263,23 @@ def main(argv: list[str] | None = None) -> int:
         or settings.batch_distribution_metrics_aggregation_scope
         or None
     )
+    # live: CLI/env 未指定なら CurrentVersionResolver で current UUID を解決
+    # （scaffold 既定文字列 scaffold-semantic-config-v1 は使わない）
     version = (
         args.semantic_config_version_id.strip()
         or settings.batch_distribution_metrics_semantic_config_version_id
-        or DEFAULT_SEMANTIC_CONFIG_VERSION
+        or None
     )
-    repos = DistributionMetricsRepositories(db_writer=db_writer, db_reader=db_reader,
-phase_log_writer=obs.phase_log_writer,
-error_log_writer=obs.error_log_writer,
+    repos = DistributionMetricsRepositories(
+        db_writer=db_writer,
+        db_reader=db_reader,
+        phase_log_writer=obs.phase_log_writer,
+        error_log_writer=obs.error_log_writer,
     )
-    job = DistributionMetricsJob(repositories=repos,
-job_run_tracker=tracker,
+    job = DistributionMetricsJob(
+        repositories=repos,
+        version_resolver=CurrentVersionResolver(db_reader),
+        job_run_tracker=tracker,
     )
     job.repositories.bind_run(batch_run_id=args.job_run_id)
     result = job.run(
