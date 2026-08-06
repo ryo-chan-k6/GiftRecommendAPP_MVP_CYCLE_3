@@ -101,6 +101,9 @@ epic_scope:
     - "apps/batch/tests/unit/application/test_item_feature.py"
     - "apps/batch/tests/unit/application/test_item_semantic.py"
     - "apps/batch/tests/unit/application/test_distribution_metrics.py"
+    # BATCH-013 現行世代 raw 読取（意味連鎖再生成時の hash 同居）
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/tests/unit/application/test_feature_normalization.py"
   forbidden_paths:
     - "packages/contracts/**"
     - "apps/web/**"

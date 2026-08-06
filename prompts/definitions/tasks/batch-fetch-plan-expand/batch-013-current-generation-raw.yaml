@@ -1,0 +1,191 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-batch-013-current-generation-raw"
+  title: "batch-fetch-plan-expand:BATCH-013現行世代raw読取"
+  summary: "item_feature に複数 feature_input_hash が同居しても、BATCH-013 が最新 generated_at の冪等キー組だけを読み GRS-VAL-002 を回避する。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1843
+    - 1860
+  related_prs:
+    - 1861
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  意味連鎖再検証（#1861 merge 後）で 010〜012 は成功したが、013 が全件
+  `raw features have inconsistent feature_input_hash`（GRS-VAL-002）で失敗した。
+  原因は旧 hash（前回）と新 hash（再生成）の同居に対し、load_raw_features が
+  全行を返していたこと。item_feature テーブル定義書 §12.4 / BATCH-013 仕様は
+  「最新冪等キー組」読取を要求している。
+
+objective: |
+  BATCH-013 の raw 読取を現行世代（最新 generated_at の冪等キー組）に限定し、
+  再生成後の hash 同居でも正規化が通るようにする。
+
+scope:
+  - "feature_normalization/repositories.py の現行世代選定"
+  - "関連 unit tests"
+  - "親 Epic allowed_paths 最小追加"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "旧 hash 行の物理 DELETE"
+  - "意味連鎖 live 再実行（Human）"
+  - "BATCH-010/012/016 の追加変更"
+  - "apps/web|api|reco / OpenAPI / generated"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-013_Feature正規化バッチ仕様書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/feature_normalization/**"
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/feature_normalization/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_feature_normalization.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "現行世代 raw 読取実装"
+  - "unit test 通過"
+  - "Epic allowed_paths 追随"
+
+acceptance_criteria:
+  - "複数 hash 同居時に最新 generated_at 組のみ返す"
+  - "関連 unit tests green"
+  - "親 Epic allowed_paths に本差分 path を含む"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "batch-013-current-generation-raw"
+  name: "fix/task-1862-batch-013-current-generation-raw"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-08-06"
+    due_date: "2026-08-07"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1843
+    - 1860
+  prs:
+    - 1861
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/feature_normalization/**"
+    - "apps/batch/tests/unit/application/test_feature_normalization.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit: feature_normalization"
+  commands:
+    - "cd apps/batch && uv sync --extra dev && uv run pytest tests/unit/application/test_feature_normalization.py -q"
+  manual_checks:
+    - "merge後 Human が failed queue 再queued → --from-step feature_normalization"
+  not_required:
+    - "意味連鎖 live 全段再実行"
+  skip_reason:
+    "意味連鎖 live 全段再実行": "本 Task は 013 読取修正。再開 live は Human"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "最新 generated_at の冪等キー組選定が §12.4 / BATCH-013 と一致するか"
+    - "旧世代 DELETE を混ぜていないか"
+    - "unit が hash 同居ケースをカバーしているか"
+
+human_decision_points:
+  - "merge後の 013 再開タイミング（failed 100件の再queued）"
+
+stop_conditions:
+  - "DbReader 拡張が必須になる設計変更が必要な場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "実装差分はPR"
+
+notes:
+  - "親Epic: #1843"
+  - "Task Issue #1862 / Branch fix/task-1862-batch-013-current-generation-raw"
+  - "再現: 意味連鎖再検証で 013 が GRS-VAL-002"
