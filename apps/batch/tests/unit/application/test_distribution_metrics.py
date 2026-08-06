@@ -967,3 +967,69 @@ def test_semantic_config_version_scope_resolve_and_partial_unique_upsert() -> No
     assert all(r.batch_run_id == "run-scv-2" for r in repos.feature_metric_rows)
     assert all(r.aggregation_scope == "semantic_config_version" for r in repos.feature_metric_rows)
     assert all(r.aggregation_key is None for r in repos.feature_metric_rows)
+
+
+def test_run_resolves_semantic_version_via_resolver_when_unspecified() -> None:
+    from batch.application.current_versions import CurrentVersionResolver
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    version_id = "a1111111-1111-4111-8111-111111111102"
+    config_id = "a1111111-1111-4111-8111-111111111101"
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "semantic_config",
+        (
+            {
+                "semantic_config_id": config_id,
+                "config_name": "mvp_semantic_config",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "semantic_config_version",
+        (
+            {
+                "semantic_config_version_id": version_id,
+                "semantic_config_id": config_id,
+                "is_current": True,
+            },
+        ),
+    )
+
+    features: list[ItemFeatureRow] = []
+    for item_id in ("it_1", "it_2"):
+        for code in MVP_FEATURE_CODES:
+            features.append(
+                ItemFeatureRow(
+                    item_id=item_id,
+                    semantic_config_version_id=version_id,
+                    feature_code=code,
+                    raw_feature_value=_RAW[code],
+                    normalized_feature_value=_NORM[code],
+                    feature_normalization_version_id=_NORM_VERSION,
+                )
+            )
+    meanings = [
+        ItemMeaningRow(
+            item_id=item_id,
+            semantic_config_version_id=version_id,
+            item_social=0.7,
+            item_symbolic=0.55,
+            feature_normalization_version_id=_NORM_VERSION,
+        )
+        for item_id in ("it_1", "it_2")
+    ]
+    repos, _ = _repos(features=features, meanings=meanings)
+    job = DistributionMetricsJob(
+        repositories=repos,
+        version_resolver=CurrentVersionResolver(db_reader=reader),
+    )
+    result = job.run(
+        job_run_id="run-resolve",
+        trigger_mode="dispatch",
+        semantic_config_version_id=None,
+        now=_NOW,
+    )
+    assert result.status == "succeeded"
+    assert result.semantic_config_version_id == version_id
