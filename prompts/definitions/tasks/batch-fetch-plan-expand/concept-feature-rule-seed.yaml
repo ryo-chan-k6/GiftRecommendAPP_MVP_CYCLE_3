@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-concept-feature-rule-seed"
+  title: "batch-fetch-plan-expand:concept_feature_rule稀疏seed追加"
+  summary: "Featureルール§10.3の仮説値をconcept_feature_rule稀疏seed（112行）として投入し、初期データ定義書を同期する。BATCH-012配線・010概念整合・親シェル実行時設定は後続Task。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1843
+    - 1858
+    - 476
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  意味連鎖 live（009〜015）で item_feature / item_meaning が全軸 0.5 になった。
+  主因の一つは concept_feature_rule の master seed 不在（初期データ定義書でも後続扱い）。
+  数値は Featureルール定義書 §10.3（MVP初期仮説）。物理は |delta| + polarity（#476）。
+  本Taskは seed + docs のみ。012のDB読込配線・010の実concept出力・016のversion解決は後続。
+
+objective: |
+  concept_feature_rule の稀疏 112 行 seed を追加し、初期データ定義書の投入順・検証を同期する。
+  local で投入・再投入が冪等であることを確認する。
+
+scope:
+  - "supabase/seeds/masters/11_concept_feature_rule.sql の追加"
+  - "Featureルール §10.3 → |delta| + polarity 変換（0.00 行省略）"
+  - "初期データ定義書の投入順・§8.12・検証クエリ更新"
+  - "local 初回投入 / 再投入検証"
+
+out_of_scope:
+  - "BATCH-012 の DB ルール読込配線"
+  - "BATCH-010 の scaffold_named_item 廃止・実 concept 出力"
+  - "BATCH-016 version 自動解決 / 親シェル実行時設定"
+  - "--live-embedding / OpenAI 実呼出"
+  - "Featureルール定義書 §10.3 の数値改訂（Human 別判断）"
+  - "production DB 投入"
+  - "apps/web|api|reco / OpenAPI / generated"
+
+input:
+  docs:
+    - path: "docs/04_ドメインモデル設計/Featureルール定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/concept_feature_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/06_実装設計/database/初期データ定義書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "supabase/seeds/masters/11_concept_feature_rule.sql"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "concept_feature_rule 稀疏 seed SQL"
+  - "初期データ定義書同期"
+  - "local 投入検証結果（PR本文）"
+
+acceptance_criteria:
+  - "seed 適用後 concept_feature_rule が 112 行"
+  - "再投入で行数が増えず冪等"
+  - "0.00 仮説値の行が無い（稀疏）"
+  - "secret 実値なし"
+  - "012配線・010改修・016設定を含まない"
+
+branch:
+  no_branch: false
+  summary: "concept-feature-rule-seed"
+  name: "chore/task-concept-feature-rule-seed"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-08-06"
+    due_date: "2026-08-08"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1843
+    - 476
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks:
+    - "batch-012 concept_feature_rule DB load wiring"
+  exclusive_files:
+    - "docs/06_実装設計/database/初期データ定義書.md"
+    - "supabase/seeds/masters/11_concept_feature_rule.sql"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "local seed 適用で 112 行"
+    - "再投入冪等"
+  commands:
+    - "psql \"$DATABASE_URL\" -f supabase/seeds/masters/11_concept_feature_rule.sql"
+  manual_checks:
+    - "SELECT count(*) FROM concept_feature_rule; → 112"
+  not_required:
+    - "意味連鎖 live 再実行（配線後続）"
+  skip_reason:
+    "意味連鎖 live 再実行（配線後続）": "seedのみでは012が空ルールのまま全0.5"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "§10.3 → |delta|+polarity 変換が正しいか"
+    - "稀疏（0行省略）と期待112が一致するか"
+    - "out of scope（配線・010・016）を含まないか"
+
+human_decision_points:
+  - "§10.3 仮説値をこのまま seed 正本として採択するか（数値改訂は別判断）"
+  - "stg / 東京リージョンへの手動投入タイミング"
+
+stop_conditions:
+  - "§10.3 と物理制約（0.0〜1.0 / polarity）が矛盾する場合"
+  - "semantic_concept 18件が無い環境で seed が失敗する場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "seed正本はdocs/SQL。通常作業ログはPR"
+
+notes:
+  - "後続: BATCH-012 DBルール読込 / BATCH-010 実concept / 016 version解決・親シェル設定"
+  - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
+  - "Task Issue #1858 / Branch chore/task-concept-feature-rule-seed"

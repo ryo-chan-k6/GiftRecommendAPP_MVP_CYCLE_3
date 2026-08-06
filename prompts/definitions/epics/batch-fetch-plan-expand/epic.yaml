@@ -91,6 +91,9 @@ epic_scope:
     - "apps/batch/src/batch/application/item_apply/**"
     - "apps/batch/tests/unit/application/test_item_apply.py"
     - "docs/06_実装設計/batch/BATCH-007_*"
+    # concept_feature_rule 稀疏 seed（#1858）
+    - "docs/06_実装設計/database/初期データ定義書.md"
+    - "supabase/seeds/masters/11_concept_feature_rule.sql"
   forbidden_paths:
     - "packages/contracts/**"
     - "apps/web/**"
