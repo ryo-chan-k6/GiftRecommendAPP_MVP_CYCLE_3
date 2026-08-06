@@ -94,6 +94,13 @@ epic_scope:
     # concept_feature_rule 稀疏 seed（#1858）
     - "docs/06_実装設計/database/初期データ定義書.md"
     - "supabase/seeds/masters/11_concept_feature_rule.sql"
+    # 意味連鎖配線（#1860 / BATCH-010/012/016）
+    - "apps/batch/src/batch/application/item_feature/**"
+    - "apps/batch/src/batch/application/item_semantic/**"
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+    - "apps/batch/tests/unit/application/test_item_feature.py"
+    - "apps/batch/tests/unit/application/test_item_semantic.py"
+    - "apps/batch/tests/unit/application/test_distribution_metrics.py"
   forbidden_paths:
     - "packages/contracts/**"
     - "apps/web/**"

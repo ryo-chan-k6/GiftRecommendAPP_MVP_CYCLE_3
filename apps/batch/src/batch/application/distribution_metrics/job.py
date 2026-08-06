@@ -129,6 +129,8 @@ def resolve_scope(
     else:
         aggregation_key = None
 
+    # 後方互換フォールバック。live CLI（__main__）は CurrentVersionResolver 注入で
+    # 未指定時にここへ落とさず、解決失敗時は例外にする（scaffold 文字列フォールバック禁止）。
     version = (semantic_config_version_id or "").strip() or DEFAULT_SEMANTIC_CONFIG_VERSION
     return ScopeResolve(
         aggregation_scope=scope,
