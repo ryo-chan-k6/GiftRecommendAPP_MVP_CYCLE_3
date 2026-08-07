@@ -216,11 +216,24 @@ class DistributionMetricsJob:
             result.semantic_config_version_id = scope.semantic_config_version_id
             result.completed_phases.append("resolve_scope")
 
+            # 入力は現行正規化 version + item 単位の最新冪等キー組に限定する
+            # （BATCH-016 §6.2.1 / item_feature §12.4）。混在全行読取は禁止。
+            normalization_version_id: str | None = None
+            if self._version_resolver is not None:
+                try:
+                    normalization_version_id = self._version_resolver.resolve_normalization(
+                        semantic_config_version_id=scope.semantic_config_version_id
+                    )
+                except CurrentVersionResolveError as exc:
+                    raise DistributionMetricsError(exc.code, exc.message) from exc
+
             features = self._repos.load_item_features(
-                semantic_config_version_id=scope.semantic_config_version_id
+                semantic_config_version_id=scope.semantic_config_version_id,
+                feature_normalization_version_id=normalization_version_id,
             )
             item_meanings = self._repos.load_item_meanings(
-                semantic_config_version_id=scope.semantic_config_version_id
+                semantic_config_version_id=scope.semantic_config_version_id,
+                feature_normalization_version_id=normalization_version_id,
             )
             if not features:
                 raise DistributionMetricsError("GRS-VAL-001", "item_feature input missing")

@@ -1,0 +1,198 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-batch-016-current-generation-input"
+  title: "batch-fetch-plan-expand:BATCH-016現行世代入力読取"
+  summary: "item_feature に複数正規化 version / hash が同居しても、BATCH-016 が現行正規化 version かつ item 単位の最新冪等キー組だけを読み GRS-VAL-001 を回避する。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1843
+    - 1862
+  related_prs:
+    - 1863
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  意味連鎖 live embedding 検証で BATCH-015 は 99/100 成功したが、BATCH-016 が
+  `multiple feature_normalization_version_id values for normalized feature metric`
+  （GRS-VAL-001）で失敗した。原因は item_feature に旧/現行
+  feature_normalization_version_id と複数 feature_input_hash が同居し、
+  load_item_features が全行を返していたこと。
+  BATCH-016 仕様 §6.2.1 は入力行の世代選定を item_feature 定義 / 実装 Task の責務とし、
+  item_feature §12.4 は item 単位で最新 generated_at の冪等キー組読取を要求する。
+
+objective: |
+  BATCH-016 の item_feature / item_meaning 読取を、現行 feature_normalization_version
+  かつ item 単位の現行世代（最新 generated_at の冪等キー組）に限定し、
+  再生成後の version/hash 同居でも分布メトリクス集計が通るようにする。
+
+scope:
+  - "distribution_metrics の現行世代 / 現行正規化 version 入力選定"
+  - "関連 unit tests"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "旧世代行の物理 DELETE"
+  - "意味連鎖 live 再実行（Human）"
+  - "BATCH-010/012/013/015 の追加変更"
+  - "aggregator の混在許容（仕様どおり GRS-VAL-001 維持）"
+  - "apps/web|api|reco / OpenAPI / generated"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-016_分布メトリクス集計バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/distribution_metrics/**"
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/distribution_metrics/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/distribution_metrics/job.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/distribution_metrics/models.py"
+      action: "update"
+      required: false
+    - path: "apps/batch/tests/unit/application/test_distribution_metrics.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "現行世代 / 現行正規化 version 入力読取実装"
+  - "unit test 通過"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "旧/現行 normalization version 同居時に現行 version の現行世代のみで集計成功"
+  - "同一 feature_code 内の混在を aggregator が許容しない仕様は維持"
+  - "関連 unit tests green"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "batch-016-current-generation-input"
+  name: "fix/task-1864-batch-016-current-generation-input"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "07_開発・単体テスト"
+    priority: "high"
+    planned_start: "2026-08-07"
+    due_date: "2026-08-07"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1843
+    - 1862
+  prs:
+    - 1863
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/distribution_metrics/**"
+    - "apps/batch/tests/unit/application/test_distribution_metrics.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit: distribution_metrics"
+  commands:
+    - "cd apps/batch && uv sync --extra dev && uv run pytest tests/unit/application/test_distribution_metrics.py -q"
+  manual_checks:
+    - "merge後 Human が --from-step distribution_metrics で再開"
+  not_required:
+    - "意味連鎖 live 全段再実行"
+  skip_reason:
+    "意味連鎖 live 全段再実行": "本 Task は 016 読取修正。再開 live は Human"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "item 単位の最新冪等キー組選定が §12.4 / BATCH-016 §6.2.1 と一致するか"
+    - "現行 feature_normalization_version（is_current）で絞り込んでいるか"
+    - "aggregator の混在失敗仕様を壊していないか"
+    - "unit が version/hash 同居ケースをカバーしているか"
+
+human_decision_points:
+  - "merge後の 016 再開タイミング"
+
+stop_conditions:
+  - "DbReader JOIN 拡張が必須になる設計変更が必要な場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "実装差分はPR"
+
+notes:
+  - "親Epic: #1843"
+  - "Task Issue #1864 / Branch fix/task-1864-batch-016-current-generation-input"
+  - "再現: BATCH-016 GRS-VAL-001 multiple feature_normalization_version_id"

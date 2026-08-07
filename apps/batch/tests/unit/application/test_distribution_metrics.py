@@ -975,6 +975,8 @@ def test_run_resolves_semantic_version_via_resolver_when_unspecified() -> None:
 
     version_id = "a1111111-1111-4111-8111-111111111102"
     config_id = "a1111111-1111-4111-8111-111111111101"
+    norm_version_id = "a1111111-1111-4111-8111-111111111103"
+    rule_id = "a1111111-1111-4111-8111-111111111104"
     reader = ScaffoldDbReader()
     reader.seed(
         "semantic_config",
@@ -996,6 +998,28 @@ def test_run_resolves_semantic_version_via_resolver_when_unspecified() -> None:
             },
         ),
     )
+    reader.seed(
+        "feature_normalization_version",
+        (
+            {
+                "feature_normalization_version_id": norm_version_id,
+                "normalization_method": "sigmoid",
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "normalization_rule",
+        (
+            {
+                "normalization_rule_id": rule_id,
+                "semantic_config_version_id": version_id,
+                "normalization_method": "sigmoid",
+                "feature_normalization_version_id": norm_version_id,
+                "is_active": True,
+            },
+        ),
+    )
 
     features: list[ItemFeatureRow] = []
     for item_id in ("it_1", "it_2"):
@@ -1007,7 +1031,7 @@ def test_run_resolves_semantic_version_via_resolver_when_unspecified() -> None:
                     feature_code=code,
                     raw_feature_value=_RAW[code],
                     normalized_feature_value=_NORM[code],
-                    feature_normalization_version_id=_NORM_VERSION,
+                    feature_normalization_version_id=norm_version_id,
                 )
             )
     meanings = [
@@ -1016,7 +1040,7 @@ def test_run_resolves_semantic_version_via_resolver_when_unspecified() -> None:
             semantic_config_version_id=version_id,
             item_social=0.7,
             item_symbolic=0.55,
-            feature_normalization_version_id=_NORM_VERSION,
+            feature_normalization_version_id=norm_version_id,
         )
         for item_id in ("it_1", "it_2")
     ]
@@ -1033,3 +1057,229 @@ def test_run_resolves_semantic_version_via_resolver_when_unspecified() -> None:
     )
     assert result.status == "succeeded"
     assert result.semantic_config_version_id == version_id
+
+
+def test_select_current_generation_item_feature_rows_prefers_latest_per_item() -> None:
+    from batch.application.distribution_metrics import (
+        select_current_generation_item_feature_rows,
+    )
+
+    old_at = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)
+    new_at = datetime(2026, 7, 21, 12, 0, 0, tzinfo=UTC)
+    rows = (
+        {
+            "item_id": "it_1",
+            "semantic_config_version_id": _VERSION,
+            "feature_code": "formality",
+            "feature_input_hash": "a" * 64,
+            "feature_normalization_version_id": "norm-old",
+            "raw_feature_value": 0.1,
+            "normalized_feature_value": 0.11,
+            "generated_at": old_at,
+        },
+        {
+            "item_id": "it_1",
+            "semantic_config_version_id": _VERSION,
+            "feature_code": "formality",
+            "feature_input_hash": "b" * 64,
+            "feature_normalization_version_id": "norm-new",
+            "raw_feature_value": 0.9,
+            "normalized_feature_value": 0.91,
+            "generated_at": new_at,
+        },
+        {
+            "item_id": "it_2",
+            "semantic_config_version_id": _VERSION,
+            "feature_code": "formality",
+            "feature_input_hash": "c" * 64,
+            "feature_normalization_version_id": "norm-old",
+            "raw_feature_value": 0.2,
+            "normalized_feature_value": 0.21,
+            "generated_at": old_at,
+        },
+        {
+            "item_id": "it_2",
+            "semantic_config_version_id": _VERSION,
+            "feature_code": "formality",
+            "feature_input_hash": "d" * 64,
+            "feature_normalization_version_id": "norm-new",
+            "raw_feature_value": 0.8,
+            "normalized_feature_value": 0.81,
+            "generated_at": new_at,
+        },
+    )
+    selected = select_current_generation_item_feature_rows(rows)
+    assert len(selected) == 2
+    assert {str(r["item_id"]) for r in selected} == {"it_1", "it_2"}
+    assert all(str(r["feature_normalization_version_id"]) == "norm-new" for r in selected)
+    assert {str(r["feature_input_hash"]) for r in selected} == {"b" * 64, "d" * 64}
+
+
+def test_load_item_features_filters_current_norm_and_latest_generation() -> None:
+    """旧/現行 normalization version と hash 同居でも現行世代のみ返す。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    old_at = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)
+    new_at = datetime(2026, 7, 21, 12, 0, 0, tzinfo=UTC)
+    current_norm = "norm-current"
+    old_norm = "norm-old"
+    reader = ScaffoldDbReader()
+    feature_rows = []
+    for item_id in ("it_1", "it_2"):
+        for code in ("formality", "safety"):
+            feature_rows.append(
+                {
+                    "item_id": item_id,
+                    "semantic_config_version_id": _VERSION,
+                    "feature_code": code,
+                    "feature_input_hash": "a" * 64,
+                    "feature_normalization_version_id": old_norm,
+                    "raw_feature_value": 0.1,
+                    "normalized_feature_value": 0.11,
+                    "generated_at": old_at,
+                }
+            )
+            feature_rows.append(
+                {
+                    "item_id": item_id,
+                    "semantic_config_version_id": _VERSION,
+                    "feature_code": code,
+                    "feature_input_hash": "b" * 64,
+                    "feature_normalization_version_id": current_norm,
+                    "raw_feature_value": 0.9,
+                    "normalized_feature_value": 0.91,
+                    "generated_at": new_at,
+                }
+            )
+    reader.seed("item_feature", tuple(feature_rows))
+    repos = DistributionMetricsRepositories(
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+    )
+    features = repos.load_item_features(
+        semantic_config_version_id=_VERSION,
+        feature_normalization_version_id=current_norm,
+    )
+    assert len(features) == 4
+    assert all(f.feature_normalization_version_id == current_norm for f in features)
+    assert all(f.feature_input_hash == "b" * 64 for f in features)
+    assert all(f.raw_feature_value == pytest.approx(0.9) for f in features)
+
+
+def test_run_succeeds_when_old_normalization_versions_coexist_via_resolver() -> None:
+    """再現: 旧/現行 normalization version 同居でも resolver 経由で集計成功。"""
+
+    from batch.application.current_versions import CurrentVersionResolver
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    version_id = "a1111111-1111-4111-8111-111111111102"
+    config_id = "a1111111-1111-4111-8111-111111111101"
+    current_norm = "a1111111-1111-4111-8111-111111111103"
+    old_norm = "a1111111-1111-4111-8111-111111111199"
+    rule_id = "a1111111-1111-4111-8111-111111111104"
+    old_at = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)
+    new_at = datetime(2026, 7, 21, 12, 0, 0, tzinfo=UTC)
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "semantic_config",
+        (
+            {
+                "semantic_config_id": config_id,
+                "config_name": "mvp_semantic_config",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "semantic_config_version",
+        (
+            {
+                "semantic_config_version_id": version_id,
+                "semantic_config_id": config_id,
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "feature_normalization_version",
+        (
+            {
+                "feature_normalization_version_id": current_norm,
+                "normalization_method": "sigmoid",
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "normalization_rule",
+        (
+            {
+                "normalization_rule_id": rule_id,
+                "semantic_config_version_id": version_id,
+                "normalization_method": "sigmoid",
+                "feature_normalization_version_id": current_norm,
+                "is_active": True,
+            },
+        ),
+    )
+
+    features: list[ItemFeatureRow] = []
+    for item_id in ("it_1", "it_2"):
+        for code in MVP_FEATURE_CODES:
+            features.append(
+                ItemFeatureRow(
+                    item_id=item_id,
+                    semantic_config_version_id=version_id,
+                    feature_code=code,
+                    raw_feature_value=0.1,
+                    normalized_feature_value=0.11,
+                    feature_normalization_version_id=old_norm,
+                    feature_input_hash="a" * 64,
+                    generated_at=old_at,
+                )
+            )
+            features.append(
+                ItemFeatureRow(
+                    item_id=item_id,
+                    semantic_config_version_id=version_id,
+                    feature_code=code,
+                    raw_feature_value=_RAW[code],
+                    normalized_feature_value=_NORM[code],
+                    feature_normalization_version_id=current_norm,
+                    feature_input_hash="b" * 64,
+                    generated_at=new_at,
+                )
+            )
+    meanings = [
+        ItemMeaningRow(
+            item_id=item_id,
+            semantic_config_version_id=version_id,
+            item_social=0.7,
+            item_symbolic=0.55,
+            feature_normalization_version_id=current_norm,
+        )
+        for item_id in ("it_1", "it_2")
+    ]
+    repos, _ = _repos(features=features, meanings=meanings)
+    job = DistributionMetricsJob(
+        repositories=repos,
+        version_resolver=CurrentVersionResolver(db_reader=reader),
+    )
+    result = job.run(
+        job_run_id="run-mixed-norm",
+        trigger_mode="dispatch",
+        semantic_config_version_id=version_id,
+        now=_NOW,
+    )
+    assert result.status == "succeeded"
+    assert result.feature_metric_upsert_count > 0
+    # sample_count は現行世代 2 item のみ（旧世代を二重計上しない）
+    formality_norm = next(
+        r
+        for r in repos.feature_metric_rows
+        if r.feature_code == "formality" and r.value_layer == "normalized"
+    )
+    assert formality_norm.sample_count == 2
+    assert formality_norm.feature_normalization_version_id == current_norm
