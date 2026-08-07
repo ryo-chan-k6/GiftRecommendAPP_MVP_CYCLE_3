@@ -86,6 +86,7 @@ lor_parse_common_args() {
   #        LOR_NO_UPDATE_SORT LOR_MAX_QPS
   #        LOR_RUN_MEANING（Phase2: 既定0=009〜016スキップ / --run-meaning で opt-in）
   #        LOR_SKIP_MEANING_SUMMARY LOR_MEANING_PIPELINE_ID LOR_SOURCE
+  #        LOR_LIVE_EMBEDDING（BATCH-015 のみ。既定0 / --live-embedding で opt-in）
   LOR_DRY_RUN=0
   LOR_LIVE_RAKUTEN=0
   LOR_PIPELINE_ID=""
@@ -109,6 +110,9 @@ lor_parse_common_args() {
   LOR_SKIP_MEANING_SUMMARY=0
   LOR_MEANING_PIPELINE_ID=""
   LOR_SOURCE="${MEANING_SOURCE:-rakuten}"
+  # BATCH-015: 既定は scaffold Embedding。--live-embedding で OpenAI live（課金）。
+  # 環境変数 BATCH_EMBEDDING_LIVE=1 もモジュール側で有効（後方互換）。
+  LOR_LIVE_EMBEDDING=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -146,6 +150,10 @@ lor_parse_common_args() {
         ;;
       --run-meaning)
         LOR_RUN_MEANING=1
+        shift
+        ;;
+      --live-embedding)
+        LOR_LIVE_EMBEDDING=1
         shift
         ;;
       --skip-meaning)
@@ -557,8 +565,12 @@ lor_run_meaning_chain() {
   fi
 
   if [[ "${chain_rc}" -eq 0 ]]; then
+    local embedding_flags=("${meaning_flags[@]}")
+    if [[ "${LOR_LIVE_EMBEDDING}" -eq 1 ]]; then
+      embedding_flags+=(--live-embedding)
+    fi
     lor_run_batch_module_job_only "item_embedding" "batch.application.item_embedding" \
-      "${meaning_flags[@]}" \
+      "${embedding_flags[@]}" \
       || chain_rc=$?
   fi
 
@@ -595,7 +607,7 @@ lor_begin_scenario() {
   if [[ -z "${LOR_LOG_FILE:-}" ]]; then
     LOR_LOG_FILE="${OUTPUT_DIR}/${scenario}-$(date +%Y%m%dT%H%M%S).log"
   fi
-  lor_log INFO "scenario=${scenario} pipeline_batch_run_id=${LOR_PIPELINE_ID} dry_run=${LOR_DRY_RUN} live_rakuten=${LOR_LIVE_RAKUTEN} run_meaning=${LOR_RUN_MEANING}"
+  lor_log INFO "scenario=${scenario} pipeline_batch_run_id=${LOR_PIPELINE_ID} dry_run=${LOR_DRY_RUN} live_rakuten=${LOR_LIVE_RAKUTEN} run_meaning=${LOR_RUN_MEANING} live_embedding=${LOR_LIVE_EMBEDDING}"
   lor_log INFO "max_items=${LOR_MAX_ITEMS} pages_per_run=${LOR_PAGES_PER_RUN} cursors_per_run=${LOR_CURSORS_PER_RUN} genre_ids=${LOR_GENRE_IDS:-"(unset)"} ranking_genre_ids=${LOR_RANKING_GENRE_IDS:-"(unset)"} no_update_sort=${LOR_NO_UPDATE_SORT} max_qps=${LOR_MAX_QPS:-"(batch-default)"} source=${LOR_SOURCE} from_step=${LOR_FROM_STEP:-"(start)"}"
   if [[ -n "${LOR_FROM_STEP}" ]]; then
     LOR_SKIPPING=1

@@ -541,7 +541,7 @@ Phase1 §5 を継承し、009〜016 追加時も次を満たす。
 | 016 の葉 `job_run_id` | distribution-metrics 葉 | 葉側で新規 UUID（pipeline と分離） |
 | 空入力時 | GHA が新規 UUID | local も未指定時は親が生成。手動再開時は明示指定可 |
 
-実装 CLI（#1822 確定）:
+実装 CLI（#1822 確定 / #1866 追記）:
 
 | フラグ | 意味 |
 | ------ | ---- |
@@ -551,7 +551,9 @@ Phase1 §5 を継承し、009〜016 追加時も次を満たす。
 | `--meaning-pipeline-batch-run-id=<uuid>` | 意味連鎖の既存 ID 継続 |
 | `--source=<name>` | 意味生成 source（既定 `rakuten`） |
 | `--from-step=<name>` | Phase1 段に加え `item_generation_queue` … `meaning_summary` / `distribution_metrics` を許容 |
+| `--live-embedding` | BATCH-015（`item_embedding`）のみ OpenAI Embedding live（既定 OFF）。`OPENAI_API_KEY` 必須。未指定時は scaffold Embedding。後方互換で環境変数 `BATCH_EMBEDDING_LIVE=1` も可 |
 
+> **注意**: `--live-embedding` は楽天 `--live-rakuten` とは独立。意味連鎖 live embedding は Human 専用（課金）。AI Agent は付けない。
 ---
 
 ## 14. Phase1 互換モードと観測非干渉
@@ -678,3 +680,4 @@ Phase1 §6 に加え:
 | 2026-08-02 | #1822。親シェルへ 009〜016 配線実装（`--run-meaning` opt-in）。§1 / §12.2 / §13.3 CLI / §15.1 を実装差分で最小同期 |
 | 2026-08-02 | #1824。Phase2 dry-run 双方モード検証を本記録化（[local_cron_Phase2_dry-run検証結果](./local_cron_Phase2_dry-run検証結果.md)）。§1 / §15.2 / §15.3 を最小同期 |
 | 2026-08-04 | #1846。§9 / §10 に第1波 fetch_plan 拡大（案B・1ジャンル手動実行手順）への接続を追加。親シェル・crontab 無断変更なし |
+| 2026-08-07 | #1866。親シェルへ `--live-embedding`（BATCH-015 のみ・既定 OFF）を伝播。§13.3 CLI 表を最小追記 |
