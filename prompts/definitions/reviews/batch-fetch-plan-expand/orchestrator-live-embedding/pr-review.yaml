@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1867
   issue:
     number: 1866
   task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/orchestrator-live-embedding.yaml"
