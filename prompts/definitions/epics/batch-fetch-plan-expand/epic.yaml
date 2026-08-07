@@ -104,6 +104,9 @@ epic_scope:
     # BATCH-013 現行世代 raw 読取（意味連鎖再生成時の hash 同居）
     - "apps/batch/src/batch/application/feature_normalization/**"
     - "apps/batch/tests/unit/application/test_feature_normalization.py"
+    # 親シェル --live-embedding 伝播（#1866）。daily/weekly 本体は forbidden 維持
+    - "scripts/batch/lib/local_orchestrator_common.sh"
+    - "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
   forbidden_paths:
     - "packages/contracts/**"
     - "apps/web/**"
