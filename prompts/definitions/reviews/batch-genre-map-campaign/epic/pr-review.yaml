@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-genre-map-campaign-epic-pr"
+  title: "batch-genre-map-campaign Epic PRレビュー"
+  summary: "楽天ジャンル地図キャンペーン Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1828
+  issue:
+    number: 1827
+  task_definition: "prompts/definitions/epics/batch-genre-map-campaign/epic.yaml"
+  source_branch: "chore/epic-1827-batch-genre-map-campaign"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  parent_epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: true
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "定常crontab・#1811/#1818・weekly親全体実行が混入していないか"
+  - "MVP fetch_plan 4IDを置き換えていないか"
+  - "1 Run上限と停止条件が Decision に明示されているか"
+  - "AIが --live-rakuten を実行した痕跡がないか"
+  - "GHA schedule有効化・#1607・GHA楽天liveが混入していないか"
+  - "secret実値がdocs/PRに含まれていないか"
+  - "Epic PR target が develop、Closes が親Epic Issue か（最終Epic PR時）"
+
+notes:
+  - "Epic Issue #1827 / Branch chore/epic-1827-batch-genre-map-campaign / PR #1828（develop反映・完了PR）。Human Reviewは省略しない"
+  - "Issue close は Human。PR本文は Related to #1827（自動 Closes に依存しない）"

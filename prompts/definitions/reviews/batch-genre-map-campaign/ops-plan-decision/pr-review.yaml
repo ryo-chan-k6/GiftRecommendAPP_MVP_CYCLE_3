@@ -1,0 +1,53 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-genre-map-campaign-ops-plan-decision"
+  title: "batch-genre-map-campaign:キャンペーン枠Decision Task PRレビュー"
+  summary: "ジャンル地図キャンペーン枠 Human Decision Log化 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1829
+  task_definition: "prompts/definitions/tasks/batch-genre-map-campaign/ops-plan-decision.yaml"
+  target_branch: "chore/epic-1827-batch-genre-map-campaign"
+  parent_epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  parent_epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Decision Logに起点・1 Run上限・停止条件・定常cron非干渉・QPS・Human live境界があるか"
+  - "root 0 BFS 採否と 1 Run上限が Human 判断として扱われているか"
+  - "定常crontab変更・#1811/#1818完了操作・secret実値が混入していないか"
+
+notes:
+  - "親Epic #1827 / Branch chore/epic-1827-batch-genre-map-campaign。Task Issue番号は /start-task 後に反映。Human Reviewは省略しない"
+  - "Task Issue #1829 / Branch chore/task-1829-ops-plan-decision"

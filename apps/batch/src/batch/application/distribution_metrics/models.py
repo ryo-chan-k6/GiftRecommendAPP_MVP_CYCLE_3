@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Literal
 
 DistributionMetricsRunStatus = Literal["succeeded", "partially_succeeded", "failed"]
@@ -33,6 +34,8 @@ class ItemFeatureRow:
     raw_feature_value: float | None = None
     normalized_feature_value: float | None = None
     feature_normalization_version_id: str | None = None
+    feature_input_hash: str | None = None
+    generated_at: datetime | None = None
 
 
 @dataclass(frozen=True)

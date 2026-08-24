@@ -1,0 +1,212 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-batch-006-007-eligible-scan"
+  title: "batch-fetch-plan-expand:BATCH-006/007選定の先頭スキャン上限解消"
+  summary: "BATCH-006/007 の DB 選定が先頭最大5000行で止まっていたため、必要件数まで limit を拡張して再読取する。007は歴史的newでitem済みの行を選定スキップする。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "fix"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1853
+    - 1846
+  related_prs:
+    - 1854
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  第1波 staging→item 反映中に、BATCH-006 が先頭5000の判定済み行だけを見て succeeded=0 になった。
+  BATCH-007 も product_diff_result 先頭窓で既反映の歴史的 new を再処理し、未反映コードに届かない。
+  DbReader は equals/limit のみのため、OFFSET 追加ではなく limit 拡張再読取で解消する。
+
+objective: |
+  自動運用でも未判定・未反映が後ろにあれば次 Run で拾えるように、006/007 の選定スキャンを拡張する。
+
+scope:
+  - "product_diff list_eligible_staging のスキャン拡張"
+  - "item_apply list_eligible_diffs のスキャン拡張と歴史的 new（item済み）スキップ"
+  - "unit test"
+  - "親Epic allowed_paths に item_apply / BATCH-007 docs を最小追加"
+  - "仕様書の選定スキャン注記（最小）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "DbReader への OFFSET / 範囲演算子追加"
+  - "live 再実行・crontab・親シェル変更"
+  - "AI --live-rakuten"
+  - "apps/web|api|reco / OpenAPI / generated"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-006_商品差分判定バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-007_Item反映バッチ仕様書.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/product_diff/repositories.py"
+      required: true
+    - path: "apps/batch/src/batch/application/item_apply/repositories.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-006_商品差分判定バッチ仕様書.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-007_Item反映バッチ仕様書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/product_diff/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/item_apply/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_product_diff.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_item_apply.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/batch-006-007-eligible-scan.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-fetch-plan-expand/batch-006-007-eligible-scan/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "006/007 選定スキャン拡張"
+  - "unit test"
+  - "仕様注記・Epic allowed_paths・Task/Review Definition"
+
+acceptance_criteria:
+  - "先頭 PAGE が判定済みでも後ろの未判定を拾う unit が通る"
+  - "歴史的 new（item済み）を飛ばして未反映 new を拾う unit が通る"
+  - "test_product_diff.py / test_item_apply.py が通過する"
+  - "AI live / crontab / 親シェル変更がない"
+  - "PR target が親Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-006-007-eligible-scan"
+  name: "fix/task-1855-batch-006-007-eligible-scan"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-05"
+    due_date: "2026-08-07"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1843
+    - 1853
+  prs:
+    - 1854
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/product_diff/repositories.py"
+    - "apps/batch/src/batch/application/item_apply/repositories.py"
+    - "apps/batch/tests/unit/application/test_product_diff.py"
+    - "apps/batch/tests/unit/application/test_item_apply.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit: product_diff"
+    - "unit: item_apply"
+  commands:
+    - "cd apps/batch && uv run pytest tests/unit/application/test_product_diff.py tests/unit/application/test_item_apply.py -q"
+  manual_checks:
+    - "AIが --live-rakuten を実行していない"
+    - "secret実値がない"
+  not_required:
+    - "live E2E"
+  skip_reason:
+    "live E2E": "merge 後の Human 運用確認"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "limit 拡張再読取が DbReader 制約（equals/limit のみ）と整合するか"
+    - "歴史的 new スキップが updated/unchanged を誤って落とさないか"
+    - "親Epic allowed_paths が最小か"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "親Epic allowed_paths への item_apply 追加承認"
+  - "将来 DbReader に keyset/OFFSET を入れるか（別Task）"
+
+stop_conditions:
+  - "DbReader Protocol 変更が本Task必須に見える場合"
+  - "AI live が必須に見える場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "自動運用で選定が止まるブロッカー解消"
+
+notes:
+  - "Task Issue: #1855"
+  - "Branch: fix/task-1855-batch-006-007-eligible-scan"

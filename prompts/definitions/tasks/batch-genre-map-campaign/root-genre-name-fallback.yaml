@@ -1,0 +1,210 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-genre-map-campaign-root-genre-name-fallback"
+  title: "batch-genre-map-campaign:rootジャンル名フォールバック修正"
+  summary: "楽天 genreId=0 応答で nameJa/jaName/genreName が空/欠落しても BATCH-001 adapt が GRS-EXT-103 で落ちないよう、root 専用フォールバックを入れる。AI live はしない。"
+  workstream_key: "batch-genre-map-campaign"
+  phase: "fix"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  epic_issue_number: 1827
+  epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+  related_issues:
+    - 1833
+    - 1829
+  related_prs:
+    - 1836
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  Human live（genre-ids=0）で BATCH-001 が failed。error_log / api_call_log は GRS-EXT-103
+ （invalid genre payload: missing nameJa/jaName/genreName）。genre_id=100005 等は過去 succeeded。
+  楽天 root は名称が空になることがある。Decision の root 0 BFS を続行するには adapt 側フォールバックが必要。
+  Epic allowed_paths に infrastructure/rakuten と tests を最小追加する（キャンペーンブロッカー解消）。
+
+objective: |
+  root genreId=0 で名称欠落時も adapt→upsert が進み、キャンペーン初回 Run が再開可能になる。
+
+scope:
+  - "adapt_genre_raw_payload で genreId=0（または requested=0）かつ名称空/欠落時に genre_name='root' へフォールバック"
+  - "unit test（空 nameJa / 欠落 / 非rootは従来どおり GRS-EXT-103）"
+  - "Epic allowed_paths に adapter・該当 tests を最小追加"
+  - "BFS手順docsへ root 名フォールバックの注意を最小追記"
+  - "必要なら Review Definition 追加"
+
+out_of_scope:
+  - "AIによる --live-rakuten 実行"
+  - "定常crontab変更"
+  - "local_daily / local_weekly 親シェル改修"
+  - "GHA schedule / #1607 / GHA楽天live"
+  - "OpenAPI / generated / apps/web|api|reco"
+  - "MVP 4ID の置き換え"
+  - "secret実値の表示・変更"
+  - "#1811 / #1818 の変更・完了操作"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_BFS段階同期手順.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/adapter.py"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_genre_sync.py"
+      required: true
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_BFS段階同期手順.md"
+      action: "update"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      action: "update"
+      required: false
+  files:
+    - path: "apps/batch/src/batch/infrastructure/rakuten/adapter.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_genre_sync.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/batch-genre-map-campaign/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-genre-map-campaign/**"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/reviews/batch-genre-map-campaign/**"
+      action: "create_or_update"
+      required: false
+
+deliverables:
+  - "root 名フォールバック実装と unit test"
+  - "Epic allowed_paths 最小拡張"
+  - "運用手順への注意追記"
+
+acceptance_criteria:
+  - "genreId=0 で nameJa 空/欠落でも adapt が成功し genre_name='root' になる"
+  - "非rootで名称欠落時は従来どおり GRS-EXT-103"
+  - "unit test が通る"
+  - "AI live / crontab / 親シェル変更がない"
+  - "secret実値がない"
+
+branch:
+  no_branch: false
+  summary: "root-genre-name-fallback"
+  name: "fix/task-1835-root-genre-name-fallback"
+  base: "chore/epic-1827-batch-genre-map-campaign"
+  target: "chore/epic-1827-batch-genre-map-campaign"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-03"
+    due_date: "2026-08-04"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1833
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/infrastructure/rakuten/adapter.py"
+    - "apps/batch/tests/unit/application/test_genre_sync.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit: adapt root fallback"
+  commands:
+    - "cd apps/batch && uv run pytest tests/unit/application/test_genre_sync.py -q -k adapt_genre"
+  manual_checks:
+    - "AIが --live-rakuten を実行していない"
+  not_required:
+    - "GHA楽天live E2E"
+  skip_reason:
+    "GHA楽天live E2E": "out of scope。Human live 再試行は merge 後"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "フォールバックが root に限定されているか"
+    - "非rootの厳格検証が維持されているか"
+    - "Epic allowed_paths 拡張が最小か"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "Epic allowed_paths への infrastructure/rakuten・tests 最小追加の承認"
+
+stop_conditions:
+  - "非rootの名称欠落を広く許容する方針変更が必要に見える"
+  - "AI liveが必須に見える"
+  - "secret実値が必要に見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "live失敗のブロッカー解消。横断影響は adapter 挙動のみ"
+
+notes:
+  - "再現: Human live genre-ids=0 → GRS-EXT-103（2026-08-03）。キュー未消費"
+  - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
+  - "Task Issue: #1835 / Branch fix/task-1835-root-genre-name-fallback"

@@ -814,3 +814,48 @@ def test_fixture_and_logs_have_no_secret_like_values() -> None:
     lowered = blob.lower()
     for token in forbidden:
         assert token.lower() not in lowered
+
+
+def test_pick_concepts_keyword_and_hash_fallback() -> None:
+    from batch.application.item_semantic.adapter import (
+        MVP_CONCEPT_CODES,
+        pick_concepts_for_item,
+    )
+
+    keyword_hit = pick_concepts_for_item(
+        item_id="it_kw",
+        item_name="上品なフォーマルギフト",
+        genre_name="ギフト",
+    )
+    assert len(keyword_hit) == 1
+    assert keyword_hit[0]["concept_code"] == "formal_refined"
+    assert keyword_hit[0]["extraction_method"] == "keyword"
+
+    hashed = pick_concepts_for_item(
+        item_id="it_hash_xyz",
+        item_name="無関係な名前",
+        genre_name="雑貨",
+    )
+    assert len(hashed) == 1
+    assert hashed[0]["concept_code"] in MVP_CONCEPT_CODES
+    assert hashed[0]["extraction_method"] == "scaffold_hash"
+    again = pick_concepts_for_item(
+        item_id="it_hash_xyz",
+        item_name="無関係な名前",
+        genre_name="雑貨",
+    )
+    assert again == hashed
+
+
+def test_generated_semantic_uses_mvp_concept_not_scaffold_named_item() -> None:
+    from batch.application.item_semantic.adapter import MVP_CONCEPT_CODES
+
+    repos, _ = _repos(items=[_item(item_name="高級ハンドクリーム")])
+    ItemSemanticJob(repositories=repos).run(job_run_id="run-mvp-concept")
+    row = repos.item_semantics[("it_1", _VERSION)]
+    concepts = row["semantic_json"]["concepts"]
+    assert len(concepts) == 1
+    assert concepts[0]["concept_code"] in MVP_CONCEPT_CODES
+    assert concepts[0]["concept_code"] != "scaffold_named_item"
+    # 「高級」→ prestigious_quality
+    assert concepts[0]["concept_code"] == "prestigious_quality"

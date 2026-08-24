@@ -1,0 +1,303 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-genre-map-campaign"
+  title: "batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  summary: "Phase1 daily/weekly 定常cronとは分離した別枠キャンペーン。楽天ジャンルID・階層・件数を把握し、後続 BATCH-002/003 取得計画の土台にする。MVP fetch_plan 4IDは置き換えない。機能・領域単位Epic（例外）。"
+  workstream_key: "batch-genre-map-campaign"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+    - "test-ai"
+
+background: |
+  現状 external_genre は約15件で極小。ジャンル全体像が未知。
+  BATCH-001 genre_sync は --genre-ids 起点＋直下 children までのみで、全階層自動総なめではない。
+  全地図化には root 0 からの BFS（未同期 children を次 Run の --genre-ids に載せる）等の段階実行が必要。
+  MVP fetch_plan 承認済み ID（100000/100003/100004/100005、Decision 2026-07-31）は本キャンペーンで置き換えない（拡大情報源）。
+  weekly 親シェルの 001 は --genre-ids（いま cron は 100005）と共有するため、キャンペーンは葉 CLI 直接または専用ラッパを推奨（weekly 全体を回さない）。
+  AI は --live-rakuten を実行しない。live は Human。
+  GHA楽天live / #1607 / schedule 有効化は対象外維持。
+  Phase1 観測中の定常 crontab（#1811 001〜008）および Phase2（#1818）を壊さない・混在させない（Relationshipsで追跡言及のみ。勝手に完了・変更しない）。
+
+objective: |
+  楽天ジャンルの全体地図（ID・階層・件数）を別枠キャンペーンで段階把握し、
+  後続 BATCH-002/003 の取得計画の土台となる docs / Decision / 実行手順を整備する。
+  定常 cron・MVP 4ID・GHA live / schedule は変更しない。
+
+scope:
+  - "キャンペーン枠（起点・1 Run上限・停止条件・定常cron非干渉・QPS・Human live境界）の Human Decision / 運用手順への正本化"
+  - "現状 external_genre 棚卸し手順と結果docs（件数・level分布。secretなし）"
+  - "BFS/段階同期の手順または最小ラッパ（--dry-run可）。weekly親全体は使わない"
+  - "Human live 実行結果の docs 同期（AIはliveしない）"
+  - "後続 BATCH-002/003 取得計画への参照可能な地図成果物の整備"
+  - "必要最小のギャップ一覧・運用方針・BATCH-001関連docs更新"
+
+out_of_scope:
+  - "定常crontab変更（Phase1 #1811 / Phase2 #1818 の crontab・親シェル定常ノブ変更）"
+  - "商品収集の大規模拡大（BATCH-002/003 の本格拡大実行そのもの）"
+  - "AIによる --live-rakuten 実行"
+  - "GHA / GitHub-hosted からの楽天HTTP live化"
+  - "daily / weekly / manual 親 on.schedule のコメント解除・有効化（#1792 / B-1）"
+  - "本番egress IP / NAT / self-hosted（#1607）"
+  - "BATCH-018 / BATCH-019"
+  - "MVP fetch_plan 4ID（100000/100003/100004/100005）の置き換え"
+  - "weekly親オーケストレータ全体実行による地図化"
+  - "secret実値・GitHub Secrets / Variables の表示・変更"
+  - "OpenAPI / Orval / generated / apps/web|api|reco 変更"
+  - "production定期開始・破壊的全件取得"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/batch-genre-map-campaign/**"
+    - "prompts/definitions/tasks/batch-genre-map-campaign/**"
+    - "prompts/definitions/reviews/batch-genre-map-campaign/**"
+    - "ai-logs/human-decisions/**"
+    - "ai-logs/experiments/**"
+    - "docs/15_運用・改善/運用手順/**"
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/06_実装設計/batch/BATCH-001_*"
+    - "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+    - "scripts/batch/**"
+    - "apps/batch/src/batch/application/genre_sync/**"
+    - "apps/batch/src/batch/infrastructure/rakuten/adapter.py"
+    - "apps/batch/tests/unit/application/test_genre_sync.py"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - ".github/workflows/batch-daily-orchestrator.yml"
+    - ".github/workflows/batch-weekly-orchestrator.yml"
+    - ".github/workflows/batch-manual-orchestrator.yml"
+    - ".github/workflows/batch-rakuten-*.yml"
+    - ".github/workflows/batch-item-semantic.yml"
+    - ".github/workflows/batch-item-embedding.yml"
+    - "scripts/batch/local_daily_orchestrator.sh"
+    - "scripts/batch/local_weekly_orchestrator.sh"
+  child_task_areas:
+    - "docs"
+    - "ops-policy"
+    - "batch"
+    - "verification"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/external_genre_テーブル定義書.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md"
+      required: true
+    - path: "scripts/batch/README.md"
+      required: true
+  files: []
+  issues:
+    - number: 1811
+      purpose: "Phase1 local cron。本Epicでは変更しない（Relationships追跡のみ）"
+    - number: 1818
+      purpose: "Phase2 local cron。本Epicでは変更しない（Relationships追跡のみ）"
+    - number: 1792
+      purpose: "daily schedule有効化。本Epicでは吸収しない"
+    - number: 1607
+      purpose: "本番egress Backlog。本Epicでは吸収しない"
+    - number: 1745
+      purpose: "統括ロードマップ（関連追跡）"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/**"
+      action: "update"
+      required: false
+    - path: "docs/06_実装設計/batch/BATCH-001_*"
+      action: "update"
+      required: false
+  files:
+    - path: "prompts/definitions/epics/batch-genre-map-campaign/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-genre-map-campaign/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-genre-map-campaign/**"
+      action: "create"
+      required: true
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+    - path: "scripts/batch/**"
+      action: "create_or_update"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/"
+
+deliverables:
+  - "Epic Issue #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
+  - "キャンペーン枠 Human Decision Log（起点・1 Run上限・停止条件・定常非干渉・QPS・Human live境界）"
+  - "external_genre 棚卸し結果docs（件数・level分布。secretなし）"
+  - "BFS/段階同期の手順または最小ラッパ（週次親全体は使わない）"
+  - "Human live 実行結果の docs 同期"
+  - "後続 BATCH-002/003 取得計画の参照土台"
+
+acceptance_criteria:
+  - "Epic Issueタイトルが [Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン 形式（[Epic]直後スペースなし）"
+  - "機能・領域単位Epic（例外）と artifact_id 空が明記されている"
+  - "キャンペーン枠 Decision が decided または Human確認待ちが明示され、1 Run上限と停止条件が含まれる"
+  - "external_genre 棚卸し結果docsがあり secret / token / 接続文字列実値がない"
+  - "実行経路が葉 CLI または専用ラッパであり、weekly親全体・定常crontab変更を含まない"
+  - "AIが --live-rakuten を実行した痕跡がない（手順はHuman live）"
+  - "#1811 / #1818 / #1792 / #1607 / GHA楽天live / 018/019 / MVP 4ID置き換えを含まない"
+  - "Epic PR targetがdevelop"
+
+branch:
+  no_branch: false
+  summary: "batch-genre-map-campaign"
+  name: "chore/epic-1827-batch-genre-map-campaign"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-03"
+    due_date: "2026-08-05"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1745
+  issues:
+    - 1811
+    - 1818
+    - 1792
+    - 1607
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "scripts/batch/**"
+    - "ai-logs/human-decisions/**"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: true
+
+test_policy:
+  required:
+    - "docs整合確認（Decision・棚卸し・実行手順。secretなし）"
+    - "定常cron非干渉・weekly親非使用の記載確認"
+  commands: []
+  manual_checks:
+    - "GHA on.schedule を有効化していない"
+    - "GHAから楽天HTTP liveしていない"
+    - "定常crontabを変更していない"
+    - "AIが --live-rakuten を実行していない"
+    - "docsにsecret実値がない"
+  not_required:
+    - "GHA楽天live E2E"
+    - "AIによる --live-rakuten 実行"
+    - "商品収集大規模E2E"
+  skip_reason:
+    "GHA楽天live E2E": "本Epic out of scope。GHA楽天HTTPは禁止維持"
+    "AIによる --live-rakuten 実行": "liveはHuman。AIは手順・docs同期のみ"
+    "商品収集大規模E2E": "BATCH-002/003本格拡大は out of scope"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "定常crontab・#1811/#1818・weekly親全体実行が混入していないか"
+    - "MVP fetch_plan 4IDを置き換えていないか"
+    - "1 Run上限と停止条件が Human Decision に明示されているか"
+    - "AIが --live-rakuten を実行した痕跡がないか"
+    - "GHA schedule有効化・#1607・GHA楽天liveが混入していないか"
+    - "secret実値がdocs/PRに含まれていないか"
+
+human_decision_points:
+  - "root 0 からの BFS 段階同期を採択するか（推奨: 採択）"
+  - "1 Runあたりの genre 上限（推奨案: 20件。QPS=2維持前提。調整可）"
+  - "キャンペーン停止条件（例: 429連続、paused増、予定Run消化、Human中断）"
+  - "定常cron非干渉の確認タイミング（weekly 001 実行とキャンペーンRunの時間分離）"
+  - "機能・領域単位Epic（例外）として識別子Epicに分割しない方針の維持"
+
+stop_conditions:
+  - "定常crontab変更や #1811/#1818 の完了操作が本Epic差分に必要に見えた場合"
+  - "GHA schedule有効化や#1607実装が本Epic差分に必要に見えた場合"
+  - "GHA楽天HTTP liveが必要に見えた場合"
+  - "AIによる --live-rakuten 実行が必須に見える場合（Human実行へ戻す）"
+  - "1 Run上限・停止条件が未決定のまま大規模 live を進めようとした場合"
+  - "MVP 4ID置き換えが必要に見える場合"
+  - "secret実値の表示・commitが必要に見える場合"
+  - "weekly親全体実行が唯一の実行経路に見える場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: true
+  reason: "キャンペーン枠の Human Decision と横断影響（cron非干渉）を必要時のみ記録"
+
+notes:
+  - "機能・領域単位Epic（例外）。artifact_id 空。Issue本文§2.1に例外理由を明記"
+  - "#1811 / #1818 は Relationships で追跡言及のみ。勝手に完了・変更しない"
+  - "子Task: (1) ops-plan-decision (2) inventory (3) runner-design-or-impl (4) collect-docs"
+  - "work_mode=ai-agent。live実行の実secretはHuman環境。値はcommitしない"
+  - "Epic Issue番号 / Branch名は /start-epic 後に本ファイルへ反映"

@@ -127,6 +127,23 @@ def _parse_last_build_date(value: Any) -> datetime:
     return parsed
 
 
+def _dedupe_urls_preserve_order(urls: list[str], *, seen: set[str]) -> list[str]:
+    """Keep first occurrence of each URL; skip URLs already in ``seen``.
+
+    ``staging_item_image`` UNIQUE is ``(raw_metadata_id, external_item_code, image_url)``
+    without ``image_size_type``. Duplicate URLs in one INSERT ... ON CONFLICT DO UPDATE
+    raise Postgres ``cannot affect row a second time``.
+    """
+
+    out: list[str] = []
+    for url in urls:
+        if url in seen:
+            continue
+        seen.add(url)
+        out.append(url)
+    return out
+
+
 def _build_images(
     *,
     raw_metadata_id: str,
@@ -134,8 +151,16 @@ def _build_images(
     item: dict[str, Any],
     staged_at: datetime,
 ) -> tuple[StagingItemImageRow, ...]:
-    medium = _extract_image_urls(item, "mediumImageUrls")
-    small = _extract_image_urls(item, "smallImageUrls")
+    # Prefer medium when the same URL appears in both arrays (table定義: 同一 URL は 1 行).
+    seen_urls: set[str] = set()
+    medium = _dedupe_urls_preserve_order(
+        _extract_image_urls(item, "mediumImageUrls"),
+        seen=seen_urls,
+    )
+    small = _dedupe_urls_preserve_order(
+        _extract_image_urls(item, "smallImageUrls"),
+        seen=seen_urls,
+    )
     rows: list[StagingItemImageRow] = []
 
     primary_set = False

@@ -208,7 +208,7 @@ flowchart TD
 | 入力項目 | 内部項目 | 出力項目 | 変換内容 | 備考 |
 | -------- | -------- | -------- | -------- | ---- |
 | `genreId` | `external_genre_id` | `external_genre.external_genre_id` | 文字列化して保存 | バッチ設計方針書 §8.6 |
-| `jaName` / genreName | `genre_name` | `external_genre.genre_name` | 表示・取得計画用 | |
+| `jaName` / genreName | `genre_name` | `external_genre.genre_name` | 表示・取得計画用 | root（`genreId=0`）で名称が空/欠落のときは Adapter が `root` にフォールバック（#1835）。非 root の欠落は `GRS-EXT-103` |
 | parent genreId | `parent_external_genre_id` | `external_genre.parent_external_genre_id` | 階層管理 | ancestors / children から解決 |
 | `level` | `genre_level` | `external_genre.genre_level` | 取得対象範囲制御 | |
 | レスポンス全体 | Raw JSON | Object Storage object | そのまま保存（秘密情報は含めない） | Adapter 前の取得レスポンスを監査用に保持 |

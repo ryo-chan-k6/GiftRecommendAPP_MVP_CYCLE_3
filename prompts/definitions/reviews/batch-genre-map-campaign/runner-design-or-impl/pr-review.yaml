@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-genre-map-campaign-runner-design-or-impl"
+  title: "batch-genre-map-campaign:BFS段階同期手順/ラッパ Task PRレビュー"
+  summary: "BFS/段階同期の手順または最小ラッパ Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1834
+  issue:
+    number: 1833
+  task_definition: "prompts/definitions/tasks/batch-genre-map-campaign/runner-design-or-impl.yaml"
+  source_branch: "chore/task-1833-runner-design-or-impl"
+  target_branch: "chore/epic-1827-batch-genre-map-campaign"
+  parent_epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  parent_epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "weekly親全体・local_daily/weekly親シェル改修・定常crontab変更が混入していないか"
+  - "1 Run上限・停止条件の遵守方法が手順にあるか"
+  - "AI live禁止が明記されているか"
+  - "secret実値がないか"
+
+notes:
+  - "親Epic #1827 / Branch chore/epic-1827-batch-genre-map-campaign。Task Issue #1833 / Branch chore/task-1833-runner-design-or-impl。Human Reviewは省略しない"

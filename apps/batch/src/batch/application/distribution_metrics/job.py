@@ -17,6 +17,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from batch.application.current_versions import (
+    CurrentVersionResolveError,
+    CurrentVersionResolver,
+)
 from batch.application.distribution_metrics.aggregator import (
     FeatureMetricAggregationError,
     aggregate_feature_metrics,
@@ -125,6 +129,8 @@ def resolve_scope(
     else:
         aggregation_key = None
 
+    # 後方互換フォールバック。live CLI（__main__）は CurrentVersionResolver 注入で
+    # 未指定時にここへ落とさず、解決失敗時は例外にする（scaffold 文字列フォールバック禁止）。
     version = (semantic_config_version_id or "").strip() or DEFAULT_SEMANTIC_CONFIG_VERSION
     return ScopeResolve(
         aggregation_scope=scope,
@@ -141,10 +147,16 @@ class DistributionMetricsJob:
         self,
         *,
         repositories: DistributionMetricsRepositories,
+        version_resolver: CurrentVersionResolver | None = None,
         job_run_tracker: JobRunTracker | None = None,
         logger: BatchLogger | None = None,
     ) -> None:
         self._repos = repositories
+        self._version_resolver = version_resolver or (
+            CurrentVersionResolver(repositories.db_reader)
+            if repositories.db_reader is not None
+            else None
+        )
         self._tracker = job_run_tracker or ScaffoldJobRunTracker()
         self._logger = logger or ScaffoldBatchLogger()
 
@@ -186,10 +198,16 @@ class DistributionMetricsJob:
         result.completed_phases.append("open_run")
 
         try:
+            resolved_version = (semantic_config_version_id or "").strip() or None
+            if resolved_version is None and self._version_resolver is not None:
+                try:
+                    resolved_version = self._version_resolver.resolve_semantic()
+                except CurrentVersionResolveError as exc:
+                    raise DistributionMetricsError(exc.code, exc.message) from exc
             scope = resolve_scope(
                 trigger_mode=trigger_mode,
                 job_run_id=job_run_id,
-                semantic_config_version_id=semantic_config_version_id,
+                semantic_config_version_id=resolved_version,
                 aggregation_scope_override=aggregation_scope,
                 now=now,
             )
@@ -198,11 +216,24 @@ class DistributionMetricsJob:
             result.semantic_config_version_id = scope.semantic_config_version_id
             result.completed_phases.append("resolve_scope")
 
+            # 入力は現行正規化 version + item 単位の最新冪等キー組に限定する
+            # （BATCH-016 §6.2.1 / item_feature §12.4）。混在全行読取は禁止。
+            normalization_version_id: str | None = None
+            if self._version_resolver is not None:
+                try:
+                    normalization_version_id = self._version_resolver.resolve_normalization(
+                        semantic_config_version_id=scope.semantic_config_version_id
+                    )
+                except CurrentVersionResolveError as exc:
+                    raise DistributionMetricsError(exc.code, exc.message) from exc
+
             features = self._repos.load_item_features(
-                semantic_config_version_id=scope.semantic_config_version_id
+                semantic_config_version_id=scope.semantic_config_version_id,
+                feature_normalization_version_id=normalization_version_id,
             )
             item_meanings = self._repos.load_item_meanings(
-                semantic_config_version_id=scope.semantic_config_version_id
+                semantic_config_version_id=scope.semantic_config_version_id,
+                feature_normalization_version_id=normalization_version_id,
             )
             if not features:
                 raise DistributionMetricsError("GRS-VAL-001", "item_feature input missing")
