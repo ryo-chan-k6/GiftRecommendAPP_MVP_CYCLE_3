@@ -656,6 +656,10 @@ class ItemApplyRepositories:
         desired_urls = {img.image_url for img in images}
         current = self.item_images.setdefault(item_id, {})
 
+        # §9.3: primary 再計算前に既存 is_primary を解除（URL 変更時の partial UNIQUE 回避）。
+        if images:
+            self._clear_item_image_primary_flags(item_id=item_id)
+
         # Determine single is_primary (first primary candidate, else first by display_order)
         primary_url: str | None = None
         ordered = sorted(images, key=lambda i: (i.display_order, i.image_url))
@@ -691,6 +695,17 @@ class ItemApplyRepositories:
 
         self._sync_delete_item_images(item_id=item_id, url_set=desired_urls)
         return written
+
+    def _clear_item_image_primary_flags(self, *, item_id: str) -> None:
+        """既存行の is_primary をすべて false にする（uq_item_image_primary_per_item 回避）。"""
+
+        self.db_writer.update_rows(
+            "item_image",
+            set_values={"is_primary": False},
+            equals=(("item_id", item_id),),
+        )
+        for row in self.item_images.get(item_id, {}).values():
+            row["is_primary"] = False
 
     def _sync_delete_item_images(self, *, item_id: str, url_set: set[str]) -> int:
         """Delete item_image rows outside the current URL set (005 staging と同型)."""
