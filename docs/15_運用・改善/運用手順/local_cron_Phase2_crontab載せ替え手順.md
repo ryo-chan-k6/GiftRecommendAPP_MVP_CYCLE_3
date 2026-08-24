@@ -116,7 +116,7 @@ secret・token・APIキー・接続文字列・`.env` 実値は記載しない�
 | ---- | ---- |
 | 状態 | **登録済み** |
 | 登録者 | Human（`ryo-chan-k6`） |
-| 登録日時（JST） | **2026-08-24 15:06:22 JST**（[#1870 コメント](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1870#issuecomment-5391269278)） |
+| 登録日時（JST） | **2026-08-24 15:06:22 JST**（[#1870 コメント](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1870#issuecomment-5391345229)） |
 | 実行パス | `/home/ryo-c/GitHub/GiftRecommendAPP_MVP_CYCLE_3`（`develop` チェックアウト） |
 | daily 行 | `--run-meaning` **追加済み**（火〜日 05:00、`--live-rakuten` / `--genre-ids 100005` / `--ranking-genre-ids 100005` / `--pages-per-run=60` / `--max-qps 1` 維持） |
 | weekly 行 | `--run-meaning` **追加済み**（月曜 05:00、同上ノブ維持） |
