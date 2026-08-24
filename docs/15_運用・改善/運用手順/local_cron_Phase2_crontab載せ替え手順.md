@@ -11,7 +11,7 @@
 | 前提検証 | [Phase2 dry-run 検証結果](./local_cron_Phase2_dry-run検証結果.md)（#1824） |
 | Phase1 正本 | [Phase1 crontab運用手順](./local_cron_Phase1_crontab運用手順.md)（#1813） |
 | 親シェル設計 | [local薄いオーケストレータ設計・運用手順](./local薄いオーケストレータ設計・運用手順.md) §11〜§15 |
-| 状態 | 手順正本化。**実 crontab 編集は Human**。AI は登録実行・`--live-rakuten` しない |
+| 状態 | 手順正本化済み。**Human が 2026-08-24 に `--run-meaning` 登録済み**（§6）。AI は登録実行・`--live-rakuten` しない |
 
 secret・token・APIキー・接続文字列・`.env` 実値は記載しない。
 
@@ -114,12 +114,13 @@ secret・token・APIキー・接続文字列・`.env` 実値は記載しない�
 
 | 項目 | 内容 |
 | ---- | ---- |
-| 状態 | **未登録**（手順正本化時点） |
-| 登録者 | （Human 登録後に記入） |
-| 登録日時（JST） | （未定） |
-| daily 行 | `--run-meaning` **未追加** |
-| weekly 行 | `--run-meaning` **未追加** |
-| 備考 | Human が登録したら本表を更新する Task / PR で同期する |
+| 状態 | **登録済み** |
+| 登録者 | Human（`ryo-chan-k6`） |
+| 登録日時（JST） | **2026-08-24 15:06:22 JST**（[#1870 コメント](https://github.com/ryo-chan-k6/GiftRecommendAPP_MVP_CYCLE_3/issues/1870#issuecomment-5391345229)） |
+| 実行パス | `/home/ryo-c/GitHub/GiftRecommendAPP_MVP_CYCLE_3`（`develop` チェックアウト） |
+| daily 行 | `--run-meaning` **追加済み**（火〜日 05:00、`--live-rakuten` / `--genre-ids 100005` / `--ranking-genre-ids 100005` / `--pages-per-run=60` / `--max-qps 1` 維持） |
+| weekly 行 | `--run-meaning` **追加済み**（月曜 05:00、同上ノブ維持） |
+| 備考 | 案B genre・`--live-embedding` 既定 ON は未反映。#1811 は完了扱いにしない。初回観測は次回 05:00 JST 以降 |
 
 ---
 
@@ -146,3 +147,4 @@ secret・token・APIキー・接続文字列・`.env` 実値は記載しない�
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-08-24 | 初版。Human 明示承認 B に基づく載せ替え手順・チェックリスト。登録記録は未実施 |
+| 2026-08-24 | §6。Human 登録（15:06:22 JST・daily/weekly に `--run-meaning`）を同期 |
