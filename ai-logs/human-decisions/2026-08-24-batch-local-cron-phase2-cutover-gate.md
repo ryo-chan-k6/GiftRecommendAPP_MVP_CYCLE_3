@@ -56,8 +56,8 @@ weekly 行も同様に `--run-meaning` を追加する（詳細は載せ替え�
 | ---- | ---- | ---- |
 | 本Log | 明示承認（B）を `decided` で記録 | **本更新** |
 | cron-cutover Task | Issue 起票・手順 docs・Human チェックリスト | 着手 |
-| Human | 実 crontab へ `--run-meaning` 追加 | **待ち** |
-| AI | 登録済み記録の docs 同期（Human 登録後） | 待ち |
+| Human | 実 crontab へ `--run-meaning` 追加 | **完了**（2026-08-24 15:06:22 JST・#1870） |
+| AI | 登録済み記録の docs 同期（Human 登録後） | 着手（載せ替え手順 §6） |
 | #1811 | Phase1 観測継続（本 Decision で完了にしない） | 継続 |
 
 ---
