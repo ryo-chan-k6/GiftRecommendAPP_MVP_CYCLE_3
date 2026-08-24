@@ -4,7 +4,7 @@ definition_type: "review"
 review:
   id: "review-batch-local-cron-phase2-epic-pr"
   title: "batch-local-cron-phase2 Epic PRレビュー"
-  summary: "local cron Phase2親シェル配線（009〜016）Epic の develop 向け Epic PR / 中間PR を AI Review する。"
+  summary: "local cron Phase2親シェル配線（009〜016）Epic の develop 向け最終寄り Epic PR（cron-cutover docs反映）を AI Review する。"
   type: "epic_pr_review"
   status: "ready"
 
@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: 1826
+  pr: 1873
   issue:
     number: 1818
   task_definition: "prompts/definitions/epics/batch-local-cron-phase2/epic.yaml"
@@ -51,8 +51,9 @@ review_points:
   - "AIが --live-rakuten を実行した痕跡がないか"
   - "secret実値がdocs/PRに含まれていないか"
   - "#1811 を勝手に再開・完了扱いしていないか"
-  - "Epic PR target が develop、完了PRなら Closes、中間PRなら Related to か"
+  - "Epic PR target が develop。本PRは Related to #1818（最低限確認後に Human クローズ）。中間PR #1826 とは別"
   - "#1745次本線追跡が更新されているか"
+  - "crontab実体の再編集・AI live・案B・#1811完了扱いが混入していないか"
 
 notes:
   - "機能・領域単位Epic（例外）。Human Reviewは省略しない"
