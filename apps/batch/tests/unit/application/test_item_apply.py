@@ -1163,6 +1163,54 @@ def test_sync_item_images_deletes_via_db_reader_existing_urls() -> None:
     assert any(c["table"] == "item_image" for c in reader.fetch_calls)
 
 
+def test_sync_item_images_clears_existing_primary_before_upsert_when_url_changes() -> None:
+    """primary URL 変更時に uq_item_image_primary_per_item を回避する（#1876）。"""
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    item_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "item_image",
+        (
+            {
+                "item_id": item_id,
+                "image_url": "https://img.example/old-primary.jpg",
+                "is_primary": True,
+            },
+            {
+                "item_id": item_id,
+                "image_url": "https://img.example/secondary.jpg",
+                "is_primary": False,
+            },
+        ),
+    )
+    db = ScaffoldDbWriter()
+    repos = ItemApplyRepositories(db_writer=db, db_reader=reader)
+    repos.sync_item_images(
+        item_id=item_id,
+        images=[
+            StagingImageSeed(
+                staging_item_id="si_1",
+                image_url="https://img.example/new-primary.jpg",
+                display_order=0,
+                is_primary_candidate=True,
+            )
+        ],
+        fetched_at=datetime(2026, 7, 27, tzinfo=UTC),
+    )
+
+    clear_call = next(c for c in db.update_calls if c["table"] == "item_image")
+    assert clear_call["set_values"] == {"is_primary": False}
+    assert clear_call["equals"] == (("item_id", item_id),)
+    upsert_call = next(c for c in db.upsert_calls if c["table"] == "item_image")
+    primary_rows = [row for row in upsert_call["rows"] if row["is_primary"]]
+    assert len(primary_rows) == 1
+    assert primary_rows[0]["image_url"] == "https://img.example/new-primary.jpg"
+    assert db.update_calls
+    assert db.upsert_calls
+
+
 def test_cli_non_demo_requires_database_url(monkeypatch) -> None:
     from dataclasses import replace
 
