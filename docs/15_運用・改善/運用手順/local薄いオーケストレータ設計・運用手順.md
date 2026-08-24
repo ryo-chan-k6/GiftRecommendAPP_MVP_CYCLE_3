@@ -12,7 +12,7 @@
 | ゲート正本 | [2026-08-01-local-batch-orchestrator-gate](../../../ai-logs/human-decisions/2026-08-01-local-batch-orchestrator-gate.md)（`decided`） |
 | 運用枠正本 | [2026-07-31-batch-data-collect-ops-plan](../../../ai-logs/human-decisions/2026-07-31-batch-data-collect-ops-plan.md)（`decided`） |
 | cron次本線 | [2026-08-01-batch-local-cron-ops-next](../../../ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md)（`decided`） |
-| 状態 | Phase1 Implemented（#1804）。Phase2 配線設計は #1820。Phase2 親シェル配線実装は #1822（`--run-meaning` opt-in / 既定 Phase1 互換）。Phase2 dry-run 本記録は [local_cron_Phase2_dry-run検証結果](./local_cron_Phase2_dry-run検証結果.md)（#1824）。crontab 運用手順正本は [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md)（#1813）。実 crontab 登録・Phase2 載せ替えは Human |
+| 状態 | Phase1 Implemented（#1804）。Phase2 配線設計は #1820。Phase2 親シェル配線実装は #1822（`--run-meaning` opt-in / 既定 Phase1 互換）。Phase2 dry-run 本記録は [local_cron_Phase2_dry-run検証結果](./local_cron_Phase2_dry-run検証結果.md)（#1824）。crontab 運用手順正本は [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md)（#1813）。Phase2 載せ替え手順は [local_cron_Phase2_crontab載せ替え手順](./local_cron_Phase2_crontab載せ替え手順.md)（Human 明示承認 B・2026-08-24）。実 crontab 登録は Human |
 
 本書は設計・運用手順の正本である。§1〜§10 は Phase1（001〜008/+017任意）および関連資料。§11〜§15 は Phase2（009〜016 親シェル配線）。§16 は変更履歴。親シェル実装は #1804 / Phase2 配線は #1822（`scripts/batch/local_*_orchestrator.sh`）。dry-run 本記録は #1824。crontab 載せ替えは後続 cron-cutover / Human。実 crontab 登録は Human。
 secret・接続文字列・token・egress IP の実値は記載しない。
@@ -652,10 +652,12 @@ Phase1 §6 に加え:
 | 条件 | 内容 |
 | ---- | ---- |
 | 着手条件 | Phase1 観測完了 **または** Human 明示承認 |
+| ゲート状態（2026-08-24） | **(B) Human 明示承認**で充足。[cutover ゲート Decision](../../../ai-logs/human-decisions/2026-08-24-batch-local-cron-phase2-cutover-gate.md) |
 | 実施者 | **Human**（AI は実 crontab を変更しない） |
 | 内容 | cron 行へ `--run-meaning` 追加等。Phase1 ノブ・親シェル経由・個別 cron 禁止を維持 |
-| 禁止 | 観測中の勝手な載せ替え、AI `--live-rakuten`、018/019 混入 |
-| 前提材料 | #1824 dry-run 本記録済み。載せ替え判断・実施は本節の Human ゲートを通過してから |
+| 禁止 | 観測中の勝手な載せ替え、AI `--live-rakuten`、018/019 混入、案B genre 無断反映、`--live-embedding` 既定 ON |
+| 前提材料 | #1824 dry-run 本記録済み |
+| 手順正本 | [local_cron_Phase2_crontab載せ替え手順](./local_cron_Phase2_crontab載せ替え手順.md) |
 
 ### 15.4 明示的に引き渡さないもの
 
@@ -681,3 +683,4 @@ Phase1 §6 に加え:
 | 2026-08-02 | #1824。Phase2 dry-run 双方モード検証を本記録化（[local_cron_Phase2_dry-run検証結果](./local_cron_Phase2_dry-run検証結果.md)）。§1 / §15.2 / §15.3 を最小同期 |
 | 2026-08-04 | #1846。§9 / §10 に第1波 fetch_plan 拡大（案B・1ジャンル手動実行手順）への接続を追加。親シェル・crontab 無断変更なし |
 | 2026-08-07 | #1866。親シェルへ `--live-embedding`（BATCH-015 のみ・既定 OFF）を伝播。§13.3 CLI 表を最小追記 |
+| 2026-08-24 | §15.3。Human 明示承認 B による cutover 着手と載せ替え手順正本への参照を追記 |
