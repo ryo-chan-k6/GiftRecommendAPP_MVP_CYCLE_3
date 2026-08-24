@@ -121,9 +121,11 @@ secret・token・APIキー・egress IP・接続文字列の実値は記載しな
 | 着手条件 | Phase1 観測完了 **または** Human 明示承認 |
 | 実施者 | **Human**（AI は実 crontab を変更しない） |
 | 想定内容 | 観測用 cron 行へ `--run-meaning` を追加する等。Phase1 ノブ・親シェル経由・個別 cron 禁止を維持 |
-| 本 Task の状態 | dry-run 材料は揃った。**載せ替え判断・実施は後続 cron-cutover / Human** |
+| ゲート状態（2026-08-24） | **(B) Human 明示承認**で充足。[cutover ゲート Decision](../../../ai-logs/human-decisions/2026-08-24-batch-local-cron-phase2-cutover-gate.md) |
+| 載せ替え手順正本 | [local_cron_Phase2_crontab載せ替え手順](./local_cron_Phase2_crontab載せ替え手順.md) |
+| 本 dry-run Task の状態 | dry-run 材料は揃った。実 crontab 編集は Human（AI は手順・記録同期のみ） |
 
-詳細は設計正本 §14 / §15.3、および [local_cron_Phase1_crontab運用手順](./local_cron_Phase1_crontab運用手順.md) を正とする。
+詳細は設計正本 §14 / §15.3、[Phase1 crontab運用手順](./local_cron_Phase1_crontab運用手順.md)、[Phase2 載せ替え手順](./local_cron_Phase2_crontab載せ替え手順.md) を正とする。
 
 ---
 
@@ -132,3 +134,4 @@ secret・token・APIキー・egress IP・接続文字列の実値は記載しな
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-08-02 | #1824。daily/weekly ×（既定 skip / `--run-meaning`）の dry-run 結果を本記録として追加 |
+| 2026-08-24 | cutover ゲート (B) 充足と載せ替え手順正本への参照を §6 に追記 |

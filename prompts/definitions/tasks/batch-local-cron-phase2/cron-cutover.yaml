@@ -4,7 +4,7 @@ definition_type: "task"
 task:
   id: "task-batch-local-cron-phase2-cron-cutover"
   title: "batch-local-cron-phase2:crontab載せ替え（Humanゲート）"
-  summary: "Phase2配線を実crontabへ載せ替える後段Task。Phase1観測完了またはHuman明示承認まで着手禁止。AIは登録実行・--live-rakutenしない。現状はDefinitionのみでも可。"
+  summary: "Phase2配線を実crontabへ載せ替える後段Task。Human明示承認（選択肢B・2026-08-24）により着手。AIは登録実行・--live-rakutenしない。手順正本化・チェックリスト・登録済み記録同期。"
   workstream_key: "batch-local-cron-phase2"
   phase: "cron-cutover"
 
@@ -20,9 +20,11 @@ parent:
     - 1798
     - 1792
     - 1607
+    - 1824
   related_prs:
     - 1810
     - 1815
+    - 1825
 
 commands:
   primary: "/start-task"
@@ -48,19 +50,22 @@ agent:
 background: |
   Phase1観測中に009〜016を実crontabへ載せると観測が濁るため、本TaskはHumanゲート。
   着手条件: (A) Phase1観測完了（#1811 verify相当）または (B) Human明示承認。
+  2026-08-24: Humanが選択肢Bを明示承認（Decision 2026-08-24-batch-local-cron-phase2-cutover-gate）。
   AIは実crontab登録・--live-rakutenを実行しない。手順正本化・登録済み記録同期のみ。
-  現時点では Definition 作成のみでもよい（/start-task はゲート解除後）。
+  #1811は完了扱いにしない。案B genre IDs・--live-embedding既定ONは本Task外。
 
 objective: |
-  Human承認後に、Phase2対応のcrontab載せ替え手順と登録済み記録を正本化し、
-  親シェル経由のみの無人運用を001〜016へ拡張する。
+  Human承認後に、Phase2対応のcrontab載せ替え手順と登録済み記録欄を正本化し、
+  Humanが親シェル経由のみで009〜016を無人運用に拡張できる状態にする。
+  実crontab編集後は登録済み記録をdocsへ同期する。
 
 scope:
   - "Phase2 crontab載せ替え手順の正本化（親シェルのみ・個別cron禁止）"
   - "Human向け登録チェックリスト（実行はHuman）"
-  - "Human登録済み記録の同期（secretなし）"
-  - "Phase1互換モード解除方針の記載（必要時）"
-  - "統括#1745次本線追跡更新"
+  - "Human登録済み記録の同期（secretなし。未登録時点の記録欄含む）"
+  - "Phase1互換モード解除方針の記載（--run-meaning追加）"
+  - "関連運用docsへの最小リンク同期"
+  - "統括#1745次本線追跡更新（必要時）"
 
 out_of_scope:
   - "AIによる実crontab登録実行"
@@ -71,14 +76,20 @@ out_of_scope:
   - "secret実値の表示・変更"
   - "Phase1観測中の無断載せ替え"
   - "Phase1 #1811 の勝手な完了判断（Human）"
+  - "案B --genre-ids の定常crontab反映"
+  - "--live-embedding の既定ON"
 
 input:
   docs:
+    - path: "ai-logs/human-decisions/2026-08-24-batch-local-cron-phase2-cutover-gate.md"
+      required: true
     - path: "ai-logs/human-decisions/2026-08-01-batch-local-cron-ops-next.md"
       required: true
     - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
       required: true
     - path: "docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local_cron_Phase2_dry-run検証結果.md"
       required: true
     - path: "scripts/batch/README.md"
       required: true
@@ -86,36 +97,43 @@ input:
 
 output:
   docs:
-    - path: "docs/15_運用・改善/運用手順/**"
+    - path: "docs/15_運用・改善/運用手順/local_cron_Phase2_crontab載せ替え手順.md"
       action: "create_or_update"
       required: true
-  files:
-    - path: "ai-logs/human-decisions/**"
+    - path: "docs/15_運用・改善/運用手順/**"
       action: "create_or_update"
       required: false
+  files:
+    - path: "ai-logs/human-decisions/2026-08-24-batch-local-cron-phase2-cutover-gate.md"
+      action: "create_or_update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-local-cron-phase2/cron-cutover.yaml"
+      action: "create_or_update"
+      required: true
 
 acceptance_criteria:
-  - "着手前に Humanゲート条件（Phase1観測完了 or 明示承認）が満たされている"
+  - "着手前に Humanゲート条件（Human明示承認B）が満たされ Decision に記録されている"
   - "載せ替え手順docsがあり親シェル経由のみ・個別cron禁止が明記されている"
-  - "Human登録済み記録がある（AIは登録実行していない）"
-  - "AI live・GHA schedule・#1607・018/019・secret実値を含まない"
+  - "Human登録チェックリストと登録済み記録欄がある（未登録時点も明示。AIは登録実行していない）"
+  - "AI live・GHA schedule・#1607・018/019・secret実値・案B genre・--live-embedding既定ONを含まない"
+  - "Humanが実crontab登録後、登録済み記録をdocsへ同期できる状態である"
 
 branch:
-  no_branch: true
+  no_branch: false
   summary: "phase2-cron-cutover"
   name: null
-  base: null
-  target: null
-  worktree_required: false
+  base: "chore/epic-1818-batch-local-cron-phase2"
+  target: "chore/epic-1818-batch-local-cron-phase2"
+  worktree_required: true
 
 project:
   project_name: "Gift Recommendation Service MVP Cycle 3"
   fields:
-    status: "Backlog"
+    status: "Todo"
     phase: "15_運用・改善"
     priority: "high"
-    planned_start: null
-    due_date: null
+    planned_start: "2026-08-24"
+    due_date: "2026-08-26"
 
 issue:
   unit: "task"
@@ -128,9 +146,11 @@ dependencies:
     - 1745
     - 1811
     - 1798
+    - 1824
   prs:
     - 1810
     - 1815
+    - 1825
   tasks:
     - "task-batch-local-cron-phase2-dry-run-verify"
   blocking: true
@@ -141,6 +161,7 @@ parallel_control:
   blocks: []
   exclusive_files:
     - "docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md"
+    - "docs/15_運用・改善/運用手順/local_cron_Phase2_crontab載せ替え手順.md"
   conflict_risk: "high"
   contract_impact: false
   generated_impact: false
@@ -148,12 +169,13 @@ parallel_control:
 
 test_policy:
   required:
-    - "Humanゲート条件の確認記録"
-    - "登録済み記録（secretなし）"
+    - "Humanゲート条件の確認記録（Decision B）"
+    - "登録済み記録欄（secretなし。未登録明示可）"
   commands: []
   manual_checks:
-    - "Phase1観測中に無断で009〜016を載せていない"
+    - "Human明示承認Bなしに着手していない"
     - "AIがcrontab登録・--live-rakutenを実行していない"
+    - "案B genre / --live-embedding既定ONを本Taskで入れていない"
   not_required:
     - "AIによる --live-rakuten 実行"
     - "AIによるcrontab登録"
@@ -170,11 +192,13 @@ review:
     contract: false
     security: true
   review_points:
-    - "Humanゲート条件が満たされてから着手しているか"
+    - "Humanゲート条件（明示承認B）が満たされてから着手しているか"
     - "親シェル経由のみ・個別cron禁止か"
     - "AIが登録・liveしていないか"
-    - "Phase1 crontabを壊していないか"
+    - "Phase1 crontabノブを壊す方針になっていないか"
+    - "案B / --live-embedding既定ONを混入していないか"
     - "secret実値がないか"
+    - "#1811を完了扱いにしていないか"
 
 operation_logging:
   level: "standard"
@@ -186,18 +210,20 @@ operation_logging:
   reason: "本番crontab変更に近い。Human判断・横断影響を記録"
 
 human_decision_points:
-  - "Phase1観測完了判定または明示承認の有無"
-  - "実crontab載せ替え内容（時刻・フラグ・互換モード解除）の最終採択"
+  - "明示承認B（充足: 2026-08-24 Decision）"
+  - "実crontab載せ替えの実行タイミング（Human）"
   - "載せ替え後の初回観測期間"
+  - "案B genre / --live-embedding は別承認（本Task外）"
 
 stop_conditions:
-  - "Phase1観測未完了かつHuman明示承認がない場合（着手禁止）"
+  - "Human明示承認がない場合（本Taskでは2026-08-24で充足済み）"
   - "AIがcrontab登録や --live-rakuten を実行する必要に見える場合"
   - "GHA schedule有効化が必要に見える場合"
   - "secret実値が必要に見える場合"
+  - "案B genre / --live-embedding既定ONを本Taskに混入させる必要に見える場合"
 
 notes:
-  - "現状は Definition のみ作成。/start-task は Humanゲート解除後"
-  - "branch.no_branch: true（ゲート解除までBranch不要）。解除時にDefinition更新してから起票"
+  - "2026-08-24: Human選択肢B明示承認によりゲート解除。branch.no_branch: false"
   - "Phase1 #1811 を勝手に完了扱いにしない"
   - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"
+  - "実crontab登録後の記録同期は同一Issue内の後続コミット可"
