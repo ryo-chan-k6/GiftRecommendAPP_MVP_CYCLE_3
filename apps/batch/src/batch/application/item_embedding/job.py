@@ -181,7 +181,11 @@ class ItemEmbeddingJob:
             )
 
             if not plan.items:
-                if plan.non_target_skip_count > 0 or self._repos.queues:
+                # non_target: BATCH-014 終端（skipped/succeeded）等。in-memory は self.queues も参照。
+                if (
+                    plan.non_target_skip_count > 0
+                    or self._repos.queues
+                ):
                     result.status = "succeeded"
                     self._tracker.complete(
                         batch_id=BATCH_ID, job_run_id=job_run_id, status="succeeded"

@@ -333,17 +333,51 @@ class ItemEmbeddingRepositories:
             if not (is_embedding or is_continuation):
                 continue
 
-            item_row = self.items.get(q.item_id)
-            if item_row is None:
-                item_row = self._fetch_and_cache_item(q.item_id)
-            if item_row is not None and str(item_row.get("source") or DEFAULT_SOURCE) != source:
+            if not self._queue_row_matches_source(q.item_id, source):
                 continue
 
             targets.append(q)
             if len(targets) >= max(0, limit):
                 break
 
+        # BATCH-014 §9.4 で skipped/succeeded 終端済みの行は本 Batch 対象外（§9.3）。
+        # DB 経路では in-memory の ``self.queues`` 非空判定に相当する終端行を non_target に計上する。
+        if not targets and queue_ids is None and item_ids is None:
+            fetch_limit = min(max(max(0, limit) * 5, max(0, limit)), 5000) or 5000
+            terminal_filter_specs: tuple[tuple[tuple[str, object], ...], ...] = (
+                (("generation_type", "semantic"), ("queue_status", "skipped")),
+                (("generation_type", "semantic"), ("queue_status", "succeeded")),
+                (("generation_type", "feature"), ("queue_status", "skipped")),
+                (("generation_type", "feature"), ("queue_status", "succeeded")),
+                (("generation_type", "embedding"), ("queue_status", "skipped")),
+                (("generation_type", "embedding"), ("queue_status", "succeeded")),
+            )
+            for equals in terminal_filter_specs:
+                result = reader.fetch_rows(
+                    "item_generation_queue",
+                    columns=_QUEUE_COLUMNS,
+                    equals=equals,
+                    order_by=("item_generation_queue_id",),
+                    limit=fetch_limit,
+                )
+                for row in result.rows:
+                    q = self._cache_queue_row(row)
+                    if q.item_generation_queue_id in seen_ids:
+                        continue
+                    seen_ids.add(q.item_generation_queue_id)
+                    if not self._queue_row_matches_source(q.item_id, source):
+                        continue
+                    non_target += 1
+
         return targets, non_target
+
+    def _queue_row_matches_source(self, item_id: str, source: str) -> bool:
+        item_row = self.items.get(item_id)
+        if item_row is None and self.db_reader is not None:
+            item_row = self._fetch_and_cache_item(item_id)
+        if item_row is None:
+            return True
+        return str(item_row.get("source") or DEFAULT_SOURCE) == source
 
     def claim_or_continue(
         self,
