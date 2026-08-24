@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-fetch-plan-expand-batch-008-active-status-error"
+  title: "batch-fetch-plan-expand:BATCH-008有効状態更新error_code/Diff範囲修正 Task PRレビュー"
+  summary: "BATCH-008 Applier の DDL準拠 error_code と提案なし Diff 処理キー除外の修正 PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1850
+  issue:
+    number: 1849
+  task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/batch-008-active-status-error.yaml"
+  source_branch: "fix/task-1849-batch-008-active-status-error"
+  target_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  parent_epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "§9.2 に合わせた actionable Diff 限定が仕様意図と一致するか"
+  - "GRS-ITM-001 / GRS-BAT-005 / GRS-BAT-001 の割当が妥当か"
+  - "親Epic allowed_paths 拡張が最小か"
+  - "AI live / crontab / 親シェル変更が混入していないか"
+  - "secret実値がないか"
+  - "unit test が関連失敗パスをカバーしているか"
+
+notes:
+  - "親Epic #1843。Task Issue #1849。Human Reviewは省略しない"
+  - "エラー定義書の GRS-DB-* 全体見直しは out of scope（別 Human 判断）"

@@ -684,3 +684,70 @@ def test_load_item_semantic_version_filter_matches_and_rejects() -> None:
             ("semantic_config_version_id", _STALE_SEMANTIC_VERSION_ID),
         ),
     ]
+
+
+def test_apply_polarity_and_load_concept_feature_rules() -> None:
+    from batch.application.item_feature.rules_loader import (
+        apply_polarity,
+        load_concept_feature_rules,
+    )
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    assert apply_polarity(0.25, "positive") == 0.25
+    assert apply_polarity(0.25, "negative") == -0.25
+    assert apply_polarity(0.1, "mixed") == 0.1
+
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "semantic_concept",
+        (
+            {
+                "semantic_concept_id": "sc-1",
+                "concept_code": "formal_refined",
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "concept_feature_rule",
+        (
+            {
+                "semantic_concept_id": "sc-1",
+                "feature_code": "formality",
+                "feature_delta": 0.25,
+                "polarity": "positive",
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "is_active": True,
+            },
+            {
+                "semantic_concept_id": "sc-1",
+                "feature_code": "novelty",
+                "feature_delta": 0.05,
+                "polarity": "negative",
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "is_active": True,
+            },
+        ),
+    )
+    rules = load_concept_feature_rules(
+        reader, semantic_config_version_id=_SEMANTIC_VERSION_ID
+    )
+    assert rules["formal_refined"]["formality"] == 0.25
+    assert rules["formal_refined"]["novelty"] == -0.05
+
+
+def test_negative_rule_delta_lowers_raw_below_baseline() -> None:
+    repos, _ = _repos(
+        semantics=[
+            _semantic(concepts=[{"concept_code": "formal_refined", "confidence": 1.0}])
+        ]
+    )
+    rules = {"formal_refined": {"formality": -0.2}}
+    result = ItemFeatureJob(
+        repositories=repos,
+        generator=build_scaffold_adapter(concept_feature_rules=rules),
+    ).run(job_run_id="run-neg")
+    assert result.status == "succeeded"
+    formality = next(r for r in repos.upsert_rows if r.feature_code == "formality")
+    assert formality.raw_feature_value == pytest.approx(0.3)

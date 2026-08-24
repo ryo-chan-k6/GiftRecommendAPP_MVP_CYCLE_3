@@ -64,7 +64,60 @@ _FEATURE_COLUMNS = (
     "feature_normalization_version_id",
     "raw_feature_value",
     "normalized_feature_value",
+    "generated_at",
 )
+
+_DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
+
+
+def _as_utc_datetime(value: object) -> datetime:
+    """Normalize DB / seed timestamps for generation comparison."""
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
+    if isinstance(value, str) and value.strip():
+        text = value.strip().replace("Z", "+00:00")
+        try:
+            parsed = datetime.fromisoformat(text)
+        except ValueError:
+            return _DATETIME_MIN
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=UTC)
+        return parsed.astimezone(UTC)
+    return _DATETIME_MIN
+
+
+def select_current_generation_feature_rows(
+    rows: tuple[dict[str, object], ...] | list[dict[str, object]],
+) -> list[dict[str, object]]:
+    """現行世代の冪等キー組を選ぶ（item_feature テーブル定義書 §12.4 / BATCH-013）。
+
+    同一 ``item_id`` + ``semantic_config_version_id`` 配下に複数 ``feature_input_hash``
+    世代が同居し得る。``generated_at`` 最大の冪等キー組
+    （``feature_input_hash`` + ``feature_normalization_version_id``）の行だけを返す。
+    """
+
+    candidates = [dict(row) for row in rows if row.get("raw_feature_value") is not None]
+    if not candidates:
+        return []
+
+    groups: dict[tuple[str, str], list[dict[str, object]]] = {}
+    for row in candidates:
+        key = (
+            str(row.get("feature_input_hash") or ""),
+            str(row.get("feature_normalization_version_id") or ""),
+        )
+        groups.setdefault(key, []).append(row)
+
+    def _group_generated_at(group_rows: list[dict[str, object]]) -> datetime:
+        return max((_as_utc_datetime(r.get("generated_at")) for r in group_rows), default=_DATETIME_MIN)
+
+    best_key = max(groups.keys(), key=lambda key: _group_generated_at(groups[key]))
+    selected = groups[best_key]
+    selected.sort(key=lambda row: str(row.get("feature_code") or ""))
+    return selected
 
 
 from batch.application.observability import (
@@ -412,7 +465,10 @@ class FeatureNormalizationRepositories:
         item_id: str,
         semantic_config_version_id: str,
     ) -> tuple[RawFeatureAxis, ...]:
-        """BATCH-012（IF-DB-BATCH-013）が生成した raw 8 軸を読取（変更しない）。"""
+        """BATCH-012 が生成した raw 8 軸を読取（変更しない）。
+
+        複数世代同居時は現行世代（最新 ``generated_at`` の冪等キー組）のみ返す。
+        """
 
         key = (item_id, semantic_config_version_id)
         cached = self.raw_features.get(key)
@@ -420,6 +476,7 @@ class FeatureNormalizationRepositories:
             return tuple(cached)
         if self.db_reader is None:
             return ()
+        # 8軸 × 複数世代に備え余裕を取る（現行組の選定は in-process）
         result = self.db_reader.fetch_rows(
             "item_feature",
             columns=_FEATURE_COLUMNS,
@@ -428,8 +485,9 @@ class FeatureNormalizationRepositories:
                 ("semantic_config_version_id", semantic_config_version_id),
             ),
             order_by=("feature_code",),
-            limit=50,
+            limit=500,
         )
+        selected_rows = select_current_generation_feature_rows(result.rows)
         axes = [
             RawFeatureAxis(
                 feature_code=str(row["feature_code"]),
@@ -443,8 +501,7 @@ class FeatureNormalizationRepositories:
                     else 0.0
                 ),
             )
-            for row in result.rows
-            if row.get("raw_feature_value") is not None
+            for row in selected_rows
         ]
         self.raw_features[key] = axes
         return tuple(axes)

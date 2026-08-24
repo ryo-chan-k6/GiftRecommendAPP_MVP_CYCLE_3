@@ -530,9 +530,11 @@ def test_idempotent_rerun_converges_item_image_review() -> None:
 
     second = job.run(job_run_id="run-idem-2")
     assert second.status == "succeeded"
-    assert second.item_upsert_count == 1
-    assert second.item_image_sync_count == 1
-    assert second.item_review_upsert_count == 1
+    # 歴史的 new で item 済みは選定スキップ（#1855）。再実行で業務列が変わらないことだけ確認。
+    assert second.planned_diff_count == 0
+    assert second.item_upsert_count == 0
+    assert second.item_image_sync_count == 0
+    assert second.item_review_upsert_count == 0
 
     assert str(repos.items[key]["item_id"]) == item_id
     assert repos.items[key]["item_name"] == snapshot_item["item_name"]
@@ -835,6 +837,158 @@ def test_list_eligible_diffs_uses_db_reader_when_injected() -> None:
     assert [d.product_diff_result_id for d in processable] == ["pdr_new"]
     assert unavailable == 1
     assert any(c["table"] == "product_diff_result" for c in reader.fetch_calls)
+
+
+def test_list_eligible_diffs_expands_scan_and_skips_stale_new(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """先頭 PAGE の歴史的 new（item 済み）を飛ばし、後ろの未反映 new を拾う。"""
+
+    from datetime import UTC, datetime
+
+    from batch.application.item_apply import repositories as repos_mod
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    monkeypatch.setattr(repos_mod, "ELIGIBLE_SCAN_PAGE_SIZE", 2)
+    monkeypatch.setattr(repos_mod, "ELIGIBLE_SCAN_MAX_ROWS", 20)
+
+    now = datetime.now(UTC)
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "product_diff_result",
+        (
+            {
+                "product_diff_result_id": "pdr_01",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_old",
+                "external_item_code": "shop:old",
+                "old_hash": None,
+                "new_hash": _HASH_A,
+                "diff_status": "new",
+                "judged_at": now,
+            },
+            {
+                "product_diff_result_id": "pdr_02",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_old2",
+                "external_item_code": "shop:old2",
+                "old_hash": None,
+                "new_hash": _HASH_A,
+                "diff_status": "new",
+                "judged_at": now,
+            },
+            {
+                "product_diff_result_id": "pdr_03",
+                "batch_run_id": "run-1",
+                "staging_item_id": "si_late",
+                "external_item_code": "shop:late",
+                "old_hash": None,
+                "new_hash": _HASH_B,
+                "diff_status": "new",
+                "judged_at": now,
+            },
+        ),
+    )
+    reader.seed(
+        "staging_item",
+        (
+            {
+                "staging_item_id": "si_old",
+                "raw_metadata_id": "raw_old",
+                "source": "rakuten",
+                "external_item_code": "shop:old",
+                "normalized_hash": _HASH_A,
+                "item_name": "Old",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 1,
+                "item_url": "https://item.example/old",
+                "external_genre_id": None,
+                "shop_code": "shop",
+                "availability": 1,
+                "review_average": None,
+                "review_count": None,
+            },
+            {
+                "staging_item_id": "si_old2",
+                "raw_metadata_id": "raw_old2",
+                "source": "rakuten",
+                "external_item_code": "shop:old2",
+                "normalized_hash": _HASH_A,
+                "item_name": "Old2",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 2,
+                "item_url": "https://item.example/old2",
+                "external_genre_id": None,
+                "shop_code": "shop",
+                "availability": 1,
+                "review_average": None,
+                "review_count": None,
+            },
+            {
+                "staging_item_id": "si_late",
+                "raw_metadata_id": "raw_late",
+                "source": "rakuten",
+                "external_item_code": "shop:late",
+                "normalized_hash": _HASH_B,
+                "item_name": "Late",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 3,
+                "item_url": "https://item.example/late",
+                "external_genre_id": None,
+                "shop_code": "shop",
+                "availability": 1,
+                "review_average": None,
+                "review_count": None,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_old",
+                "source": "rakuten",
+                "external_item_code": "shop:old",
+                "normalized_hash": _HASH_A,
+                "item_name": "Old",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 1,
+                "item_url": "https://item.example/old",
+                "external_genre_id": None,
+                "shop_code": "shop",
+                "active_status": "active",
+                "is_active": True,
+                "first_fetched_at": now,
+                "last_checked_at": now,
+            },
+            {
+                "item_id": "it_old2",
+                "source": "rakuten",
+                "external_item_code": "shop:old2",
+                "normalized_hash": _HASH_A,
+                "item_name": "Old2",
+                "item_caption": None,
+                "catchcopy": None,
+                "price": 2,
+                "item_url": "https://item.example/old2",
+                "external_genre_id": None,
+                "shop_code": "shop",
+                "active_status": "active",
+                "is_active": True,
+                "first_fetched_at": now,
+                "last_checked_at": now,
+            },
+        ),
+    )
+    repos = ItemApplyRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    processable, unavailable = repos.list_eligible_diffs(max_items=1)
+    assert unavailable == 0
+    assert [d.product_diff_result_id for d in processable] == ["pdr_03"]
+    assert len(reader.fetch_calls) >= 2
 
 
 def test_resolve_item_and_load_staging_images_via_db_reader() -> None:

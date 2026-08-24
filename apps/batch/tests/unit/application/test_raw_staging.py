@@ -11,13 +11,18 @@ from batch.application.job_run import ScaffoldJobRunTracker
 from batch.application.raw_staging import (
     BATCH_ID,
     RAW_STAGING_PHASES,
+    ItemTransformBundle,
     RawMetadataSeed,
     RawStagingJob,
     RawStagingRepositories,
+    StagingItemImageRow,
+    StagingItemRow,
+    StagingValidationError,
     build_normalized_payload,
     compute_normalized_hash,
     content_hash_for_bytes,
 )
+from batch.application.raw_staging.validate import validate_item_bundle
 from batch.infrastructure.db import ScaffoldDbWriter
 from batch.infrastructure.object_storage import ObjectRef, ObjectStorageError, ScaffoldObjectStorageClient
 
@@ -361,6 +366,88 @@ def test_image_sync_delete_on_rerun() -> None:
         "external_item_code",
         "image_url",
     )
+
+
+def test_validate_item_bundle_rejects_duplicate_image_url_with_grs_val_006() -> None:
+    """transform 後不変条件: 同一 item 内の duplicate image_url は GRS-VAL-006."""
+
+    shared = "https://img.example/dup.jpg"
+    item = StagingItemRow(
+        raw_metadata_id="rm_val006",
+        source="rakuten",
+        external_item_code="shop:val006",
+        item_name="gift",
+        item_url="https://item.example/val006",
+        price=1000,
+        normalized_hash="a" * 64,
+    )
+    images = (
+        StagingItemImageRow(
+            raw_metadata_id="rm_val006",
+            external_item_code="shop:val006",
+            image_url=shared,
+            image_size_type="medium",
+            display_order=0,
+            is_primary_candidate=True,
+        ),
+        StagingItemImageRow(
+            raw_metadata_id="rm_val006",
+            external_item_code="shop:val006",
+            image_url=shared,
+            image_size_type="small",
+            display_order=1,
+            is_primary_candidate=False,
+        ),
+    )
+    bundle = ItemTransformBundle(item=item, images=images, normalized_payload={})
+
+    try:
+        validate_item_bundle(bundle)
+        raise AssertionError("expected StagingValidationError")
+    except StagingValidationError as exc:
+        assert exc.code == "GRS-VAL-006"
+        assert shared in exc.message
+
+
+def test_duplicate_image_url_across_medium_and_small_is_deduped() -> None:
+    """同一 URL が medium/small 両方にあっても UNIQUE 1 行に正規化し upsert 成功する."""
+
+    shared = "https://img.example/shared.jpg"
+    payload = _item_search_payload(code="shop:dup-img")
+    item = payload["Items"][0]["Item"]  # type: ignore[index]
+    assert isinstance(item, dict)
+    item["mediumImageUrls"] = [
+        {"imageUrl": shared},
+        {"imageUrl": "https://img.example/m2.jpg"},
+        {"imageUrl": shared},  # within-array duplicate
+    ]
+    item["smallImageUrls"] = [
+        {"imageUrl": shared},  # cross-size duplicate → medium 優先で除外
+        {"imageUrl": "https://img.example/s2.jpg"},
+    ]
+    repos, _, db = _seed_repos(payloads={"rm_dup_img": payload})
+    job = RawStagingJob(repositories=repos)
+
+    result = job.run(job_run_id="job-dup-img", max_raw=1)
+
+    assert result.status == "succeeded"
+    urls = sorted({k[2] for k in repos.staging_item_images})
+    assert urls == [
+        "https://img.example/m2.jpg",
+        "https://img.example/s2.jpg",
+        shared,
+    ]
+    shared_row = next(
+        r for r in repos.staging_item_images.values() if r["image_url"] == shared
+    )
+    assert shared_row["image_size_type"] == "medium"
+    assert shared_row["is_primary_candidate"] is True
+    image_upsert = next(c for c in db.upsert_calls if c["table"] == "staging_item_image")
+    conflict_keys = [
+        (row["raw_metadata_id"], row["external_item_code"], row["image_url"])
+        for row in image_upsert["rows"]
+    ]
+    assert len(conflict_keys) == len(set(conflict_keys))
 
 
 def test_physical_column_mapping_excludes_affiliate_shop_name_source_api() -> None:

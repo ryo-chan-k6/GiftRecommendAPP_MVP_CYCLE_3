@@ -35,6 +35,7 @@ from batch.application.distribution_metrics.models import (
 )
 from batch.application.distribution_metrics.repositories import (
     DistributionMetricsRepositories,
+    select_current_generation_item_feature_rows,
 )
 
 __all__ = [
@@ -62,4 +63,5 @@ __all__ = [
     "aggregate_normalization_metrics",
     "compute_distribution_stats",
     "resolve_scope",
+    "select_current_generation_item_feature_rows",
 ]

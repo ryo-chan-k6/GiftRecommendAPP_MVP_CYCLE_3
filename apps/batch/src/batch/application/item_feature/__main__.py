@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from batch.application.current_versions import CurrentVersionResolver
 from batch.application.item_feature.adapter import build_scaffold_adapter
 from batch.application.item_feature.job import (
     DEFAULT_MAX_ITEMS,
@@ -19,6 +20,7 @@ from batch.application.item_feature.models import (
     QueueRow,
 )
 from batch.application.item_feature.repositories import ItemFeatureRepositories
+from batch.application.item_feature.rules_loader import load_concept_feature_rules
 from batch.application.job_run import JobRunTracker, create_job_run_tracker
 from batch.application.observability import (
     ErrorLogWriter,
@@ -177,14 +179,22 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    repos = ItemFeatureRepositories(db_writer=db_writer, db_reader=db_reader,
-phase_log_writer=obs.phase_log_writer,
-error_log_writer=obs.error_log_writer,
+    repos = ItemFeatureRepositories(
+        db_writer=db_writer,
+        db_reader=db_reader,
+        phase_log_writer=obs.phase_log_writer,
+        error_log_writer=obs.error_log_writer,
+    )
+    version_resolver = CurrentVersionResolver(db_reader)
+    concept_rules = load_concept_feature_rules(
+        db_reader,
+        semantic_config_version_id=version_resolver.resolve_semantic(),
     )
     job = ItemFeatureJob(
         repositories=repos,
-        generator=build_scaffold_adapter(),
+        generator=build_scaffold_adapter(concept_feature_rules=concept_rules),
         job_run_tracker=tracker,
+        version_resolver=version_resolver,
     )
     job.repositories.bind_run(batch_run_id=args.job_run_id)
     result = job.run(

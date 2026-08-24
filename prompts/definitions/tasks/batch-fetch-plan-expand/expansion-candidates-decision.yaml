@@ -1,0 +1,211 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-expansion-candidates-decision"
+  title: "batch-fetch-plan-expand:BATCH-002/003拡大候補Human Decision Log化"
+  summary: "ジャンル地図（16,537件）を根拠に、BATCH-002/003 の fetch_plan へ追加するジャンルID候補・第1波・002/003優先を Human Decision Log 化し正本docsへ同期する。MVP 4IDは置き換えない。拡大live収集・定常crontab変更は含まない。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "decision"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1827
+    - 1811
+    - 1818
+    - 1798
+    - 1745
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  ジャンル地図キャンペーン（#1827）完了により external_genre は 16,537 件。地図は拡大情報源であり MVP 4ID は置き換えない。
+  BATCH-003 genre ルートは明示指定 ID のみ（子・孫自動展開なし）。商品データ拡充のため追加候補の Human 採択が必要。
+  本Taskは着手ゲート。拡大live収集・#1811 crontab反映は採択後の別Task。
+
+objective: |
+  BATCH-002/003 拡大候補（追加ジャンルID・第1波・route優先）を Human Decision Log で明示し、
+  楽天Fetch運用方針等の正本docsと矛盾なく同期する。AIは候補と推奨を提示し、採択はHuman。
+
+scope:
+  - "拡大候補 Decision Log 作成（追加ID候補一覧、第1波、BATCH-002 vs 003優先、明示指定のみ境界、MVP 4ID維持）"
+  - "推奨案の整理（選定観点・段階・Run予算影響の定性）と Human 採択欄"
+  - "楽天Fetch運用方針・必要最小の運用手順docs同期"
+  - "後続 fetch_plan反映 / 段階収集 Task の着手ゲートを採択結果へ反映"
+
+out_of_scope:
+  - "拡大候補の大規模 live 収集実行本体"
+  - "定常crontab変更（#1811 / #1818）"
+  - "AIによる --live-rakuten 実行"
+  - "#1792 / #1607 / GHA楽天live"
+  - "MVP 4IDの置き換え"
+  - "keyword route 本格常用化"
+  - "secret実値の表示・変更"
+  - "apps/web|api|reco / OpenAPI / generated"
+  - "#1811 / #1818 の Status・本文の完了操作"
+  - "ジャンル地図 BFS runner 再実行"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_live実行結果_完了.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/ジャンル地図キャンペーン_external_genre棚卸し.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-002_楽天ランキングスナップショット取得バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-003_楽天商品疑似差分取得バッチ仕様書.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "BATCH-002/003 拡大候補 Human Decision Log"
+  - "正本docs同期（運用方針の fetch_plan 拡大節など）"
+
+acceptance_criteria:
+  - "Decision Log に追加ジャンルID候補・第1波・BATCH-002/003優先・明示指定のみ・MVP 4ID維持が明示されている"
+  - "推奨案と Human 採択欄があり、decided または未決明示されている"
+  - "正本docsと矛盾しない"
+  - "拡大live収集・定常crontab変更・GHA楽天live・#1607・secret実値・#1811/#1818完了操作を含まない"
+  - "子・孫自動展開を仕様として導入していない"
+
+branch:
+  no_branch: false
+  summary: "expansion-candidates-decision"
+  name: "chore/task-1844-expansion-candidates-decision"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-04"
+    due_date: "2026-08-06"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1827
+    - 1811
+    - 1818
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "ai-logs/human-decisions/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認"
+  commands: []
+  manual_checks:
+    - "Decision Log に secret 実値がない"
+    - "MVP 4ID置き換えがない"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Decision Log / docs同期のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "追加ID・第1波・002/003優先が曖昧なまま decided になっていないか"
+    - "MVP 4ID置き換え・子孫自動展開・crontab変更が混入していないか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "第1波で追加するジャンルID一覧（推奨案提示→Human採択）"
+  - "BATCH-003（商品Item）優先か、BATCH-002（Ranking）併走か"
+  - "第1波の件数・選定粒度（level / MVP親配下の明示子 等）"
+  - "定常cron反映をいつ別Task化するか"
+
+stop_conditions:
+  - "Humanが拡大候補を明示していないまま収集実行へ進もうとした場合"
+  - "MVP 4ID置き換えが必要に見える場合"
+  - "secret実値が必要に見える場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "Decision Log を ai-logs/human-decisions に作成。通常作業ログは保存しない"
+
+notes:
+  - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
+  - "本Task完了後、fetch_plan反映・段階収集を別Task化"
+  - "Task Issue #1844 / Branch chore/task-1844-expansion-candidates-decision"

@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-fetch-plan-expand-meaning-chain-wiring"
+  title: "batch-fetch-plan-expand:意味連鎖BATCH-010/012/016配線 Task PRレビュー"
+  summary: "concept_feature_rule seed を活かす BATCH-010/012/016 実装配線 PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1861
+  issue:
+    number: 1860
+  task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/meaning-chain-wiring.yaml"
+  source_branch: "chore/task-1860-meaning-chain-wiring"
+  target_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  parent_epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "012 polarity→signed delta が seed 物理と一致するか"
+  - "010 が scaffold_named_item を廃止しているか"
+  - "016 live が非UUID scaffold 文字列へフォールバックしないか"
+  - "out of scope（親シェル③・live再実行）を含まないか"
+  - "secret実値がないか"
+
+notes:
+  - "親Epic #1843。Task Issue #1860。Human Reviewは省略しない"
+  - "前提: #1859 MERGED（concept_feature_rule seed）"
+  - "再検証は merge 後 Human が 010 から再queued（本PR外）"

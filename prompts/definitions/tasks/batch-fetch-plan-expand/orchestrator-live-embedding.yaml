@@ -1,0 +1,189 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-orchestrator-live-embedding"
+  title: "batch-fetch-plan-expand:親シェル--live-embedding伝播"
+  summary: "local 薄いオーケストレータへ --live-embedding（既定 OFF）を追加し、BATCH-015 item_embedding のみへ伝播する。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "07_開発・単体テスト"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1843
+    - 1860
+  related_prs:
+    - 1861
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  意味連鎖 live embedding 検証で、親シェルが --live-embedding を
+  item_embedding へ渡しておらず、Human が BATCH_EMBEDDING_LIVE=1 で回避していた。
+  Human 承認（option A）により Epic allowed_paths へ lib / 運用手順 docs を最小追加し、
+  daily/weekly 本体（forbidden）は変更しない。
+
+objective: |
+  --live-embedding（既定 OFF）を親シェル共通 parse に追加し、
+  lor_run_meaning_chain の item_embedding 呼び出しのみへ伝播する。
+  運用手順 docs と Epic allowed_paths を最小同期する。
+
+scope:
+  - "scripts/batch/lib/local_orchestrator_common.sh"
+  - "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+  - "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml（allowed_paths）"
+  - "Task / Review Definition"
+
+out_of_scope:
+  - "local_daily_orchestrator.sh / local_weekly_orchestrator.sh（forbidden 維持）"
+  - "--semantic-config-version-id 伝播"
+  - "crontab / GHA / AI --live-rakuten"
+  - "apps/batch Python モジュール変更"
+  - "OpenAPI / generated / apps/web|api|reco"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      required: true
+  files:
+    - path: "scripts/batch/lib/local_orchestrator_common.sh"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+      action: "update"
+      required: true
+  files:
+    - path: "scripts/batch/lib/local_orchestrator_common.sh"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+    - path: "prompts/definitions/reviews/batch-fetch-plan-expand/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "--live-embedding 伝播実装"
+  - "運用手順 docs 最小追記"
+  - "Epic allowed_paths 追随"
+
+acceptance_criteria:
+  - "--live-embedding 未指定時は item_embedding にフラグを付けない（既定 OFF）"
+  - "--live-embedding 指定時は item_embedding のみへ --live-embedding を渡す"
+  - "dry-run で未知引数エラーにならない"
+  - "daily/weekly 本体を変更していない"
+  - "secret 実値なし"
+
+branch:
+  no_branch: false
+  summary: "orchestrator-live-embedding"
+  name: "chore/task-1866-orchestrator-live-embedding"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "07_開発・単体テスト"
+    priority: "medium"
+    planned_start: "2026-08-07"
+    due_date: "2026-08-07"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1843
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "scripts/batch/lib/local_orchestrator_common.sh"
+    - "docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "dry-run: --run-meaning --live-embedding が未知引数で落ちない"
+  commands:
+    - "./scripts/batch/local_daily_orchestrator.sh --dry-run --run-meaning --live-embedding --from-step item_embedding --max-items 1"
+  manual_checks:
+    - "Human が必要時に --live-embedding で 015 live を実行（AI は実行しない）"
+  not_required:
+    - "OpenAI live embedding 実行"
+  skip_reason:
+    "OpenAI live embedding 実行": "課金・Human専用。本 Task は配線のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "既定 OFF / item_embedding のみ伝播か"
+    - "daily/weekly forbidden を侵していないか"
+    - "docs / allowed_paths が追随しているか"
+    - "secret / 実キーを書いていないか"
+
+human_decision_points:
+  - "merge後の Human live 検証タイミング（任意）"
+
+stop_conditions:
+  - "daily/weekly 本体の変更が必須になった場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "実装差分はPR"
+
+notes:
+  - "親Epic: #1843 / Task Issue #1866"
+  - "Human 承認: allowed_paths 最小拡張（option A）"

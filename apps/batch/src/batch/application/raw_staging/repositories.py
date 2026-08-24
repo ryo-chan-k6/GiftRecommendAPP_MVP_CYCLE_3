@@ -388,9 +388,19 @@ class RawStagingRepositories:
         - なし（scaffold/UT）: in-memory 集合と照合し、実テーブル名で ``delete_rows``
         """
 
-        url_set = {img.image_url for img in images}
-        persist_rows: list[dict[str, object]] = []
+        # Defensive: one persist row per conflict key (same INSERT must not repeat keys).
+        deduped_images: list[StagingItemImageRow] = []
+        seen_conflict_keys: set[tuple[str, str, str]] = set()
         for img in images:
+            conflict_key = (img.raw_metadata_id, img.external_item_code, img.image_url)
+            if conflict_key in seen_conflict_keys:
+                continue
+            seen_conflict_keys.add(conflict_key)
+            deduped_images.append(img)
+
+        url_set = {img.image_url for img in deduped_images}
+        persist_rows: list[dict[str, object]] = []
+        for img in deduped_images:
             key = (img.raw_metadata_id, img.external_item_code, img.image_url)
             existing = self.staging_item_images.get(key)
             image_id = (
