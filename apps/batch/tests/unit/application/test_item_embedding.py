@@ -846,6 +846,71 @@ def test_empty_plan_with_existing_queue_succeeds() -> None:
     assert "GRS-BAT-001" not in result.error_codes
 
 
+def test_empty_plan_after_batch_014_all_skip_via_db_reader_succeeds() -> None:
+    """BATCH-014 で semantic skipped 終端のみのとき DB 経路でも succeeded とする（#1874）。"""
+    model_version_id = "46c6f4eb-2a80-4ee8-a384-4c2e411dd868"
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "model_version",
+        (
+            {
+                "model_version_id": model_version_id,
+                "model_type": "embedding",
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_sem_skip_1",
+                "item_id": "it_1",
+                "generation_type": "semantic",
+                "queue_status": "skipped",
+                "retry_count": 0,
+            },
+            {
+                "item_generation_queue_id": "igq_sem_skip_2",
+                "item_id": "it_2",
+                "generation_type": "semantic",
+                "queue_status": "skipped",
+                "retry_count": 0,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:1",
+                "active_status": "active",
+                "is_active": True,
+            },
+            {
+                "item_id": "it_2",
+                "source": "rakuten",
+                "external_item_code": "shop:2",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    repos = ItemEmbeddingRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+    job = ItemEmbeddingJob(
+        repositories=repos,
+        generator=build_scaffold_adapter(),
+        job_run_tracker=ScaffoldJobRunTracker(),
+    )
+    result = job.run(job_run_id="ut-014-terminal-skip")
+    assert result.status == "succeeded"
+    assert result.planned_queue_count == 0
+    assert "GRS-BAT-001" not in result.error_codes
+    assert any(c["table"] == "item_generation_queue" for c in reader.fetch_calls)
+
+
 def test_item_id_filter_limits_targets() -> None:
     repos, _ = _repos(
         queues=[
