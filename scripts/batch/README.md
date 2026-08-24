@@ -11,6 +11,7 @@ Batch 手動実行・dry-run・再実行補助、および local 薄いオーケ
 | [local薄いオーケストレータ設計・運用手順](../../docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md) | local 親シェルの設計正本 |
 | [local_cron_Phase1_crontab運用手順](../../docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md) | Phase1 crontab 運用手順・定常ノブ（#1813） |
 | [local_cron_Phase2_dry-run検証結果](../../docs/15_運用・改善/運用手順/local_cron_Phase2_dry-run検証結果.md) | Phase2 dry-run 双方モード検証記録（#1824） |
+| [local_cron_Phase2_crontab載せ替え手順](../../docs/15_運用・改善/運用手順/local_cron_Phase2_crontab載せ替え手順.md) | Phase2 cron-cutover（`--run-meaning`・Human 登録） |
 
 ## local 薄いオーケストレータ（#1804 / Phase2 #1822）
 
@@ -143,5 +144,5 @@ uv run python ../../scripts/batch/object_storage_live_verify.py \
 | 本格収集キャンペーン（オーケストレータ経由） | #1801（完了側） |
 | ジャンル地図キャンペーン（BFS ラッパ・葉001） | #1827 / #1833（本 README 追記）→ Human live / collect-docs |
 | local cron Phase1（crontab運用・無人観測） | #1811 / #1813（手順）→ 後続 verify |
-| local cron Phase2（009〜016 親シェル配線） | #1818 / #1822（実装） / #1824（dry-run記録）→ 後続 cron-cutover（Human） |
+| local cron Phase2（009〜016 親シェル配線） | #1818 / #1822（実装） / #1824（dry-run）→ [載せ替え手順](../../docs/15_運用・改善/運用手順/local_cron_Phase2_crontab載せ替え手順.md)（Human・明示承認 B） |
 | 本番 egress IP 設計 | **Backlog: #1607**・未検討（GHA楽天liveは禁止維持） |
