@@ -180,18 +180,15 @@ crontab -l
 
 ---
 
-## 8. 後続 `cron-ops-verify` の着手条件
+## 8. `cron-ops-verify`（観測結果）
 
-後続 Task（`task-batch-local-cron-phase1-cron-ops-verify`）は、次を満たしてから着手する。
+| 項目 | 内容 |
+| ---- | ---- |
+| Task | #1885 / Definition `cron-ops-verify` |
+| 観測結果正本 | [local_cron_Phase1_無人観測結果](./local_cron_Phase1_無人観測結果.md) |
+| 着手条件（充足） | 本手順反映済み・Human crontab 登録済み・登録記録あり・live は Human |
 
-| No | 条件 |
-| --: | ---- |
-| 1 | 本手順（#1813）が親Epic Branch へ反映済み |
-| 2 | Human が実 crontab を登録済み（§6 チェックリスト） |
-| 3 | Human による登録済み記録がある（Issue コメント等） |
-| 4 | 観測期間の `--live-rakuten` 実行主体は Human（AI は記録同期のみ） |
-
-本Task完了時点では **実 crontab 未登録**が正しい（AI が登録していない）。
+旧注記: 手順初版（#1813）完了時点では実 crontab 未登録が正しかった。その後 Human が登録し、観測結果は上記へ同期した。
 
 ---
 
@@ -204,6 +201,7 @@ crontab -l
 | [楽天Fetch運用方針](./楽天Fetch運用方針.md) | QPS・egress・同時 live |
 | [batch-data-collect-ops_local継続収集結果_1808](./batch-data-collect-ops_local継続収集結果_1808.md) | 段階4ノブ・ジャンルローテ実績 |
 | [scripts/batch/README.md](../../../scripts/batch/README.md) | 親シェル起動例 |
+| [local_cron_Phase1_無人観測結果](./local_cron_Phase1_無人観測結果.md) | 無人観測結果（#1885） |
 | [Phase2 crontab載せ替え手順](./local_cron_Phase2_crontab載せ替え手順.md) | `--run-meaning` 追加の Human 手順（Phase1 ノブ維持） |
 | [Phase2 dry-run 検証結果](./local_cron_Phase2_dry-run検証結果.md) | 009〜016 配線の dry-run 本記録 |
 
@@ -216,3 +214,4 @@ crontab -l
 | 2026-08-01 | 初版（#1813）。Phase1 crontab 運用手順・定常ノブ・Human 登録チェックリスト・verify 着手条件 |
 | 2026-08-01 | 起動スケジュール Human 採択反映（#1816）。daily=火〜日 05:00 JST / weekly=月曜 05:00 JST |
 | 2026-08-24 | Phase2 載せ替え手順への参照を §2.2 / §9 に追記（Phase1 ノブ・#1811 分離維持） |
+| 2026-08-25 | §8 を観測結果正本への参照に更新（#1885） |
