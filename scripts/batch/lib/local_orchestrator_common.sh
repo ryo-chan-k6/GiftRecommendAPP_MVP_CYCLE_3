@@ -109,6 +109,8 @@ lor_parse_common_args() {
   LOR_SKIP_MEANING_EXPLICIT=0
   LOR_SKIP_MEANING_SUMMARY=0
   LOR_MEANING_PIPELINE_ID=""
+  # 009 選定用: import / existing の BATCH-006 batch_run_id（#1880）
+  LOR_DIFF_BATCH_RUN_ID=""
   LOR_SOURCE="${MEANING_SOURCE:-rakuten}"
   # BATCH-015: 既定は scaffold Embedding。--live-embedding で OpenAI live（課金）。
   # 環境変数 BATCH_EMBEDDING_LIVE=1 もモジュール側で有効（後方互換）。
@@ -260,6 +262,10 @@ lor_parse_common_args() {
   fi
   if [[ -z "${LOR_PIPELINE_ID}" ]]; then
     LOR_PIPELINE_ID="$(lor_generate_uuid)"
+  fi
+  # 009 選定の既定対象はシナリオ（import）pipeline。weekly existing 成功後に上書きする。
+  if [[ -z "${LOR_DIFF_BATCH_RUN_ID}" ]]; then
+    LOR_DIFF_BATCH_RUN_ID="${LOR_PIPELINE_ID}"
   fi
 }
 
@@ -505,6 +511,8 @@ lor_run_existing_item_chain() {
   fi
 
   LOR_PIPELINE_ID="${scenario_pipeline_id}"
+  # meaning 009 は直近 BATCH-006（existing）を優先し、残枠でバックログ消化（#1880 C）
+  LOR_DIFF_BATCH_RUN_ID="${existing_pipeline_id}"
   return "${chain_rc}"
 }
 
@@ -524,14 +532,19 @@ lor_run_meaning_chain() {
   else
     meaning_pipeline_id="$(lor_generate_uuid)"
   fi
-  lor_log INFO "meaning_chain pipeline_batch_run_id=${meaning_pipeline_id} scenario_pipeline_id=${scenario_pipeline_id}"
+  lor_log INFO "meaning_chain pipeline_batch_run_id=${meaning_pipeline_id} scenario_pipeline_id=${scenario_pipeline_id} diff_batch_run_id=${LOR_DIFF_BATCH_RUN_ID:-${scenario_pipeline_id}}"
 
   LOR_PIPELINE_ID="${meaning_pipeline_id}"
   local chain_rc=0
   local meaning_flags=(--max-items "${LOR_MAX_ITEMS}" --source "${LOR_SOURCE}")
+  local queue_flags=(
+    "${meaning_flags[@]}"
+    --diff-batch-run-id "${LOR_DIFF_BATCH_RUN_ID:-${scenario_pipeline_id}}"
+    --include-backlog
+  )
 
   lor_run_batch_module_job_only "item_generation_queue" "batch.application.item_generation_queue" \
-    "${meaning_flags[@]}" \
+    "${queue_flags[@]}" \
     || chain_rc=$?
 
   if [[ "${chain_rc}" -eq 0 ]]; then

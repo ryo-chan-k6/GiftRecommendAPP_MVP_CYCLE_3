@@ -50,6 +50,8 @@ jobs:
     uses: ./.github/workflows/batch-item-meaning-generation.yml
     with:
       max_items: ${{ inputs.max_items || '500' }}
+      diff_batch_run_id: ${{ needs.item_import.outputs.pipeline_batch_run_id }}
+      include_backlog: "true"
     secrets: inherit
 
   distribution_metrics:

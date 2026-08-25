@@ -22,6 +22,10 @@ on:
         required: false
         type: string
         default: ""
+    outputs:
+      pipeline_batch_run_id:
+        description: "Existing-item pipeline batch_run_id (BATCH-006 / 009 向け)"
+        value: ${{ jobs.resolve-run-id.outputs.job_run_id }}
   workflow_dispatch:
     inputs:
       job_run_id:

@@ -494,7 +494,7 @@ WHERE item_id = :item_id
 | 2 | `meaning_input_diff` | **Batch 内計算の非永続概念**。専用テーブル・migration は本 Epic 外。列集合は外部商品データ連携設計書 **§6.4 の意味影響列**に整合（§9.2.1）。正規化・比較順序の細部は **実装 Task** で確定 | Human | **確定** | 2026-07-17 Human。テーブル定義書 §5.1 out_of_scope と整合 |
 | 3 | active フィルタ | **`active_status = 'active'`（`is_active = true`）のみ登録**。非 active は skip | Human（依存関係図） | **確定** | `バッチ依存関係図.md` §5 No.322 / `item_テーブル定義書` §10 |
 | 4 | MVP import 経路の `generation_type` | item-import / existing-item-recheck 経路では **主に `semantic` を登録**。`feature_input_hash` のみ / Embedding 関連のみの **部分再生成トリガーは後続または別 Run**。`semantic` 行の消化は BATCH-010〜015 一連（フルパイプライン）。`semantic_config_version_id` のみ → `feature` は #507 **確定**のまま（import 経路外の運用で発火しうる） | Human | **確定** | 2026-07-17 Human。テーブル定義書 §5.4 の feature_input_hash / embedding 選定は後続拡張で有効化 |
-| 5 | 選定既定（config） | **(1)** 対象 `batch_run_id`（先行 BATCH-006 Run または明示） **(2)** `diff_status IN ('new','updated')` を主処理 **(3)** 件数上限 `BATCH_ITEM_GENERATION_QUEUE_MAX_ITEMS` **(4)** 任意で明示 `external_item_code` リスト。`source` 既定 `rakuten` | Human | **提案** | 実装 Task で確定可 |
+| 5 | 選定既定（config） | **(1)** 対象 `batch_run_id`（先行 BATCH-006 Run または明示。local / GHA meaning 連鎖では import または existing の pipeline ID を `--diff-batch-run-id` で渡す） **(2)** `diff_status IN ('new','updated')` を主処理 **(3)** 件数上限 `BATCH_ITEM_GENERATION_QUEUE_MAX_ITEMS` / `--max-items` **(4)** 任意で明示 `external_item_code` リスト。`source` 既定 `rakuten`。**(5)** `--include-backlog` 時は対象 Run 優先後、残枠を横断バックログで埋める（Human #1878 選択肢 C / #1880） | Human | **確定** | 2026-08-25 Human（#1878）。実装 #1880 |
 | 6 | Queue 登録 IF | **IF-DB-BATCH-010**（Batch ID BATCH-009 と IF 番号が異なる） | Human（#507 / 一覧） | **確定** | IF-DB-BATCH-009 は active_status（BATCH-008） |
 | 7 | 登録条件・active 行分岐 | `item_generation_queue_テーブル定義書` §5.4〜5.6 / §12.1 / §17.1（#507） | Human | **確定** | §9 / §10 |
 | 8 | 初回 `generation_type` デフォルト | 新規 / 意味影響時は **`semantic`** | Human（enum定義書 §6.17） | **確定** | テーブル定義書 §5.2 |
@@ -517,7 +517,7 @@ WHERE item_id = :item_id
 > - 独立 workflow ファイル名・親からの `workflow_call` タイミング → §18.1 No.1 **確定**
 > - `meaning_input_diff` 算出詳細（列集合・正規化順序）→ §18.1 No.2 / §9.2.1 **確定**（列集合方針。正規化細部は実装 Task）
 >
-> **実装 Task で確定可（提案のまま）**: §18.1 No.5 選定既定（config）
+> **実装 Task で確定可（提案のまま）**: （該当なし。§18.1 No.5 は 2026-08-25 に確定）
 
 ---
 
@@ -551,7 +551,7 @@ WHERE item_id = :item_id
 - `item_generation_queue_テーブル定義書` §5.4〜5.6 / §12.1 / §17.1（#507）と登録ロジックが整合している
 - BATCH-007 / BATCH-008 境界（Item 反映・active_status 非更新）が明記されている
 - 非意味影響のみ変更の除外・非 active 除外が明記されている
-- §18.1 で Human **確定**（workflow / meaning_input_diff / MVP import `semantic` / #507 / 依存関係図）と **提案**（選定既定 config §18.1 No.5）が区別されている
+- §18.1 で Human **確定**（workflow / meaning_input_diff / MVP import `semantic` / #507 / 依存関係図 / 選定既定 config §18.1 No.5）が区別されている
 - BATCH-010〜015 の消化・LLM / Embedding 生成が混入していない
 - secret / `.env` 実値が含まれていない
 - PR target が親 Epic Branch（`feature/epic-1406-batch-009-item-generation-queue`）である

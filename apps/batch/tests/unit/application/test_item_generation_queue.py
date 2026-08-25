@@ -755,6 +755,53 @@ def test_meaning_change_beats_config_version_only_flag() -> None:
     assert repos.queues[0]["generation_type"] == "semantic"
 
 
+def test_include_backlog_prefers_diff_run_then_fills_remaining() -> None:
+    """#1880: diff_batch_run_id 優先 + 残枠バックログ（選択肢 C）。"""
+
+    repos, _ = _repos(
+        diffs=[
+            _diff(
+                product_diff_result_id="pdr_current",
+                batch_run_id="run-current",
+                external_item_code="shop:current",
+                diff_status="updated",
+                old_hash=_HASH_A,
+                new_hash=_HASH_B,
+            ),
+            _diff(
+                product_diff_result_id="pdr_old_a",
+                batch_run_id="run-old",
+                staging_item_id="si_old_a",
+                external_item_code="shop:old-a",
+                diff_status="new",
+            ),
+            _diff(
+                product_diff_result_id="pdr_old_b",
+                batch_run_id="run-old",
+                staging_item_id="si_old_b",
+                external_item_code="shop:old-b",
+                diff_status="new",
+            ),
+        ],
+        items=[
+            _item(external_item_code="shop:current", normalized_hash=_HASH_B),
+            _item(external_item_code="shop:old-a"),
+            _item(external_item_code="shop:old-b"),
+        ],
+    )
+    result = ItemGenerationQueueJob(repositories=repos).run(
+        job_run_id="run-prefer",
+        max_items=2,
+        diff_batch_run_id="run-current",
+        include_backlog=True,
+    )
+    assert result.status == "succeeded"
+    assert result.planned_diff_count == 2
+    assert "shop:current" in result.succeeded_external_codes
+    # 残枠 1 は UUID/id 順のバックログから埋まる
+    assert len(result.succeeded_external_codes) == 2
+
+
 def test_fixture_and_logs_have_no_secret_like_values() -> None:
     """§16 No.13: fixture / 結果に secret らしき文字列がない。"""
 
