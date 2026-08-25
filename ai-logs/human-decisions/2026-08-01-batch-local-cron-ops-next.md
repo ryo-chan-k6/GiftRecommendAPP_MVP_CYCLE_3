@@ -46,11 +46,11 @@
 | 対象 | 内容 | 状態 |
 | ---- | ---- | ---- |
 | #1798 | Epic 完了PR（→ develop） | 完了（PR #1810 → develop） |
-| Epic #1811（crontab Phase1） | 001〜008 の cron 無人運用定着 | 進行中 |
+| Epic #1811（crontab Phase1） | 001〜008 の cron 無人運用定着 | 進行中（verify #1885） |
 | Task #1813（cron-ops-runbook） | crontab運用手順正本化・定常ノブ同期 | 完了（実登録はHuman） |
-| Task #1816（曜日・時刻） | daily=火〜日 05:00 / weekly=月曜 05:00 JST | 反映中 |
-| 後続 cron-ops-verify | Human登録後の数日無人観測結果docs化 | 未着手（Human登録待ち） |
-| 新規 Epic（local Phase2） | 親シェルへ 009〜016 配線・検証・cron載せ替え | 着手（設計・実装・dry-run先行。観測中のcrontab載せ替えはHumanゲート） |
+| Task #1816（曜日・時刻） | daily=火〜日 05:00 / weekly=月曜 05:00 JST | 採択済み（Epic Branch 反映。develop 追従は #1811 完了PRで揃える） |
+| Task #1885（cron-ops-verify） | Human登録後の無人観測結果docs化 | 着手（観測結果正本を作成） |
+| Epic #1818（local Phase2） | 親シェルへ 009〜016 配線・検証・cron載せ替え | **完了（close）** |
 | #1792 / #1607 | 先送り（本線に吸収しない） | 延期維持 |
 | #1745 | 本線#6完了追跡・次本線（local cron）を本文更新 | 実施 |
 
@@ -59,10 +59,11 @@
 ## 5. 参照
 
 - `docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md`（crontab運用手順正本・#1813）
+- `docs/15_運用・改善/運用手順/local_cron_Phase1_無人観測結果.md`（無人観測結果・#1885）
 - `docs/15_運用・改善/運用手順/local薄いオーケストレータ設計・運用手順.md`
 - `docs/15_運用・改善/運用手順/batch-data-collect-ops_local継続収集結果_1808.md`
 - `docs/15_運用・改善/運用手順/楽天Fetch運用方針.md`
-- Issue #1798 / #1745 / #1792 / #1607 / #1811 / #1813 / #1816
+- Issue #1798 / #1745 / #1792 / #1607 / #1811 / #1813 / #1816 / #1818 / #1885
 
 ---
 
