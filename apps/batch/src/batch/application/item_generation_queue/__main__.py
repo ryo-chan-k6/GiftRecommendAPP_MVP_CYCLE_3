@@ -124,6 +124,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Consume product_diff_result for this BATCH-006 batch_run_id.",
     )
     parser.add_argument(
+        "--include-backlog",
+        action="store_true",
+        help=(
+            "With --diff-batch-run-id: prefer that run, then fill remaining max-items "
+            "from unfiltered backlog (Human #1878 option C)."
+        ),
+    )
+    parser.add_argument(
         "--external-item-codes",
         default="",
         help="Comma-separated external_item_code list (subset / re-run).",
@@ -152,6 +160,7 @@ def main(argv: list[str] | None = None) -> int:
             source=args.source,
             diff_batch_run_id=args.diff_batch_run_id or None,
             external_item_codes=_parse_csv(args.external_item_codes),
+            include_backlog=args.include_backlog,
         )
         print(
             f"BATCH-009 scaffold demo status={result.status} "
@@ -203,6 +212,7 @@ job_run_tracker=tracker,
         source=args.source,
         diff_batch_run_id=args.diff_batch_run_id or None,
         external_item_codes=_parse_csv(args.external_item_codes),
+        include_backlog=args.include_backlog,
     )
     print(
         f"BATCH-009 status={result.status} "

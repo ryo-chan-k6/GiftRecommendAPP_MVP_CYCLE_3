@@ -550,6 +550,7 @@ Phase1 §5 を継承し、009〜016 追加時も次を満たす。
 | `--skip-meaning-summary` | 意味連鎖末尾 BATCH-017 を省略 |
 | `--meaning-pipeline-batch-run-id=<uuid>` | 意味連鎖の既存 ID 継続 |
 | `--source=<name>` | 意味生成 source（既定 `rakuten`） |
+| （内部）`--diff-batch-run-id` / `--include-backlog` | BATCH-009 に import または existing の pipeline ID を渡し、同一 run 優先 + 残枠バックログ（#1880 / §18.1 No.5 **確定**） |
 | `--from-step=<name>` | Phase1 段に加え `item_generation_queue` … `meaning_summary` / `distribution_metrics` を許容 |
 | `--live-embedding` | BATCH-015（`item_embedding`）のみ OpenAI Embedding live（既定 OFF）。`OPENAI_API_KEY` 必須。未指定時は scaffold Embedding。後方互換で環境変数 `BATCH_EMBEDDING_LIVE=1` も可 |
 
