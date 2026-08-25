@@ -1,0 +1,57 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-fetch-plan-expand-epic-pr"
+  title: "batch-fetch-plan-expand Epic PRレビュー"
+  summary: "ジャンル地図からの fetch_plan 拡大 Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1843
+  task_definition: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+  source_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  parent_epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "MVP fetch_plan 4IDを置き換えていないか（追加のみか）"
+  - "子・孫自動展開を導入していないか"
+  - "追加ジャンルID・段階・BATCH-002/003優先が Decision に明示されているか"
+  - "定常crontab・#1811/#1818・GHA live・#1607 が混入していないか"
+  - "AIが --live-rakuten を実行した痕跡がないか"
+  - "secret実値がdocs/PRに含まれていないか"
+  - "Epic PR target が develop か"
+
+notes:
+  - "Epic Issue #1843 / Branch chore/epic-1843-batch-fetch-plan-expand。Human Reviewは省略しない"

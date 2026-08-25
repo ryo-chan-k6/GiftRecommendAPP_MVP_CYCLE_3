@@ -49,7 +49,7 @@
 | Epic #1811（crontab Phase1） | 001〜008 の cron 無人運用定着 | 進行中 |
 | Task #1813（cron-ops-runbook） | crontab運用手順正本化・定常ノブ同期 | 進行中（実登録はHuman） |
 | 後続 cron-ops-verify | Human登録後の数日無人観測結果docs化 | 未着手（Human登録待ち） |
-| 新規 Epic（local Phase2） | 親シェルへ 009〜016 配線・検証・cron載せ替え | 未着手 |
+| 新規 Epic（local Phase2） | 親シェルへ 009〜016 配線・検証・cron載せ替え | 着手（設計・実装・dry-run先行。観測中のcrontab載せ替えはHumanゲート） |
 | #1792 / #1607 | 先送り（本線に吸収しない） | 延期維持 |
 | #1745 | 本線#6完了追跡・次本線（local cron）を本文更新 | 実施 |
 

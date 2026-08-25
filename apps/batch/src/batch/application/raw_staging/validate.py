@@ -45,9 +45,16 @@ def validate_item_bundle(bundle: ItemTransformBundle) -> None:
             code="GRS-VAL-005",
             message="is_primary_candidate must be at most one per item",
         )
+    seen_image_urls: set[str] = set()
     for img in bundle.images:
         if not img.image_url:
             raise StagingValidationError(code="GRS-VAL-001", message="image_url required")
+        if img.image_url in seen_image_urls:
+            raise StagingValidationError(
+                code="GRS-VAL-006",
+                message=f"duplicate image_url in item: {img.image_url}",
+            )
+        seen_image_urls.add(img.image_url)
         if img.image_size_type not in {"small", "medium"}:
             raise StagingValidationError(code="GRS-VAL-002", message="invalid image_size_type")
         if img.display_order < 0:

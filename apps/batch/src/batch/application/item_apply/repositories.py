@@ -26,6 +26,9 @@ from batch.infrastructure.db import DbReader, DbWriter
 DEFAULT_SOURCE = "rakuten"
 DEFAULT_ACTIVE_STATUS = "active"
 DEFAULT_IS_ACTIVE = True
+# DbReader は equals/limit のみ。未反映が後ろにある場合は limit を広げて再読取する。
+ELIGIBLE_SCAN_PAGE_SIZE = 5000
+ELIGIBLE_SCAN_MAX_ROWS = 200_000
 
 _DIFF_COLUMNS = (
     "product_diff_result_id",
@@ -240,6 +243,7 @@ class ItemApplyRepositories:
         staging_id_set = set(staging_item_ids) if staging_item_ids else None
         processable: list[ProductDiffResultSeed] = []
         unavailable_count = 0
+        seen_codes: set[str] = set()
 
         rows = sorted(
             self.product_diff_results.values(),
@@ -264,9 +268,20 @@ class ItemApplyRepositories:
                 continue
             if seed.diff_status not in PROCESSABLE_DIFF_STATUSES:
                 continue
+            if seed.diff_status == "new":
+                existing = self.resolve_item(
+                    source=source, external_item_code=seed.external_item_code
+                )
+                if existing is not None:
+                    continue
+            if seed.external_item_code in seen_codes:
+                continue
+            seen_codes.add(seed.external_item_code)
             processable.append(seed)
+            if len(processable) >= max(0, max_items):
+                break
 
-        return processable[: max(0, max_items)], unavailable_count
+        return processable, unavailable_count
 
     def _list_eligible_diffs_from_db(
         self,
@@ -320,25 +335,55 @@ class ItemApplyRepositories:
             if fetch_cap == 0 and not diff_batch_run_id:
                 return [], 0
             # Over-fetch then filter status/source in-process (no IN / JOIN).
-            scan_target = max(fetch_cap, 1)
-            fetch_limit = min(max(scan_target * 5, scan_target), 5000)
+            # 先頭 PAGE に予算を満たす processable が無い場合は limit を広げて再スキャン。
             equals_scan: tuple[tuple[str, object], ...] = ()
             if diff_batch_run_id:
                 equals_scan = (("batch_run_id", diff_batch_run_id),)
-            result = reader.fetch_rows(
-                "product_diff_result",
-                columns=_DIFF_COLUMNS,
-                equals=equals_scan,
-                order_by=("product_diff_result_id",),
-                limit=fetch_limit,
-            )
-            candidate_rows.extend(result.rows)
+            scan_target = max(fetch_cap, 1)
+            fetch_limit = min(max(scan_target * 5, scan_target), ELIGIBLE_SCAN_PAGE_SIZE)
+            while True:
+                result = reader.fetch_rows(
+                    "product_diff_result",
+                    columns=_DIFF_COLUMNS,
+                    equals=equals_scan,
+                    order_by=("product_diff_result_id",),
+                    limit=fetch_limit,
+                )
+                processable, unavailable_count = self._filter_eligible_diff_rows(
+                    rows=result.rows,
+                    source=source,
+                    max_items=fetch_cap,
+                )
+                if len(processable) >= fetch_cap:
+                    return processable, unavailable_count
+                if len(result.rows) < fetch_limit:
+                    return processable, unavailable_count
+                if fetch_limit >= ELIGIBLE_SCAN_MAX_ROWS:
+                    return processable, unavailable_count
+                fetch_limit = min(
+                    fetch_limit + ELIGIBLE_SCAN_PAGE_SIZE, ELIGIBLE_SCAN_MAX_ROWS
+                )
 
+        processable, unavailable_count = self._filter_eligible_diff_rows(
+            rows=candidate_rows,
+            source=source,
+            max_items=max(0, max_items),
+        )
+        return processable, unavailable_count
+
+    def _filter_eligible_diff_rows(
+        self,
+        *,
+        rows: list[dict[str, object]] | tuple[dict[str, object], ...],
+        source: str,
+        max_items: int,
+    ) -> tuple[list[ProductDiffResultSeed], int]:
         processable: list[ProductDiffResultSeed] = []
         unavailable_count = 0
         seen_ids: set[str] = set()
+        seen_codes: set[str] = set()
 
-        for row in sorted(candidate_rows, key=lambda r: str(r["product_diff_result_id"])):
+        for row in sorted(rows, key=lambda r: str(r["product_diff_result_id"])):
             seed = self._cache_diff_row(row)
             if seed.product_diff_result_id in seen_ids:
                 continue
@@ -355,9 +400,21 @@ class ItemApplyRepositories:
                 continue
             if seed.diff_status not in PROCESSABLE_DIFF_STATUSES:
                 continue
+            # 歴史的 new で既に item がある行は予算を消費させない（再 upsert は無意味）。
+            if seed.diff_status == "new":
+                existing = self.resolve_item(
+                    source=source, external_item_code=seed.external_item_code
+                )
+                if existing is not None:
+                    continue
+            if seed.external_item_code in seen_codes:
+                continue
+            seen_codes.add(seed.external_item_code)
             processable.append(seed)
+            if len(processable) >= max_items:
+                break
 
-        return processable[: max(0, max_items)], unavailable_count
+        return processable, unavailable_count
 
     def load_diff(self, *, product_diff_result_id: str) -> ProductDiffResultSeed:
         row = self.product_diff_results.get(product_diff_result_id)
@@ -599,6 +656,10 @@ class ItemApplyRepositories:
         desired_urls = {img.image_url for img in images}
         current = self.item_images.setdefault(item_id, {})
 
+        # §9.3: primary 再計算前に既存 is_primary を解除（URL 変更時の partial UNIQUE 回避）。
+        if images:
+            self._clear_item_image_primary_flags(item_id=item_id)
+
         # Determine single is_primary (first primary candidate, else first by display_order)
         primary_url: str | None = None
         ordered = sorted(images, key=lambda i: (i.display_order, i.image_url))
@@ -634,6 +695,17 @@ class ItemApplyRepositories:
 
         self._sync_delete_item_images(item_id=item_id, url_set=desired_urls)
         return written
+
+    def _clear_item_image_primary_flags(self, *, item_id: str) -> None:
+        """既存行の is_primary をすべて false にする（uq_item_image_primary_per_item 回避）。"""
+
+        self.db_writer.update_rows(
+            "item_image",
+            set_values={"is_primary": False},
+            equals=(("item_id", item_id),),
+        )
+        for row in self.item_images.get(item_id, {}).values():
+            row["is_primary"] = False
 
     def _sync_delete_item_images(self, *, item_id: str, url_set: set[str]) -> int:
         """Delete item_image rows outside the current URL set (005 staging と同型)."""

@@ -28,6 +28,16 @@ on:
         required: false
         type: string
         default: "rakuten"
+      diff_batch_run_id:
+        description: "BATCH-006 pipeline UUID for BATCH-009 selection (import/existing). Empty = no prefer filter"
+        required: false
+        type: string
+        default: ""
+      include_backlog:
+        description: "With diff_batch_run_id: fill remaining max_items from backlog (default true)"
+        required: false
+        type: string
+        default: "true"
   workflow_dispatch:
     inputs:
       batch_run_id:
@@ -50,6 +60,16 @@ on:
         required: false
         type: string
         default: "rakuten"
+      diff_batch_run_id:
+        description: "BATCH-006 pipeline UUID for BATCH-009 selection (import/existing). Empty = no prefer filter"
+        required: false
+        type: string
+        default: ""
+      include_backlog:
+        description: "With diff_batch_run_id: fill remaining max_items from backlog (default true)"
+        required: false
+        type: string
+        default: "true"
 
 concurrency:
   group: batch-item-meaning-generation
@@ -82,6 +102,8 @@ jobs:
     with:
       max_items: ${{ inputs.max_items }}
       source: ${{ inputs.source }}
+      diff_batch_run_id: ${{ inputs.diff_batch_run_id }}
+      include_backlog: ${{ inputs.include_backlog }}
     secrets: inherit
 
   item_semantic:

@@ -712,6 +712,28 @@ def test_item_not_found_discards_candidate() -> None:
     assert "shop:missing" in result.failed_item_codes
     assert repos.candidates["c-miss"].candidate_status == "discarded"
     assert result.candidate_discarded_count == 1
+    assert "GRS-ITM-001" in result.error_codes
+
+
+def test_non_actionable_new_diff_without_item_is_noop_success() -> None:
+    """提案なし Diff（new）のみ・item 未存在でも Run を落とさない（§9.2 / 運用事故防止）。"""
+
+    repos = _repos()
+    repos.seed_diff(
+        _diff(
+            did="d-orphan-new",
+            code="shop:orphan-new",
+            proposed=None,
+            judged_at=NOW,
+            diff_status="new",
+        )
+    )
+    result = ItemActiveStatusJob(repositories=repos).run(job_run_id="job-orphan-new")
+    assert result.status == "succeeded"
+    assert result.diff_input_count == 1
+    assert result.item_status_updated_count == 0
+    assert result.failed_item_codes == []
+    assert result.error_codes == []
 
 
 def test_partial_success_one_item_fails() -> None:
@@ -747,7 +769,7 @@ def test_partial_success_one_item_fails() -> None:
     assert repos.items[("rakuten", "shop:ng")].active_status == "active"
     assert repos.candidates["c-ok"].candidate_status == "applied"
     assert repos.candidates["c-ng"].candidate_status == "detected"
-    assert "GRS-DB-002" in result.error_codes
+    assert "GRS-BAT-005" in result.error_codes
 
 
 def test_if_boundary_no_candidate_insert_no_raw_no_online() -> None:

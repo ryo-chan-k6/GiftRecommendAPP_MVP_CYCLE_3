@@ -1,0 +1,225 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-fetch-plan-expand-batch-005-duplicate-image-upsert"
+  title: "batch-fetch-plan-expand:BATCH-005同一image_url重複upsert修正"
+  summary: "第1波手動Item RunでBATCH-005が同一image_urlの多重ON CONFLICTによりpartially_succeededしたため、medium優先の1URL=1行正規化で止血する。live再実行・DDL変更は含まない。"
+  workstream_key: "batch-fetch-plan-expand"
+  phase: "fix"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  epic_issue_number: 1843
+  epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  related_issues:
+    - 1846
+    - 1844
+    - 1849
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "test-ai"
+
+background: |
+  第1波1ジャンル手動 Item Run で BATCH-005 が partially_succeeded（55 ok / 5 failed）。
+  失敗は `ON CONFLICT DO UPDATE command cannot affect row a second time`（GRS-BAT-001）。
+  staging_item_image UNIQUE は (raw_metadata_id, external_item_code, image_url) で size_type を含まない。
+  transform が medium/small を別行展開し同一 URL が両方にあると、同一 INSERT 文内で conflict key が重複する。
+  テーブル定義書は「同一 Raw 内の同一商品・同一 URL は 1 行」。運用ブロッカー解消のため raw_staging 関連 path を親Epicへ最小追加する。
+
+objective: |
+  BATCH-005 が楽天 Raw の同一 image_url 重複でも Staging upsert を完走できるようにする。
+
+scope:
+  - "raw_staging transform: 同一商品・同一 image_url を 1 行に正規化（medium 優先）"
+  - "upsert_staging_item_images の防御的 dedupe"
+  - "validate: duplicate image_url を GRS-VAL-006 として検知（transform 後の不変条件）"
+  - "関連 unit test の追加"
+  - "親Epic allowed_paths への raw_staging 関連 path 最小追加"
+  - "Task / Review Definition 整備"
+
+out_of_scope:
+  - "UNIQUE キーへ image_size_type を追加する DDL 変更（Human判断・別Task）"
+  - "BATCH-005 仕様書本文の全面改訂"
+  - "live 再実行・fetch_plan 変更・crontab 変更"
+  - "Ranking Run"
+  - "AIによる --live-rakuten 実行"
+  - "apps/web|api|reco / OpenAPI / generated"
+  - "secret実値の表示・変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/batch/BATCH-005_Raw取込・Staging変換バッチ仕様書.md"
+      required: true
+    - path: "docs/06_実装設計/database/staging_item_image_テーブル定義書.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      required: true
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/transform.py"
+      required: true
+    - path: "apps/batch/src/batch/application/raw_staging/repositories.py"
+      required: true
+    - path: "apps/batch/src/batch/application/raw_staging/validate.py"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_raw_staging.py"
+      required: true
+
+output:
+  docs: []
+  files:
+    - path: "apps/batch/src/batch/application/raw_staging/transform.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/raw_staging/repositories.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/src/batch/application/raw_staging/validate.py"
+      action: "update"
+      required: true
+    - path: "apps/batch/tests/unit/application/test_raw_staging.py"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/batch-fetch-plan-expand/epic.yaml"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/tasks/batch-fetch-plan-expand/batch-005-duplicate-image-upsert.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/batch-fetch-plan-expand/batch-005-duplicate-image-upsert/pr-review.yaml"
+      action: "create"
+      required: true
+
+deliverables:
+  - "BATCH-005 image_url 重複の正規化と防御的 dedupe"
+  - "unit test 追加"
+  - "親Epic allowed_paths 最小拡張"
+  - "Task / Review Definition"
+
+acceptance_criteria:
+  - "同一 URL が medium/small 両方にある Raw でも staging 成功"
+  - "同一配列内の重複 URL でも staging 成功（先勝ち・medium優先）"
+  - "upsert rows の conflict key が同一文内で一意"
+  - "test_raw_staging.py が通過する"
+  - "親Epic allowed_paths 拡張が raw_staging 関連に限定されている"
+  - "AI live / crontab / 親シェル変更がない"
+  - "secret実値がない"
+  - "PR target が親Epic Branch"
+
+branch:
+  no_branch: false
+  summary: "batch-005-duplicate-image-upsert"
+  name: "fix/task-1851-batch-005-duplicate-image-upsert"
+  base: "chore/epic-1843-batch-fetch-plan-expand"
+  target: "chore/epic-1843-batch-fetch-plan-expand"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-04"
+    due_date: "2026-08-06"
+
+issue:
+  unit: "task"
+  type: "fix"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1843
+    - 1846
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "apps/batch/src/batch/application/raw_staging/transform.py"
+    - "apps/batch/src/batch/application/raw_staging/repositories.py"
+    - "apps/batch/src/batch/application/raw_staging/validate.py"
+    - "apps/batch/tests/unit/application/test_raw_staging.py"
+  conflict_risk: "medium"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "unit: raw_staging"
+  commands:
+    - "cd apps/batch && uv run pytest tests/unit/application/test_raw_staging.py -q"
+  manual_checks:
+    - "AIが --live-rakuten を実行していない"
+    - "secret実値がない"
+  not_required:
+    - "live 再実行 E2E"
+  skip_reason:
+    "live 再実行 E2E": "merge 後の Human 運用確認。本Taskは実装止血"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+    test: true
+    contract: false
+    security: true
+  review_points:
+    - "medium 優先の 1URL=1行正規化がテーブル定義書と一致するか"
+    - "防御的 dedupe が既存 sync-delete を壊していないか"
+    - "親Epic allowed_paths 拡張が最小か"
+    - "AI live / crontab / 親シェル変更が混入していないか"
+    - "secret実値がないか"
+    - "unit test が重複 URL ケースをカバーしているか"
+
+human_decision_points:
+  - "親Epic allowed_paths への raw_staging 関連 path 最小追加の承認（#1849 同型）"
+  - "UNIQUE に image_size_type を足す DDL を別Task化するか"
+  - "merge 後の failed raw 再ステージ / Item Run 再開タイミング"
+
+stop_conditions:
+  - "DDL 変更が本Task必須に見える場合"
+  - "AI liveが必須に見える場合"
+  - "secret実値が必要に見える場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "運用Run部分失敗のブロッカー解消。横断影響は BATCH-005 image upsert"
+
+notes:
+  - "発見経路: 第1波1ジャンル手動 Item Run での BATCH-005 partially_succeeded"
+  - "親Epic: #1843 / Branch chore/epic-1843-batch-fetch-plan-expand"
+  - "Task Issue: #1851 / Branch fix/task-1851-batch-005-duplicate-image-upsert"
+  - "Review: prompts/definitions/reviews/batch-fetch-plan-expand/batch-005-duplicate-image-upsert/pr-review.yaml"

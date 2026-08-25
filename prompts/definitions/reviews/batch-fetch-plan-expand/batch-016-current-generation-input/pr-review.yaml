@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-fetch-plan-expand-batch-016-current-generation-input"
+  title: "batch-fetch-plan-expand:BATCH-016現行世代入力読取 Task PRレビュー"
+  summary: "旧/現行 normalization version 同居時に現行世代のみ読む BATCH-016 修正 PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1865
+  issue:
+    number: 1864
+  task_definition: "prompts/definitions/tasks/batch-fetch-plan-expand/batch-016-current-generation-input.yaml"
+  source_branch: "fix/task-1864-batch-016-current-generation-input"
+  target_branch: "chore/epic-1843-batch-fetch-plan-expand"
+  parent_epic_issue: "[Epic]batch-fetch-plan-expand:ジャンル地図からのfetch_plan拡大"
+  parent_epic_branch: "chore/epic-1843-batch-fetch-plan-expand"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "item 単位の最新冪等キー組選定が item_feature §12.4 / BATCH-016 §6.2.1 と一致するか"
+  - "現行 feature_normalization_version（is_current / CurrentVersionResolver）で絞り込んでいるか"
+  - "aggregator の混在失敗仕様を壊していないか"
+  - "unit が version/hash 同居ケースをカバーしているか"
+  - "旧世代 DELETE を混ぜていないか"
+
+notes:
+  - "親Epic #1843。Human Reviewは省略しない"
+  - "再現: BATCH-016 GRS-VAL-001 multiple feature_normalization_version_id"

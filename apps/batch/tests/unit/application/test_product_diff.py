@@ -309,7 +309,24 @@ def test_staging_diff_status_sync_on_by_default() -> None:
     assert result.status == "succeeded"
     assert result.staging_diff_status_sync_count == 1
     assert repos.staging_items["si_1"]["diff_status"] == "new"
-    assert any(c["table"] == "staging_item" for c in db.write_calls)
+    sync_updates = [c for c in db.update_calls if c["table"] == "staging_item"]
+    assert len(sync_updates) == 1
+    assert sync_updates[0]["set_values"]["diff_status"] == "new"
+    assert sync_updates[0]["equals"] == (("staging_item_id", "si_1"),)
+    assert not any(c["table"] == "staging_item" for c in db.write_calls)
+
+
+def test_staging_diff_status_sync_uses_update_rows_not_write_rows() -> None:
+    """live postgres 相当: sync は update_rows（INSERT の write_rows ではない）。"""
+
+    repos, db = _repos(staging=[_staging(diff_status=None)], items=[])
+    job = ProductDiffJob(repositories=repos)
+
+    result = job.run(job_run_id="run-sync-update")
+
+    assert result.status == "succeeded"
+    assert any(c["table"] == "staging_item" for c in db.update_calls)
+    assert not any(c["table"] == "staging_item" for c in db.write_calls)
 
 
 def test_staging_diff_status_sync_can_be_disabled() -> None:
@@ -323,6 +340,7 @@ def test_staging_diff_status_sync_can_be_disabled() -> None:
     assert repos.staging_items["si_1"]["diff_status"] is None
     assert ("run-nosync", "shop:gift-1") in repos.product_diff_results
     assert not any(c["table"] == "staging_item" for c in db.write_calls)
+    assert not any(c["table"] == "staging_item" for c in db.update_calls)
 
 
 def test_null_hash_fails_compare_and_is_excluded_from_plan() -> None:
@@ -429,6 +447,7 @@ def test_product_diff_result_is_canonical_when_staging_sync_off() -> None:
     # sync OFF のため Staging は未更新のまま
     assert repos.staging_items["si_1"]["diff_status"] is None
     assert not any(c["table"] == "staging_item" for c in db.write_calls)
+    assert not any(c["table"] == "staging_item" for c in db.update_calls)
 
     # Staging だけ別値に書き換えても、正本は product_diff_result
     repos.staging_items["si_1"]["diff_status"] = "updated"
@@ -662,6 +681,56 @@ def test_list_eligible_staging_uses_db_reader_when_injected() -> None:
     assert [s.staging_item_id for s in selected] == ["si_a"]
     assert reader.fetch_calls
     assert reader.fetch_calls[0]["table"] == "staging_item"
+
+
+def test_list_eligible_staging_expands_scan_past_judged_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """先頭 PAGE が判定済みでも、limit 拡張で後ろの未判定を拾う。"""
+
+    from batch.application.product_diff import repositories as repos_mod
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    monkeypatch.setattr(repos_mod, "ELIGIBLE_SCAN_PAGE_SIZE", 2)
+    monkeypatch.setattr(repos_mod, "ELIGIBLE_SCAN_MAX_ROWS", 20)
+
+    reader = ScaffoldDbReader()
+    rows = []
+    for i in range(4):
+        rows.append(
+            {
+                "staging_item_id": f"si_{i:02d}",
+                "source": "rakuten",
+                "external_item_code": f"shop:{i}",
+                "normalized_hash": _HASH_A,
+                "item_name": f"Item{i}",
+                "item_url": f"https://item.example/{i}",
+                "price": 1000 + i,
+                "availability": 1,
+                "diff_status": "new",
+            }
+        )
+    rows.append(
+        {
+            "staging_item_id": "si_99",
+            "source": "rakuten",
+            "external_item_code": "shop:late",
+            "normalized_hash": _HASH_B,
+            "item_name": "Late",
+            "item_url": "https://item.example/late",
+            "price": 9999,
+            "availability": 1,
+            "diff_status": None,
+        }
+    )
+    reader.seed("staging_item", tuple(rows))
+    repos = ProductDiffRepositories(db_writer=ScaffoldDbWriter(), db_reader=reader)
+
+    selected = repos.list_eligible_staging(max_items=1)
+    assert [s.staging_item_id for s in selected] == ["si_99"]
+    assert len(reader.fetch_calls) >= 2
+    assert reader.fetch_calls[0]["limit"] == 2
+    assert reader.fetch_calls[-1]["limit"] >= 4
 
 
 def test_resolve_item_uses_db_reader_when_injected() -> None:

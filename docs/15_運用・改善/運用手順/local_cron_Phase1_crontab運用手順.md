@@ -31,10 +31,12 @@ secret・token・APIキー・egress IP・接続文字列の実値は記載しな
 | 実 crontab への書き込み | **Human のみ**。AI Agent は実行しない |
 | `--live-rakuten` の実行 | **Human のみ**（観測期間含む）。AI は実行しない |
 | 数日無人観測結果の記録本体 | 後続 Task（`cron-ops-verify`） |
-| BATCH-009〜016 配線 | Phase2 別Epic |
+| BATCH-009〜016 配線・dry-run 本記録 | Phase2 別Epic（実装 #1822 / dry-run #1824） |
+| Phase2 実 crontab への `--run-meaning` 追加 | [Phase2 crontab載せ替え手順](./local_cron_Phase2_crontab載せ替え手順.md)（Human ゲート。2026-08-24 明示承認 B で着手可）。**本 Phase1 手順のノブは維持** |
 | BATCH-018 / 019 | 自動運用対象外 |
 | GHA `on.schedule` 有効化（#1792） | 先送り |
 | #1607 / GHA 楽天 live | 先送り・禁止維持 |
+| ジャンル地図キャンペーン（#1827） | **本手順・crontabは変更しない**。枠は [ジャンル地図キャンペーン運用枠 Decision Log](../../../ai-logs/human-decisions/2026-08-03-batch-genre-map-campaign-ops-plan.md) / [楽天Fetch運用方針](./楽天Fetch運用方針.md) §11.5。実行は葉 BATCH-001 CLI（または専用ラッパ）のみ |
 
 ---
 
@@ -48,6 +50,7 @@ secret・token・APIキー・egress IP・接続文字列の実値は記載しな
 | 明示 live | cron 行には `--live-rakuten` を明示する（暗黙 live 禁止） |
 | 実行場所 | 登録済み egress の **local / WSL のみ**。GHA からの楽天 live は禁止 |
 | secret | `.env` 等から読み込む。値をログ・docs・Issue・PR に出さない |
+| ジャンル地図キャンペーン | daily/weekly 親と**混在・同時 live しない**。地図化に weekly親全体を使わない（#1827） |
 
 排他（flock）の詳細は [local薄いオーケストレータ設計・運用手順](./local薄いオーケストレータ設計・運用手順.md) §5。
 
@@ -191,6 +194,8 @@ crontab -l
 | [楽天Fetch運用方針](./楽天Fetch運用方針.md) | QPS・egress・同時 live |
 | [batch-data-collect-ops_local継続収集結果_1808](./batch-data-collect-ops_local継続収集結果_1808.md) | 段階4ノブ・ジャンルローテ実績 |
 | [scripts/batch/README.md](../../../scripts/batch/README.md) | 親シェル起動例 |
+| [Phase2 crontab載せ替え手順](./local_cron_Phase2_crontab載せ替え手順.md) | `--run-meaning` 追加の Human 手順（Phase1 ノブ維持） |
+| [Phase2 dry-run 検証結果](./local_cron_Phase2_dry-run検証結果.md) | 009〜016 配線の dry-run 本記録 |
 
 ---
 
@@ -199,3 +204,4 @@ crontab -l
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-08-01 | 初版（#1813）。Phase1 crontab 運用手順・定常ノブ・Human 登録チェックリスト・verify 着手条件 |
+| 2026-08-24 | Phase2 載せ替え手順への参照を §2.2 / §9 に追記（Phase1 ノブ・#1811 分離維持） |

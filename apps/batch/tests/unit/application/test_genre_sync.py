@@ -170,6 +170,47 @@ def test_adapt_invalid_payload_raises_ext_103() -> None:
     assert exc_info.value.code == "GRS-EXT-103"
 
 
+def test_adapt_genre_raw_payload_root_empty_name_falls_back_to_root() -> None:
+    """Live genreId=0 may omit/blank nameJa; campaign BFS still needs root upsert."""
+
+    payload = {
+        "genre": {"genreId": 0, "nameJa": "", "level": 0},
+        "children": [
+            {"genreId": 100000, "nameJa": "百貨店・総合通販・ギフト", "level": 1},
+            {"genreId": 100005, "nameJa": "花・ガーデン・DIY", "level": 1},
+        ],
+        "ancestors": [],
+    }
+    genre = adapt_genre_raw_payload(payload, requested_genre_id="0")
+    assert genre.genre_id == "0"
+    assert genre.genre_name == "root"
+    assert genre.genre_level == 0
+    assert genre.children == ("100000", "100005")
+
+
+def test_adapt_genre_raw_payload_root_missing_name_falls_back_to_root() -> None:
+    payload = {
+        "genre": {"genreId": "0", "level": 0},
+        "children": [{"genreId": "100000", "nameJa": "百貨店・総合通販・ギフト", "level": 1}],
+        "ancestors": [],
+    }
+    genre = adapt_genre_raw_payload(payload, requested_genre_id="0")
+    assert genre.genre_id == "0"
+    assert genre.genre_name == "root"
+    assert genre.children == ("100000",)
+
+
+def test_adapt_non_root_missing_name_still_raises_ext_103() -> None:
+    with pytest.raises(RakutenGenreApiError) as exc_info:
+        adapt_genre_raw_payload(
+            {"genre": {"genreId": "100000", "level": 1}, "children": []},
+            requested_genre_id="100000",
+        )
+
+    assert exc_info.value.code == "GRS-EXT-103"
+    assert "missing nameJa/jaName/genreName" in exc_info.value.message
+
+
 def test_genre_sync_persists_parent_from_hierarchy() -> None:
     client = ScaffoldRakutenApiClient(
         raw_responses={

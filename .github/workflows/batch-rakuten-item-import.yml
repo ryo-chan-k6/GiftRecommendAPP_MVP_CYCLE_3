@@ -33,6 +33,10 @@ on:
         required: false
         type: string
         default: "1000"
+    outputs:
+      pipeline_batch_run_id:
+        description: "Shared import pipeline batch_run_id (BATCH-006 / 007 向け)"
+        value: ${{ jobs.resolve-run-id.outputs.pipeline_batch_run_id }}
   workflow_dispatch:
     inputs:
       batch_run_id:

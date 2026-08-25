@@ -38,6 +38,10 @@ from batch.application.item_feature.repositories import (
     ExistingFeatureAxis,
     ItemFeatureRepositories,
 )
+from batch.application.item_feature.rules_loader import (
+    apply_polarity,
+    load_concept_feature_rules,
+)
 
 __all__ = [
     "BATCH_ID",
@@ -66,8 +70,10 @@ __all__ = [
     "ItemSemanticRow",
     "QueueRow",
     "ScaffoldItemFeatureAdapter",
+    "apply_polarity",
     "build_scaffold_adapter",
     "clip_unit",
     "is_valid_feature_input_hash",
+    "load_concept_feature_rules",
     "resolve_config_version",
 ]

@@ -1,0 +1,60 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-local-cron-phase2-epic-pr"
+  title: "batch-local-cron-phase2 Epic PRレビュー"
+  summary: "local cron Phase2親シェル配線（009〜016）Epic の develop 向け最終寄り Epic PR（cron-cutover docs反映）を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1873
+  issue:
+    number: 1818
+  task_definition: "prompts/definitions/epics/batch-local-cron-phase2/epic.yaml"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]batch-local-cron-phase2:local cron Phase2親シェル配線（009〜016）"
+  parent_epic_branch: "chore/epic-1818-batch-local-cron-phase2"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Phase2（009〜016配線）に閉じており、018/019・GHA schedule・#1607・GHA楽天liveを混入していないか"
+  - "Phase1観測非干渉（crontab載せ替え禁止・追加live禁止）が守られているか"
+  - "Phase1互換モード（009〜016スキップ）が残されているか"
+  - "親シェル経由のみ・個別cron禁止か"
+  - "AIが --live-rakuten を実行した痕跡がないか"
+  - "secret実値がdocs/PRに含まれていないか"
+  - "#1811 を勝手に再開・完了扱いしていないか"
+  - "Epic PR target が develop。本PRは Related to #1818（最低限確認後に Human クローズ）。中間PR #1826 とは別"
+  - "#1745次本線追跡が更新されているか"
+  - "crontab実体の再編集・AI live・案B・#1811完了扱いが混入していないか"
+
+notes:
+  - "機能・領域単位Epic（例外）。Human Reviewは省略しない"
+  - "Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"

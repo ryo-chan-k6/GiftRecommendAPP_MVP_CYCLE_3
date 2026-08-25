@@ -911,3 +911,211 @@ def test_claim_conflict_returns_none_when_rows_affected_zero() -> None:
     claimed = repos.claim_or_continue(item_generation_queue_id="igq_feat")
     assert claimed is None
     assert repos.queues["igq_feat"]["queue_status"] == "queued"
+
+def test_select_current_generation_prefers_latest_generated_at() -> None:
+    from datetime import UTC, datetime
+
+    from batch.application.feature_normalization.repositories import (
+        select_current_generation_feature_rows,
+    )
+
+    old_hash = "a" * 64
+    new_hash = "c" * 64
+    old_at = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
+    new_at = datetime(2026, 8, 6, 6, 34, tzinfo=UTC)
+    rows = []
+    for code in MVP_FEATURE_CODES:
+        rows.append(
+            {
+                "feature_code": code,
+                "feature_input_hash": old_hash,
+                "feature_normalization_version_id": DEFAULT_NORMALIZATION_VERSION,
+                "raw_feature_value": 0.5,
+                "generated_at": old_at,
+            }
+        )
+        rows.append(
+            {
+                "feature_code": code,
+                "feature_input_hash": new_hash,
+                "feature_normalization_version_id": DEFAULT_NORMALIZATION_VERSION,
+                "raw_feature_value": 0.8,
+                "generated_at": new_at,
+            }
+        )
+    selected = select_current_generation_feature_rows(rows)
+    assert len(selected) == len(MVP_FEATURE_CODES)
+    assert {r["feature_input_hash"] for r in selected} == {new_hash}
+    assert all(float(r["raw_feature_value"]) == 0.8 for r in selected)
+
+
+def test_load_raw_features_uses_latest_generation_when_hashes_coexist() -> None:
+    """複数 feature_input_hash 同居時は最新 generated_at 組のみ返す（GRS-VAL-002 回避）。"""
+    from datetime import UTC, datetime
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    old_hash = "a" * 64
+    new_hash = "c" * 64
+    old_at = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
+    new_at = datetime(2026, 8, 6, 6, 34, tzinfo=UTC)
+    reader = ScaffoldDbReader()
+    feature_rows = []
+    for code in MVP_FEATURE_CODES:
+        feature_rows.append(
+            {
+                "item_id": "it_1",
+                "semantic_config_version_id": _VERSION,
+                "feature_code": code,
+                "feature_input_hash": old_hash,
+                "feature_normalization_version_id": DEFAULT_NORMALIZATION_VERSION,
+                "raw_feature_value": 0.5,
+                "normalized_feature_value": 0.5,
+                "generated_at": old_at,
+            }
+        )
+        feature_rows.append(
+            {
+                "item_id": "it_1",
+                "semantic_config_version_id": _VERSION,
+                "feature_code": code,
+                "feature_input_hash": new_hash,
+                "feature_normalization_version_id": DEFAULT_NORMALIZATION_VERSION,
+                "raw_feature_value": _RAW[code],
+                "normalized_feature_value": None,
+                "generated_at": new_at,
+            }
+        )
+    reader.seed("item_feature", tuple(feature_rows))
+    repos = FeatureNormalizationRepositories(
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+        seed_queues=[],
+        seed_items=[],
+        seed_raw_features={},
+    )
+    raw = repos.load_raw_features(item_id="it_1", semantic_config_version_id=_VERSION)
+    assert len(raw) == len(MVP_FEATURE_CODES)
+    assert {axis.feature_input_hash for axis in raw} == {new_hash}
+    assert {axis.raw_feature_value for axis in raw} != {0.5}
+
+
+def test_job_succeeds_when_old_and_new_feature_hashes_coexist() -> None:
+    """live 再生成後の旧hash同居でも BATCH-013 が GRS-VAL-002 で落ちない。"""
+    from datetime import UTC, datetime
+
+    from batch.infrastructure.db import ScaffoldDbReader
+
+    old_hash = "a" * 64
+    new_hash = "c" * 64
+    old_at = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
+    new_at = datetime(2026, 8, 6, 6, 34, tzinfo=UTC)
+    reader = ScaffoldDbReader()
+    reader.seed(
+        "semantic_config",
+        (
+            {
+                "semantic_config_id": _SEMANTIC_CONFIG_ID,
+                "config_name": "mvp_semantic_config",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "semantic_config_version",
+        (
+            {
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "semantic_config_id": _SEMANTIC_CONFIG_ID,
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "feature_normalization_version",
+        (
+            {
+                "feature_normalization_version_id": _NORMALIZATION_VERSION_ID,
+                "normalization_method": "sigmoid",
+                "is_current": True,
+            },
+        ),
+    )
+    reader.seed(
+        "normalization_rule",
+        (
+            {
+                "normalization_rule_id": _NORMALIZATION_RULE_ID,
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "normalization_method": "sigmoid",
+                "feature_normalization_version_id": _NORMALIZATION_VERSION_ID,
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item",
+        (
+            {
+                "item_id": "it_1",
+                "source": "rakuten",
+                "external_item_code": "shop:it_1",
+                "active_status": "active",
+                "is_active": True,
+            },
+        ),
+    )
+    reader.seed(
+        "item_generation_queue",
+        (
+            {
+                "item_generation_queue_id": "igq_1",
+                "item_id": "it_1",
+                "generation_type": "semantic",
+                "queue_status": "processing",
+                "retry_count": 0,
+            },
+        ),
+    )
+    feature_rows = []
+    for code in MVP_FEATURE_CODES:
+        feature_rows.append(
+            {
+                "item_id": "it_1",
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "feature_code": code,
+                "feature_input_hash": old_hash,
+                "feature_normalization_version_id": _NORMALIZATION_VERSION_ID,
+                "raw_feature_value": 0.5,
+                "normalized_feature_value": 0.5,
+                "generated_at": old_at,
+            }
+        )
+        feature_rows.append(
+            {
+                "item_id": "it_1",
+                "semantic_config_version_id": _SEMANTIC_VERSION_ID,
+                "feature_code": code,
+                "feature_input_hash": new_hash,
+                "feature_normalization_version_id": _NORMALIZATION_VERSION_ID,
+                "raw_feature_value": _RAW[code],
+                "normalized_feature_value": None,
+                "generated_at": new_at,
+            }
+        )
+    reader.seed("item_feature", tuple(feature_rows))
+    repos = FeatureNormalizationRepositories(
+        db_writer=ScaffoldDbWriter(),
+        db_reader=reader,
+        seed_queues=[],
+        seed_items=[],
+        seed_raw_features={},
+    )
+    result = FeatureNormalizationJob(
+        repositories=repos,
+        normalizer=build_scaffold_adapter(),
+    ).run(job_run_id="run-dual-hash")
+    assert result.status == "succeeded"
+    assert result.normalized_count == 1
+    assert result.failed_count == 0
+    assert "GRS-VAL-002" not in result.error_codes

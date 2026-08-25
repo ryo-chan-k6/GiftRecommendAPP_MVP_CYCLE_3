@@ -32,6 +32,11 @@ on:
         required: false
         type: string
         default: ""
+      include_backlog:
+        description: "With diff_batch_run_id: prefer that run then fill remaining max_items from backlog"
+        required: false
+        type: string
+        default: "false"
   workflow_dispatch:
     inputs:
       job_run_id:
@@ -59,6 +64,11 @@ on:
         required: false
         type: string
         default: ""
+      include_backlog:
+        description: "With diff_batch_run_id: prefer that run then fill remaining max_items from backlog"
+        required: false
+        type: string
+        default: "false"
 
 concurrency:
   group: batch-item-generation-queue
@@ -121,9 +131,14 @@ jobs:
           if [ -n "${{ inputs.external_item_codes }}" ]; then
             CODE_ARGS+=(--external-item-codes "${{ inputs.external_item_codes }}")
           fi
+          BACKLOG_ARGS=()
+          if [ "${{ inputs.include_backlog }}" = "true" ]; then
+            BACKLOG_ARGS+=(--include-backlog)
+          fi
           uv run python -m batch.application.item_generation_queue \
             --job-run-id "${{ steps.run_id.outputs.value }}" \
             "${MAX_ARGS[@]}" \
             "${SOURCE_ARGS[@]}" \
             "${DIFF_RUN_ARGS[@]}" \
-            "${CODE_ARGS[@]}"
+            "${CODE_ARGS[@]}" \
+            "${BACKLOG_ARGS[@]}"

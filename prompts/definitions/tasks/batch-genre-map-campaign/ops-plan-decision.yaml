@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-batch-genre-map-campaign-ops-plan-decision"
+  title: "batch-genre-map-campaign:キャンペーン枠Human Decision Log化"
+  summary: "ジャンル地図キャンペーンの枠（起点=0、1 Run上限、停止条件、定常cron非干渉、QPS、Human live境界）を Human Decision Log 化し正本docsへ同期する。live実行・定常crontab変更は含まない。"
+  workstream_key: "batch-genre-map-campaign"
+  phase: "decision"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]batch-genre-map-campaign:楽天ジャンル地図キャンペーン"
+  epic_issue_number: 1827
+  epic_branch: "chore/epic-1827-batch-genre-map-campaign"
+  related_issues:
+    - 1811
+    - 1818
+    - 1745
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  ジャンル地図キャンペーン着手ゲート。BATCH-001 は直下 children のみのため、全地図化は段階実行が前提。
+  Phase1 定常cron（#1811）と混在させない。AIは運用枠を独断確定しない。
+
+objective: |
+  キャンペーン枠を Human Decision Log で明示し、楽天Fetch運用方針等の正本docsと矛盾なく同期する。
+  特に root 0 BFS 採否と 1 Run genre 上限・停止条件を Human 判断点として残す／採択する。
+
+scope:
+  - "キャンペーン枠 Decision Log 作成（起点、1 Run上限、停止条件、定常cron非干渉、QPS、Human live境界）"
+  - "推奨案の整理（root 0 BFS採択、1 Run上限=20件案、QPS=2維持）と Human 採択欄"
+  - "楽天Fetch運用方針・必要最小の運用手順docs同期"
+  - "後続 inventory / runner / collect-docs Task の着手ゲートを採択結果へ反映"
+
+out_of_scope:
+  - "external_genre 棚卸し実行本体（inventory Task）"
+  - "BFSラッパ実装・live実行本体"
+  - "定常crontab変更"
+  - "AIによる --live-rakuten 実行"
+  - "#1792 / #1607 / GHA楽天live"
+  - "secret実値の表示・変更"
+  - "apps/web|api|reco / OpenAPI / generated"
+  - "#1811 / #1818 の Status・本文の完了操作"
+
+input:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/local_cron_Phase1_crontab運用手順.md"
+      required: true
+    - path: "docs/06_実装設計/batch/BATCH-001_楽天ジャンル同期バッチ仕様書.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-31-rakuten-fetch-mvp-fetch-plan.md"
+      required: true
+    - path: "ai-logs/human-decisions/2026-07-30-rakuten-fetch-ops-policy.md"
+      required: true
+    - path: "prompts/definitions/epics/batch-genre-map-campaign/epic.yaml"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/batch-genre-map-campaign/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "キャンペーン枠 Human Decision Log"
+  - "正本docs同期（運用方針のキャンペーン節など）"
+
+acceptance_criteria:
+  - "Decision Log に起点・1 Run上限・停止条件・定常cron非干渉・QPS・Human live境界が明示されている"
+  - "root 0 BFS 採否と 1 Run上限が Human 判断点として採択または未決明示されている"
+  - "正本docsと矛盾しない"
+  - "定常crontab変更・GHA楽天live・#1607・secret実値・#1811/#1818完了操作を含まない"
+
+branch:
+  no_branch: false
+  summary: "ops-plan-decision"
+  name: "chore/task-1829-ops-plan-decision"
+  base: "chore/epic-1827-batch-genre-map-campaign"
+  target: "chore/epic-1827-batch-genre-map-campaign"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-03"
+    due_date: "2026-08-05"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics: []
+  issues:
+    - 1811
+    - 1818
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+    - "ai-logs/human-decisions/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認"
+  commands: []
+  manual_checks:
+    - "Decision Log に secret 実値がない"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Decision Log / docs同期のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "1 Run上限と停止条件が曖昧なまま decided になっていないか"
+    - "定常cron変更や#1811/#1818操作が混入していないか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "root 0 からの BFS 採否（推奨: 採択）"
+  - "1 Runあたりの genre 上限（推奨案: 20件）"
+  - "キャンペーン停止条件の最終採択"
+
+stop_conditions:
+  - "Humanが運用枠を明示していない"
+  - "secret実値が必要に見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "Decision Log を ai-logs/human-decisions に作成。通常作業ログは保存しない"
+
+notes:
+  - "親Epic: #1827 / Branch chore/epic-1827-batch-genre-map-campaign"
+  - "本Task完了後、inventory へ（枠未決のまま大規模 live は禁止）"
+  - "Task Issue #1829 / Branch chore/task-1829-ops-plan-decision"

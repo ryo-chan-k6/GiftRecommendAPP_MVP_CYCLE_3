@@ -108,6 +108,7 @@ class ItemGenerationQueueJob:
         source: str | None = None,
         diff_batch_run_id: str | None = None,
         external_item_codes: Sequence[str] | None = None,
+        include_backlog: bool = False,
         trace_id: str | None = None,
     ) -> ItemGenerationQueueResult:
         bound_logger = self._logger.bind(job_run_id=job_run_id, trace_id=trace_id or job_run_id)
@@ -127,6 +128,7 @@ class ItemGenerationQueueJob:
                 source=source,
                 diff_batch_run_id=diff_batch_run_id,
                 external_item_codes=external_item_codes,
+                include_backlog=include_backlog,
             )
             result.planned_diff_count = len(plan.items)
             result.queue_unavailable_skip_count = plan.unavailable_skip_count
@@ -248,6 +250,7 @@ class ItemGenerationQueueJob:
         source: str | None,
         diff_batch_run_id: str | None,
         external_item_codes: Sequence[str] | None,
+        include_backlog: bool = False,
     ) -> RegistrationPlan:
         resolved_max = DEFAULT_MAX_ITEMS if max_items is None else max(0, int(max_items))
         resolved_source = (source or DEFAULT_SOURCE).strip() or DEFAULT_SOURCE
@@ -259,12 +262,31 @@ class ItemGenerationQueueJob:
             if external_item_codes
             else None
         )
-        items, unavailable_count, unchanged_count = self._repos.list_eligible_diffs(
+        # §18.1 No.5: 対象 batch_run_id を優先。残枠は横断バックログ（Human #1878 C）。
+        primary, unavailable_count, unchanged_count = self._repos.list_eligible_diffs(
             max_items=resolved_max,
             source=resolved_source,
             diff_batch_run_id=resolved_diff_run,
             external_item_codes=codes,
         )
+        items = list(primary)
+        if include_backlog and resolved_diff_run and resolved_max > len(items) and codes is None:
+            seen = {d.product_diff_result_id for d in items}
+            backlog, backlog_unavailable, backlog_unchanged = self._repos.list_eligible_diffs(
+                max_items=resolved_max,
+                source=resolved_source,
+                diff_batch_run_id=None,
+                external_item_codes=None,
+            )
+            unavailable_count += backlog_unavailable
+            unchanged_count += backlog_unchanged
+            for diff in backlog:
+                if diff.product_diff_result_id in seen:
+                    continue
+                items.append(diff)
+                seen.add(diff.product_diff_result_id)
+                if len(items) >= resolved_max:
+                    break
         return RegistrationPlan(
             items=tuple(items),
             unavailable_skip_count=unavailable_count,

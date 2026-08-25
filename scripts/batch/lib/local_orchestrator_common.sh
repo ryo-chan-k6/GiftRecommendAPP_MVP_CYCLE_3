@@ -84,6 +84,9 @@ lor_parse_common_args() {
   #        LOR_INCLUDE_IMPORT LOR_PAGES_PER_RUN LOR_CURSORS_PER_RUN
   #        LOR_GENRE_IDS（BATCH-003/001 取得・同期） LOR_RANKING_GENRE_IDS（BATCH-002）
   #        LOR_NO_UPDATE_SORT LOR_MAX_QPS
+  #        LOR_RUN_MEANING（Phase2: 既定0=009〜016スキップ / --run-meaning で opt-in）
+  #        LOR_SKIP_MEANING_SUMMARY LOR_MEANING_PIPELINE_ID LOR_SOURCE
+  #        LOR_LIVE_EMBEDDING（BATCH-015 のみ。既定0 / --live-embedding で opt-in）
   LOR_DRY_RUN=0
   LOR_LIVE_RAKUTEN=0
   LOR_PIPELINE_ID=""
@@ -101,6 +104,17 @@ lor_parse_common_args() {
   LOR_RANKING_GENRE_IDS="${RANKING_GENRE_IDS:-100005}"
   LOR_NO_UPDATE_SORT=1
   LOR_MAX_QPS="${MAX_QPS:-}"
+  # Phase2: 既定は Phase1 互換（009〜016 スキップ）。--run-meaning のみで有効化。
+  LOR_RUN_MEANING=0
+  LOR_SKIP_MEANING_EXPLICIT=0
+  LOR_SKIP_MEANING_SUMMARY=0
+  LOR_MEANING_PIPELINE_ID=""
+  # 009 選定用: import / existing の BATCH-006 batch_run_id（#1880）
+  LOR_DIFF_BATCH_RUN_ID=""
+  LOR_SOURCE="${MEANING_SOURCE:-rakuten}"
+  # BATCH-015: 既定は scaffold Embedding。--live-embedding で OpenAI live（課金）。
+  # 環境変数 BATCH_EMBEDDING_LIVE=1 もモジュール側で有効（後方互換）。
+  LOR_LIVE_EMBEDDING=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -135,6 +149,38 @@ lor_parse_common_args() {
       --no-import-chain)
         LOR_INCLUDE_IMPORT=0
         shift
+        ;;
+      --run-meaning)
+        LOR_RUN_MEANING=1
+        shift
+        ;;
+      --live-embedding)
+        LOR_LIVE_EMBEDDING=1
+        shift
+        ;;
+      --skip-meaning)
+        LOR_SKIP_MEANING_EXPLICIT=1
+        shift
+        ;;
+      --skip-meaning-summary)
+        LOR_SKIP_MEANING_SUMMARY=1
+        shift
+        ;;
+      --meaning-pipeline-batch-run-id=*)
+        LOR_MEANING_PIPELINE_ID="${1#*=}"
+        shift
+        ;;
+      --meaning-pipeline-batch-run-id)
+        LOR_MEANING_PIPELINE_ID="${2:-}"
+        shift 2
+        ;;
+      --source=*)
+        LOR_SOURCE="${1#*=}"
+        shift
+        ;;
+      --source)
+        LOR_SOURCE="${2:-}"
+        shift 2
         ;;
       --max-items=*)
         LOR_MAX_ITEMS="${1#*=}"
@@ -207,8 +253,19 @@ lor_parse_common_args() {
   if [[ "${LOR_DRY_RUN}" -eq 1 && "${LOR_LIVE_RAKUTEN}" -eq 1 ]]; then
     lor_die "--dry-run and --live-rakuten are mutually exclusive"
   fi
+  if [[ "${LOR_RUN_MEANING}" -eq 1 && "${LOR_SKIP_MEANING_EXPLICIT}" -eq 1 ]]; then
+    lor_die "--run-meaning and --skip-meaning are mutually exclusive"
+  fi
+  # --skip-meaning は既定 skip と同義（明示ログ用）。両方無い＝skip。
+  if [[ "${LOR_SKIP_MEANING_EXPLICIT}" -eq 1 ]]; then
+    LOR_RUN_MEANING=0
+  fi
   if [[ -z "${LOR_PIPELINE_ID}" ]]; then
     LOR_PIPELINE_ID="$(lor_generate_uuid)"
+  fi
+  # 009 選定の既定対象はシナリオ（import）pipeline。weekly existing 成功後に上書きする。
+  if [[ -z "${LOR_DIFF_BATCH_RUN_ID}" ]]; then
+    LOR_DIFF_BATCH_RUN_ID="${LOR_PIPELINE_ID}"
   fi
 }
 
@@ -454,7 +511,107 @@ lor_run_existing_item_chain() {
   fi
 
   LOR_PIPELINE_ID="${scenario_pipeline_id}"
+  # meaning 009 は直近 BATCH-006（existing）を優先し、残枠でバックログ消化（#1880 C）
+  LOR_DIFF_BATCH_RUN_ID="${existing_pipeline_id}"
   return "${chain_rc}"
+}
+
+lor_run_meaning_chain() {
+  # GHA batch-item-meaning-generation 相当: 009→010→011→012→013→014→015→(017 meaning)
+  # Phase1 互換: 既定スキップ。--run-meaning でのみ実行（設計 §14）。
+  # 意味連鎖の pipeline_batch_run_id は import / existing と混在させない（設計 §13.3）。
+  if [[ "${LOR_RUN_MEANING}" -eq 0 ]]; then
+    lor_log INFO "skip meaning chain (Phase1 compat; pass --run-meaning to enable BATCH-009〜016)"
+    return 0
+  fi
+
+  local scenario_pipeline_id="${LOR_PIPELINE_ID}"
+  local meaning_pipeline_id
+  if [[ -n "${LOR_MEANING_PIPELINE_ID}" ]]; then
+    meaning_pipeline_id="${LOR_MEANING_PIPELINE_ID}"
+  else
+    meaning_pipeline_id="$(lor_generate_uuid)"
+  fi
+  lor_log INFO "meaning_chain pipeline_batch_run_id=${meaning_pipeline_id} scenario_pipeline_id=${scenario_pipeline_id} diff_batch_run_id=${LOR_DIFF_BATCH_RUN_ID:-${scenario_pipeline_id}}"
+
+  LOR_PIPELINE_ID="${meaning_pipeline_id}"
+  local chain_rc=0
+  local meaning_flags=(--max-items "${LOR_MAX_ITEMS}" --source "${LOR_SOURCE}")
+  local queue_flags=(
+    "${meaning_flags[@]}"
+    --diff-batch-run-id "${LOR_DIFF_BATCH_RUN_ID:-${scenario_pipeline_id}}"
+    --include-backlog
+  )
+
+  lor_run_batch_module_job_only "item_generation_queue" "batch.application.item_generation_queue" \
+    "${queue_flags[@]}" \
+    || chain_rc=$?
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    lor_run_batch_module_job_only "item_semantic" "batch.application.item_semantic" \
+      "${meaning_flags[@]}" \
+      || chain_rc=$?
+  fi
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    lor_run_batch_module_job_only "feature_input_hash" "batch.application.feature_input_hash" \
+      "${meaning_flags[@]}" \
+      || chain_rc=$?
+  fi
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    lor_run_batch_module_job_only "item_feature" "batch.application.item_feature" \
+      "${meaning_flags[@]}" \
+      || chain_rc=$?
+  fi
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    lor_run_batch_module_job_only "feature_normalization" "batch.application.feature_normalization" \
+      "${meaning_flags[@]}" \
+      || chain_rc=$?
+  fi
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    lor_run_batch_module_job_only "embedding_input_hash" "batch.application.embedding_input_hash" \
+      "${meaning_flags[@]}" \
+      || chain_rc=$?
+  fi
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    local embedding_flags=("${meaning_flags[@]}")
+    if [[ "${LOR_LIVE_EMBEDDING}" -eq 1 ]]; then
+      embedding_flags+=(--live-embedding)
+    fi
+    lor_run_batch_module_job_only "item_embedding" "batch.application.item_embedding" \
+      "${embedding_flags[@]}" \
+      || chain_rc=$?
+  fi
+
+  if [[ "${chain_rc}" -eq 0 ]]; then
+    if [[ "${LOR_SKIP_MEANING_SUMMARY}" -eq 0 ]]; then
+      # 017: 葉 job_run_id は新規、集計対象は meaning pipeline（--batch-run-id）
+      lor_run_batch_module "meaning_summary" "batch.application.import_summary" \
+        || chain_rc=$?
+    else
+      lor_log INFO "skip meaning BATCH-017 import_summary (--skip-meaning-summary)"
+    fi
+  fi
+
+  LOR_PIPELINE_ID="${scenario_pipeline_id}"
+  return "${chain_rc}"
+}
+
+lor_run_distribution_metrics() {
+  # GHA batch-distribution-metrics / trigger_mode=chain 相当（BATCH-016）
+  # Phase1 互換では 009〜016 ごとスキップ（--run-meaning 必須）。
+  if [[ "${LOR_RUN_MEANING}" -eq 0 ]]; then
+    lor_log INFO "skip distribution_metrics (Phase1 compat; requires --run-meaning)"
+    return 0
+  fi
+
+  lor_run_batch_module_job_only "distribution_metrics" "batch.application.distribution_metrics" \
+    --trigger-mode chain \
+    || return $?
 }
 
 lor_begin_scenario() {
@@ -463,8 +620,8 @@ lor_begin_scenario() {
   if [[ -z "${LOR_LOG_FILE:-}" ]]; then
     LOR_LOG_FILE="${OUTPUT_DIR}/${scenario}-$(date +%Y%m%dT%H%M%S).log"
   fi
-  lor_log INFO "scenario=${scenario} pipeline_batch_run_id=${LOR_PIPELINE_ID} dry_run=${LOR_DRY_RUN} live_rakuten=${LOR_LIVE_RAKUTEN}"
-  lor_log INFO "max_items=${LOR_MAX_ITEMS} pages_per_run=${LOR_PAGES_PER_RUN} cursors_per_run=${LOR_CURSORS_PER_RUN} genre_ids=${LOR_GENRE_IDS:-"(unset)"} ranking_genre_ids=${LOR_RANKING_GENRE_IDS:-"(unset)"} no_update_sort=${LOR_NO_UPDATE_SORT} max_qps=${LOR_MAX_QPS:-"(batch-default)"} from_step=${LOR_FROM_STEP:-"(start)"}"
+  lor_log INFO "scenario=${scenario} pipeline_batch_run_id=${LOR_PIPELINE_ID} dry_run=${LOR_DRY_RUN} live_rakuten=${LOR_LIVE_RAKUTEN} run_meaning=${LOR_RUN_MEANING} live_embedding=${LOR_LIVE_EMBEDDING}"
+  lor_log INFO "max_items=${LOR_MAX_ITEMS} pages_per_run=${LOR_PAGES_PER_RUN} cursors_per_run=${LOR_CURSORS_PER_RUN} genre_ids=${LOR_GENRE_IDS:-"(unset)"} ranking_genre_ids=${LOR_RANKING_GENRE_IDS:-"(unset)"} no_update_sort=${LOR_NO_UPDATE_SORT} max_qps=${LOR_MAX_QPS:-"(batch-default)"} source=${LOR_SOURCE} from_step=${LOR_FROM_STEP:-"(start)"}"
   if [[ -n "${LOR_FROM_STEP}" ]]; then
     LOR_SKIPPING=1
   else

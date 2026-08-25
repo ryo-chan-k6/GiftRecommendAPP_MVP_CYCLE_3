@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# local-weekly: GHA batch-weekly-orchestrator の Phase1 切り出し
+# local-weekly: GHA batch-weekly-orchestrator の Phase1+Phase2 切り出し
 # 順序: BATCH-001 → 002 → import連鎖(003…) → existing連鎖(004…)
-# 当日は local-daily を別途起動しない。意味生成以降は走らない。
-# 実 crontab 登録は Human。secret 実値を出力しない。
+#       →（--run-meaning 時）meaning連鎖 → BATCH-016（existing 成功後に1回のみ）
+# 当日は local-daily を別途起動しない。既定は Phase1 互換（009〜016 スキップ）。
+# 018 Offline Evaluation は載せない。実 crontab 登録は Human。secret 実値を出力しない。
 
 set -euo pipefail
 
@@ -15,9 +16,14 @@ usage() {
 Usage: local_weekly_orchestrator.sh --dry-run | --live-rakuten [options]
 
 Options: same as local_daily_orchestrator.sh
+  （--run-meaning / --skip-meaning / --skip-meaning-summary /
+   --meaning-pipeline-batch-run-id / --source を含む）
 
 Step names: genre_sync, ranking_snapshot, item_pseudo_diff, raw_staging, product_diff,
-            item_apply, item_active_status, import_summary, item_recheck
+            item_apply, item_active_status, import_summary, item_recheck,
+            item_generation_queue, item_semantic, feature_input_hash, item_feature,
+            feature_normalization, embedding_input_hash, item_embedding,
+            meaning_summary, distribution_metrics
             (import_summary / raw_staging 等は 003 連鎖と 004 連鎖で重複し得る。
              --from-step は最初に現れる段名から再開する)
 
@@ -71,6 +77,13 @@ main() {
     fi
     if [[ "${rc}" -eq 0 ]]; then
       lor_run_existing_item_chain || rc=$?
+    fi
+    # GHA weekly: existing_item_pipeline → item_meaning_generation（import 直後には載せない）
+    if [[ "${rc}" -eq 0 ]]; then
+      lor_run_meaning_chain || rc=$?
+    fi
+    if [[ "${rc}" -eq 0 ]]; then
+      lor_run_distribution_metrics || rc=$?
     fi
   } || rc=$?
 

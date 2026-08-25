@@ -17,6 +17,7 @@ Metric UPSERT は IF-DB-BATCH-016 として ``DbWriter.upsert_rows``（本番 SQ
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -36,7 +37,90 @@ _ITEM_FEATURE_COLUMNS = (
     "raw_feature_value",
     "normalized_feature_value",
     "feature_normalization_version_id",
+    "feature_input_hash",
+    "generated_at",
 )
+
+_DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
+
+
+def _as_utc_datetime(value: object) -> datetime:
+    """Normalize DB / seed timestamps for generation comparison."""
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
+    if isinstance(value, str) and value.strip():
+        text = value.strip().replace("Z", "+00:00")
+        try:
+            parsed = datetime.fromisoformat(text)
+        except ValueError:
+            return _DATETIME_MIN
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=UTC)
+        return parsed.astimezone(UTC)
+    return _DATETIME_MIN
+
+
+def select_current_generation_item_feature_rows(
+    rows: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    """item 単位で最新 generated_at の冪等キー組を選ぶ（item_feature §12.4 / BATCH-016 §6.2.1）。
+
+    同一 ``item_id`` + ``semantic_config_version_id`` 配下に複数
+    ``feature_input_hash`` / ``feature_normalization_version_id`` 世代が同居し得る。
+    各 item について ``generated_at`` 最大の冪等キー組の行だけを返す。
+
+    ``generated_at`` / ``feature_input_hash`` がどちらも欠ける seed 行は、後方互換のため
+    選定せずそのまま返す（単体テストの従来 fixture）。
+    """
+
+    candidates = [dict(row) for row in rows]
+    if not candidates:
+        return []
+
+    has_generation_keys = any(
+        row.get("generated_at") is not None or row.get("feature_input_hash")
+        for row in candidates
+    )
+    if not has_generation_keys:
+        return candidates
+
+    by_item: dict[tuple[str, str], list[dict[str, object]]] = {}
+    for row in candidates:
+        item_key = (
+            str(row.get("item_id") or ""),
+            str(row.get("semantic_config_version_id") or ""),
+        )
+        by_item.setdefault(item_key, []).append(row)
+
+    selected: list[dict[str, object]] = []
+    for item_rows in by_item.values():
+        groups: dict[tuple[str, str], list[dict[str, object]]] = {}
+        for row in item_rows:
+            key = (
+                str(row.get("feature_input_hash") or ""),
+                str(row.get("feature_normalization_version_id") or ""),
+            )
+            groups.setdefault(key, []).append(row)
+
+        def _group_generated_at(group_rows: list[dict[str, object]]) -> datetime:
+            return max(
+                (_as_utc_datetime(r.get("generated_at")) for r in group_rows),
+                default=_DATETIME_MIN,
+            )
+
+        best_key = max(groups.keys(), key=lambda key: _group_generated_at(groups[key]))
+        selected.extend(groups[best_key])
+
+    selected.sort(
+        key=lambda row: (
+            str(row.get("item_id") or ""),
+            str(row.get("feature_code") or ""),
+        )
+    )
+    return selected
 _ITEM_MEANING_COLUMNS = (
     "item_id",
     "semantic_config_version_id",
@@ -350,27 +434,81 @@ class DistributionMetricsRepositories:
         self.user_meanings = list(self.seed_user_meanings)
         self.item_embeddings = list(self.seed_item_embeddings)
 
-    def load_item_features(self, *, semantic_config_version_id: str) -> tuple[ItemFeatureRow, ...]:
+    def load_item_features(
+        self,
+        *,
+        semantic_config_version_id: str,
+        feature_normalization_version_id: str | None = None,
+    ) -> tuple[ItemFeatureRow, ...]:
+        """semantic_config_version 配下の現行世代 item_feature を読む.
+
+        ``feature_normalization_version_id`` 指定時はその version のみに絞り、
+        さらに item 単位で最新 ``generated_at`` の冪等キー組を選ぶ。
+        """
+
+        norm_version = (feature_normalization_version_id or "").strip() or None
         if self.db_reader is not None:
+            equals: list[tuple[str, object]] = [
+                ("semantic_config_version_id", semantic_config_version_id),
+            ]
+            if norm_version is not None:
+                equals.append(("feature_normalization_version_id", norm_version))
             result = self.db_reader.fetch_rows(
                 "item_feature",
                 columns=_ITEM_FEATURE_COLUMNS,
-                equals=(("semantic_config_version_id", semantic_config_version_id),),
+                equals=tuple(equals),
                 order_by=("item_id", "feature_code"),
             )
-            return tuple(self._row_to_item_feature(row) for row in result.rows)
-        return tuple(
-            row
-            for row in self.item_features
-            if row.semantic_config_version_id == semantic_config_version_id
-        )
+            selected = select_current_generation_item_feature_rows(result.rows)
+            return tuple(self._row_to_item_feature(row) for row in selected)
 
-    def load_item_meanings(self, *, semantic_config_version_id: str) -> tuple[ItemMeaningRow, ...]:
+        seed_dicts: list[dict[str, object]] = []
+        for row in self.item_features:
+            if row.semantic_config_version_id != semantic_config_version_id:
+                continue
+            if (
+                norm_version is not None
+                and row.feature_normalization_version_id != norm_version
+            ):
+                continue
+            seed_dicts.append(
+                {
+                    "item_id": row.item_id,
+                    "semantic_config_version_id": row.semantic_config_version_id,
+                    "feature_code": row.feature_code,
+                    "raw_feature_value": row.raw_feature_value,
+                    "normalized_feature_value": row.normalized_feature_value,
+                    "feature_normalization_version_id": row.feature_normalization_version_id,
+                    "feature_input_hash": row.feature_input_hash,
+                    "generated_at": row.generated_at,
+                }
+            )
+        selected = select_current_generation_item_feature_rows(seed_dicts)
+        return tuple(self._row_to_item_feature(row) for row in selected)
+
+    def load_item_meanings(
+        self,
+        *,
+        semantic_config_version_id: str,
+        feature_normalization_version_id: str | None = None,
+    ) -> tuple[ItemMeaningRow, ...]:
+        """semantic_config_version 配下の item_meaning を読む.
+
+        ``feature_normalization_version_id`` 指定時はその version のみに絞る
+        （UNIQUE は item×scv のため世代同居は無いが、旧 version 行の混在を避ける）。
+        """
+
+        norm_version = (feature_normalization_version_id or "").strip() or None
         if self.db_reader is not None:
+            equals: list[tuple[str, object]] = [
+                ("semantic_config_version_id", semantic_config_version_id),
+            ]
+            if norm_version is not None:
+                equals.append(("feature_normalization_version_id", norm_version))
             result = self.db_reader.fetch_rows(
                 "item_meaning",
                 columns=_ITEM_MEANING_COLUMNS,
-                equals=(("semantic_config_version_id", semantic_config_version_id),),
+                equals=tuple(equals),
                 order_by=("item_id",),
             )
             return tuple(self._row_to_item_meaning(row) for row in result.rows)
@@ -378,6 +516,10 @@ class DistributionMetricsRepositories:
             row
             for row in self.item_meanings
             if row.semantic_config_version_id == semantic_config_version_id
+            and (
+                norm_version is None
+                or row.feature_normalization_version_id == norm_version
+            )
         )
 
     def load_user_meanings(self, *, semantic_config_version_id: str) -> tuple[UserMeaningRow, ...]:
@@ -495,6 +637,14 @@ class DistributionMetricsRepositories:
 
     @staticmethod
     def _row_to_item_feature(row: dict[str, object]) -> ItemFeatureRow:
+        generated_raw = row.get("generated_at")
+        generated_at: datetime | None
+        if isinstance(generated_raw, datetime):
+            generated_at = _as_utc_datetime(generated_raw)
+        elif isinstance(generated_raw, str) and generated_raw.strip():
+            generated_at = _as_utc_datetime(generated_raw)
+        else:
+            generated_at = None
         return ItemFeatureRow(
             item_id=str(row["item_id"]),
             semantic_config_version_id=str(row["semantic_config_version_id"]),
@@ -504,6 +654,8 @@ class DistributionMetricsRepositories:
             feature_normalization_version_id=_optional_str(
                 row.get("feature_normalization_version_id")
             ),
+            feature_input_hash=_optional_str(row.get("feature_input_hash")),
+            generated_at=generated_at,
         )
 
     @staticmethod

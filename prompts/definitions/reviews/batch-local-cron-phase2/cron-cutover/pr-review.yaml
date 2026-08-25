@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-local-cron-phase2-cron-cutover"
+  title: "batch-local-cron-phase2:cron-cutover Task PRレビュー"
+  summary: "Phase2 crontab載せ替え手順・Human明示承認Bの正本化 PR を AI Review する。AIのcrontab/live禁止・#1811非完了・案B非混入を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1871
+  issue:
+    number: 1870
+  task_definition: "prompts/definitions/tasks/batch-local-cron-phase2/cron-cutover.yaml"
+  target_branch: "chore/epic-1818-batch-local-cron-phase2"
+  parent_epic_issue: "[Epic]batch-local-cron-phase2:local cron Phase2親シェル配線（009〜016）"
+  parent_epic_branch: "chore/epic-1818-batch-local-cron-phase2"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: "test-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Human明示承認B（Decision）が記録され、ゲート解除後に着手しているか"
+  - "載せ替え手順が親シェル経由のみ・個別cron禁止か"
+  - "差分方針が --run-meaning 追加のみで Phase1 ノブを壊していないか"
+  - "案B genre / --live-embedding 既定ON / AI crontab・live が混入していないか"
+  - "#1811 を完了扱いにしていないか"
+  - "secret実値がないか"
+  - "登録済み記録が未登録明示または同期方針が明確か"
+
+notes:
+  - "Human Reviewは省略しない"
+  - "実crontab編集はHuman。本PRは手順正本化が主"
+  - "親Epic Issue #1818 / Branch chore/epic-1818-batch-local-cron-phase2"
