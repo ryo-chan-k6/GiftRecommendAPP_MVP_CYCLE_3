@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-catalog-data-verification-local-snapshot"
+  title: "catalog-data-verification:localスナップショット Task PRレビュー"
+  summary: "local カタログ健全性スナップショット Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/catalog-data-verification/local-catalog-snapshot.yaml"
+  source_branch: null
+  target_branch: "chore/epic-1882-catalog-data-verification"
+  parent_epic_issue: "[Epic]catalog-data-verification:蓄積カタログデータ検証"
+  parent_epic_branch: "chore/epic-1882-catalog-data-verification"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: true
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "整合・カバレッジ・贈答適否サンプリングが分かれ、合格ラインの数値が記録されているか"
+  - "意味連鎖全件完了を完了条件にしていないか"
+  - "贈答適否を AI が最終確定していないか"
+  - "secret・接続文字列・書き込みSQL・実装改修・crontab変更がないか"
+
+notes:
+  - "親Epic #1882。Task Issue / PR / source_branch は /start-task・/create-pr 後に反映"
+  - "Human Reviewは省略しない"
+  - "scripts/db/catalog-data-verification.sql がある場合は SELECT のみか確認する"

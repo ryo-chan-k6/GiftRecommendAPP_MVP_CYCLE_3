@@ -1,0 +1,210 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-catalog-data-verification-local-snapshot"
+  title: "catalog-data-verification:localカタログ健全性スナップショット"
+  summary: "検証方針 Decision に従い、local DB のパイプライン整合・意味連鎖カバレッジ・贈答適否少数サンプリングを記録する。cronは止めない。reco実行・是正実装は含めない。"
+  workstream_key: "catalog-data-verification"
+  phase: "verification"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]catalog-data-verification:蓄積カタログデータ検証"
+  epic_issue_number: 1882
+  epic_branch: "chore/epic-1882-catalog-data-verification"
+  related_issues:
+    - 1745
+    - 1843
+    - 1798
+    - 1811
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  親Epic #1882。verification-policy-decision が decided であることが着手ゲート。
+  local に item 約 1.8 万件が蓄積済み。意味連鎖は少数のみ。本Taskは読み取り中心のスナップショットであり、
+  バッチ運用検証（cron）と並列してよい。
+
+objective: |
+  local カタログの健全性を、方針docsの観点で計測・サンプリングし、secretなしの結果docsに残す。
+  意味連鎖の全件完了は求めない。発見はトリアージ記録までとし、是正は別Issue。
+
+scope:
+  - "パイプライン整合の集計（staging↔item、必須項目、画像、ジャンル、価格分布・外れ値）"
+  - "意味連鎖カバレッジ（queue / semantic / feature / meaning / embedding の item カバー率と queue_status）"
+  - "贈答適否の少数サンプリング（ジャンル・価格帯の疑いリスト + 少数例。最終ラベルは Human）"
+  - "必要なら繰り返し可能な SELECT を scripts/db/catalog-data-verification* に置く（書き込みSQL禁止）"
+  - "発見のトリアージ（監視継続 / 別Issue候補 / 収集方針見直し候補）を結果docsに記載"
+
+out_of_scope:
+  - "検証方針の再決定（先行 Decision を正とする）"
+  - "reco / api / web からの推薦実行"
+  - "本線#7 起票・stg品質評価"
+  - "fetch_plan 変更・live 追加収集・AI --live-rakuten"
+  - "crontab 変更・GHA楽天live"
+  - "DB 書き込み、schema / migration、全件 update / delete"
+  - "apps/web|api|reco|batch の実装改修"
+  - "商品名の大量転記、接続文字列・secret の記載"
+  - "簡易stg投入（#1795）"
+
+input:
+  docs:
+    - path: "ai-logs/human-decisions/2026-08-25-catalog-data-verification-policy.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/蓄積カタログデータ検証方針.md"
+      required: true
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/データ管理要件.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/fetch_plan拡大_第1波_段階収集結果_1847.md"
+      required: true
+    - path: "prompts/definitions/epics/catalog-data-verification/epic.yaml"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/蓄積カタログデータ検証スナップショット.md"
+      action: "create"
+      required: true
+  files:
+    - path: "scripts/db/catalog-data-verification.sql"
+      action: "create"
+      required: false
+    - path: "prompts/definitions/tasks/catalog-data-verification/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "local カタログ健全性スナップショット docs（集計・サンプリング・トリアージ）"
+  - "任意の読み取り専用 SQL（catalog-data-verification.sql）"
+
+acceptance_criteria:
+  - "結果docsに整合・カバレッジ・贈答適否サンプリングが分かれ、計測日時（JST）がある"
+  - "第一波合格ライン（staging→item漏れ、名前・価格・URL欠損、画像なし/ジャンルなし件数、意味カバレッジ）が数値で記録されている"
+  - "意味連鎖全件完了を完了条件にしていない"
+  - "secret / 接続文字列実値 / 商品の大量生データ転記がない"
+  - "書き込みSQL・実装改修・crontab変更・reco実行を含まない"
+  - "発見の別Issue化は推奨に留め、本Taskで無断起票しない"
+
+branch:
+  no_branch: false
+  summary: "local-catalog-snapshot"
+  name: null
+  base: "chore/epic-1882-catalog-data-verification"
+  target: "chore/epic-1882-catalog-data-verification"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-27"
+    due_date: "2026-09-01"
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1882
+  issues:
+    - 1745
+    - 1843
+  prs: []
+  tasks: []
+  blocking: true
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/蓄積カタログデータ検証スナップショット.md"
+    - "scripts/db/catalog-data-verification.sql"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認"
+    - "SELECT 結果と結果docsの件数の対応（secretなし）"
+  commands: []
+  manual_checks:
+    - "対象が local DB のみ"
+    - "書き込みSQLがない"
+    - "docsにsecret実値がない"
+    - "cron を停止していない"
+  not_required:
+    - "unit test"
+    - "reco E2E"
+  skip_reason:
+    "unit test": "読み取り検証・docsが本体"
+    "reco E2E": "本線#7。本Taskに含めない"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "合格ラインの数値が記録され、全件意味生成完了を求めていないか"
+    - "贈答適否を AI が最終確定していないか（Humanラベル待ちが明示されているか）"
+    - "secret・接続文字列・大量商品生データがないか"
+    - "実装改修や crontab 変更が混入していないか"
+
+human_decision_points:
+  - "贈答適否サンプリングの最終ラベル"
+  - "画像なし・ジャンルなし・不適ジャンルを別Issueにするか"
+
+stop_conditions:
+  - "verification-policy-decision が decided でない"
+  - "local 以外の DB へ接続する必要が見える"
+  - "書き込みや破壊的SQLが必要に見える"
+  - "secret 実値が必要に見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "結果は運用手順docsが正本。blocked時のみ incidents。通常作業ログは保存しない"
+
+notes:
+  - "親Epic: #1882 / Branch chore/epic-1882-catalog-data-verification"
+  - "着手ゲート: ai-logs/human-decisions/2026-08-25-catalog-data-verification-policy.md が decided"
+  - "dependencies.blocking: true は Decision Task 完了待ち。Decision Issue 番号は /start-task 後に related_issues へ追加してよい"
+  - "branch.name は /start-task 後に実 Issue 番号で確定する"
+  - "cron は止めない。読み取りはバッチ Run と競合し得るが SELECT のみ"

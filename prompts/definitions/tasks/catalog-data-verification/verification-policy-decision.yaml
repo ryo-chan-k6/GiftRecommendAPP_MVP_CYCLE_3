@@ -1,0 +1,193 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-catalog-data-verification-policy-decision"
+  title: "catalog-data-verification:検証方針Human Decision Log化"
+  summary: "案B・local DBのみ・第一波合格ライン・本線#7非吸収を Human Decision Log で正本化し、運用手順docsへ同期する。スナップショット実行・reco実行・収集変更は含まない。"
+  workstream_key: "catalog-data-verification"
+  phase: "decision"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]catalog-data-verification:蓄積カタログデータ検証"
+  epic_issue_number: 1882
+  epic_branch: "chore/epic-1882-catalog-data-verification"
+  related_issues:
+    - 1745
+    - 1843
+    - 1798
+    - 1811
+    - 1795
+  related_prs: []
+
+commands:
+  primary: "/start-task"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  親Epic #1882 の着手ゲート。Human は 2026-08-25 チャットで案B・localのみ・第一波合格ラインを採択済み。
+  チャット同意だけでは正本としない。本Taskで Decision Log と運用手順docsへ落とす。
+  スナップショット本体は後続 local-catalog-snapshot。
+
+objective: |
+  蓄積カタログデータ検証の方針を Human Decision Log で decided にし、
+  後続スナップショット Task の着手ゲートにする。
+
+scope:
+  - "検証方針 Decision Log 作成（案B、localのみ、3層境界、第一波合格ライン、本線#7非吸収）"
+  - "運用手順docsへの方針同期（新規の検証方針docs。楽天Fetch運用方針の無断改訂はしない）"
+  - "後続 local-catalog-snapshot の着手条件を採択結果へ反映"
+  - "統括#1745 への並行レーンコメント（本線#7へ吸収しない旨）"
+
+out_of_scope:
+  - "local スナップショット実行本体（後続Task）"
+  - "贈答適否の実サンプリング実行（後続Task）"
+  - "reco 実行・本線#7 起票"
+  - "fetch_plan / crontab / GHA楽天live / #1607 / #1792"
+  - "apps/web|api|reco|batch 改修"
+  - "secret 実値の表示・変更"
+  - "#1811 / #1795 の Status・本文の完了操作"
+
+input:
+  docs:
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/データ管理要件.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/fetch_plan拡大_第1波_段階収集結果_1847.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+    - path: "prompts/definitions/epics/catalog-data-verification/epic.yaml"
+      required: true
+    - path: "prompts/templates/ai-logs/human-decision-log.md"
+      required: true
+  files: []
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/蓄積カタログデータ検証方針.md"
+      action: "create"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/2026-08-25-catalog-data-verification-policy.md"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/catalog-data-verification/**"
+      action: "update"
+      required: false
+
+deliverables:
+  - "検証方針 Human Decision Log（decided）"
+  - "蓄積カタログデータ検証方針 docs"
+
+acceptance_criteria:
+  - "Decision Log が案B・localのみ・第一波合格ライン・本線#7非吸収を明示し状態が decided"
+  - "正本docsと矛盾しない"
+  - "スナップショット実行・reco実行・fetch_plan変更・crontab変更・secret実値を含まない"
+  - "後続 snapshot Task の着手条件が採択結果と整合する"
+
+branch:
+  no_branch: false
+  summary: "verification-policy-decision"
+  name: null
+  base: "chore/epic-1882-catalog-data-verification"
+  target: "chore/epic-1882-catalog-data-verification"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-25"
+    due_date: "2026-08-27"
+
+issue:
+  unit: "task"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1882
+  issues:
+    - 1745
+    - 1843
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/蓄積カタログデータ検証方針.md"
+    - "ai-logs/human-decisions/2026-08-25-catalog-data-verification-policy.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認"
+  commands: []
+  manual_checks:
+    - "Decision Log に secret 実値がない"
+    - "本線#7 を本Epic完了条件にしていない"
+  not_required:
+    - "unit test"
+  skip_reason:
+    "unit test": "Decision Log / docs同期のみ"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "案Bの3層境界が曖昧なまま decided になっていないか"
+    - "本線#7・stg投入・reco実行が混入していないか"
+    - "secret実値がないか"
+
+human_decision_points:
+  - "チャット採択（案B / local / 合格ライン）を Decision Log に decided として書いてよいか。本Taskは正本化であり再採択ではない"
+
+stop_conditions:
+  - "Humanが検証方針を撤回または変更した場合"
+  - "secret実値が必要に見える場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: false
+    cross_cutting: false
+    experiments: false
+  reason: "Decision Log を ai-logs/human-decisions に作成。通常作業ログは保存しない"
+
+notes:
+  - "親Epic: #1882 / Branch chore/epic-1882-catalog-data-verification"
+  - "本Task完了後、/start-task @prompts/definitions/tasks/catalog-data-verification/local-catalog-snapshot.yaml"
+  - "branch.name は /start-task 後に実 Issue 番号で確定する"

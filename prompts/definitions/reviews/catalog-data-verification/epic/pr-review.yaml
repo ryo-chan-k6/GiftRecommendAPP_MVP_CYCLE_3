@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-catalog-data-verification-epic-pr"
+  title: "catalog-data-verification Epic PRレビュー"
+  summary: "蓄積カタログデータ検証 Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1882
+  task_definition: "prompts/definitions/epics/catalog-data-verification/epic.yaml"
+  source_branch: "chore/epic-1882-catalog-data-verification"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]catalog-data-verification:蓄積カタログデータ検証"
+  parent_epic_branch: "chore/epic-1882-catalog-data-verification"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "案Bの境界を越え、本線#7（stgレコメンド品質評価）を混入していないか"
+  - "local 以外（stg投入・production）を対象にしていないか"
+  - "secret / 接続文字列実値がdocs/PRにないか"
+  - "バッチ実装改修・crontab変更・GHA楽天liveが混入していないか"
+  - "Epic PR target が develop か"
+
+notes:
+  - "Epic Issue #1882 / Branch chore/epic-1882-catalog-data-verification。PR番号は Epic PR 作成後に反映"
+  - "Human Reviewは省略しない"

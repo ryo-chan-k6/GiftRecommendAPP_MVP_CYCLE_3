@@ -1,0 +1,270 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-catalog-data-verification"
+  title: "catalog-data-verification:蓄積カタログデータ検証"
+  summary: "バッチ運用検証と並行し、local DB に蓄積した楽天実データのカタログ健全性（パイプライン整合・意味連鎖カバレッジ・贈答適否サンプリング）を検証する。本線#7（stgレコメンド品質評価）は吸収しない。機能・領域単位Epic（例外）。"
+  workstream_key: "catalog-data-verification"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  バッチ運用検証（local cron `--live-rakuten --run-meaning`）と並行して、楽天市場の実データが
+  local DB のアプリデータとして蓄積されている。第1波収集（#1847）で staging→item 漏れ 0 は記録済みだが、
+  必須項目・画像・ジャンル・価格外れ値・意味連鎖カバレッジ・贈答適否は未検証である。
+  Human確認（2026-08-25）: 案B、対象は local DB のみ、第一波合格ラインは提案どおり。
+  チャット採択は正本とせず、配下 Task の Human Decision Log で正本化する。
+  統括#1745 本線#7（stgレコメンド品質評価）および #1795（簡易stg投入）は本Epic外。
+
+objective: |
+  local に蓄積した楽天由来カタログについて、案B（パイプライン整合 + 意味連鎖カバレッジ +
+  贈答適否の観点定義と少数サンプリング）で健全性を確認し、結果を docs に残す。
+  バッチ cron は止めない。live 追加取得・schema変更・レコメンド実行は含めない。
+
+scope:
+  - "検証方針（案B・localのみ・第一波合格ライン・本線#7との切り分け）の Human Decision Log 化と運用手順docs同期"
+  - "local DB のカタログ健全性スナップショット（必須項目、画像、ジャンル、価格外れ値、staging↔item）"
+  - "意味連鎖カバレッジ観測（queue / semantic / feature / meaning / embedding。全件完了は完了条件にしない）"
+  - "贈答適否の観点定義と少数サンプリング（reco実行なし。適否の最終ラベルは Human）"
+  - "発見事項のトリアージ記録（運用継続 / 別Issue化 / 収集方針見直し）。是正実装は別Task"
+  - "統括#1745 への並行レーン追跡（コメント。本線#7 へ吸収しない）"
+
+out_of_scope:
+  - "stgレコメンド品質評価本体（#1745 本線#7）"
+  - "reco / api / web からの推薦実行・品質評価ケース実行"
+  - "簡易stgデータ投入（#1795）"
+  - "fetch_plan 変更・ジャンル追加 live 収集"
+  - "AI による --live-rakuten 実行"
+  - "定常 crontab 変更（#1811）"
+  - "GHA 楽天 live / #1607 / daily on.schedule 有効化（#1792）"
+  - "DB schema / migration 変更、破壊的全件更新・削除"
+  - "OpenAPI / Orval / generated / apps/web|api|reco|batch の実装改修（発見時は別Issue）"
+  - "secret 実値の表示・変更"
+  - "production 定期開始"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/catalog-data-verification/**"
+    - "prompts/definitions/tasks/catalog-data-verification/**"
+    - "prompts/definitions/reviews/catalog-data-verification/**"
+    - "ai-logs/human-decisions/**"
+    - "docs/15_運用・改善/運用手順/**"
+    - "docs/15_運用・改善/監視・メトリクス/**"
+    - "scripts/db/catalog-data-verification*"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/**"
+    - ".github/workflows/**"
+    - "scripts/batch/**"
+    - "supabase/**"
+  child_task_areas:
+    - "docs"
+    - "ops-policy"
+    - "verification"
+
+input:
+  docs:
+    - path: "docs/03_ドメイン要件定義/非機能要件定義書/データ管理要件.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/fetch_plan拡大_第1波_段階収集結果_1847.md"
+      required: true
+    - path: "docs/15_運用・改善/運用手順/楽天Fetch運用方針.md"
+      required: true
+  files: []
+  issues:
+    - number: 1745
+      purpose: "統括ロードマップ。本Epicは本線#7に吸収しない並行レーン"
+    - number: 1843
+      purpose: "第1波収集完了。データ前提"
+    - number: 1798
+      purpose: "本格収集ops。データ前提"
+    - number: 1811
+      purpose: "local cron。本Epicでは変更しない"
+    - number: 1795
+      purpose: "簡易stg投入。本Epicでは吸収しない"
+
+output:
+  docs:
+    - path: "docs/15_運用・改善/運用手順/**"
+      action: "create_or_update"
+      required: true
+    - path: "docs/15_運用・改善/監視・メトリクス/**"
+      action: "create_or_update"
+      required: false
+  files:
+    - path: "prompts/definitions/epics/catalog-data-verification/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/catalog-data-verification/**"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/reviews/catalog-data-verification/**"
+      action: "create"
+      required: true
+    - path: "ai-logs/human-decisions/**"
+      action: "create"
+      required: true
+    - path: "scripts/db/catalog-data-verification*"
+      action: "create"
+      required: false
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/"
+
+deliverables:
+  - "Epic Issue #1882 / Branch chore/epic-1882-catalog-data-verification"
+  - "検証方針 Human Decision Log"
+  - "local カタログ健全性スナップショット結果docs（secretなし）"
+  - "統括#1745 への並行レーン追跡"
+
+acceptance_criteria:
+  - "Epic Issueタイトルが [Epic]catalog-data-verification:蓄積カタログデータ検証 形式（[Epic]直後スペースなし）"
+  - "機能・領域単位Epic（例外）と artifact_id 空が明記されている"
+  - "検証方針 Decision Log が decided で、案B・localのみ・第一波合格ライン・本線#7非吸収が明示されている"
+  - "local スナップショット結果docsがあり、secret / 接続文字列実値がない"
+  - "意味連鎖の全件完了を本Epic完了条件にしていない"
+  - "reco実行・fetch_plan変更・crontab変更・GHA楽天live・schema変更を含まない"
+  - "Epic PR targetがdevelop"
+
+branch:
+  no_branch: false
+  summary: "catalog-data-verification"
+  name: "chore/epic-1882-catalog-data-verification"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Todo"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-25"
+    due_date: "2026-09-01"
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1745
+    - 1843
+    - 1798
+  issues:
+    - 1811
+    - 1795
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/15_運用・改善/運用手順/蓄積カタログデータ検証方針.md"
+    - "ai-logs/human-decisions/**"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs整合確認（Decision Log・スナップショット結果。secretなし）"
+  commands: []
+  manual_checks:
+    - "対象DBが local のみである"
+    - "GHAから楽天HTTP liveしていない"
+    - "定常crontabを変更していない"
+    - "AIが --live-rakuten を実行していない"
+    - "docsにsecret実値がない"
+    - "reco実行・本線#7成果物を混入していない"
+  not_required:
+    - "unit test"
+    - "GHA楽天live E2E"
+    - "レコメンド品質評価E2E"
+  skip_reason:
+    "unit test": "運用検証・docsが本体。アプリ実装改修を含めない"
+    "GHA楽天live E2E": "本Epic out of scope"
+    "レコメンド品質評価E2E": "本線#7。本Epicに含めない"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "案Bの境界を越え、本線#7を混入していないか"
+    - "local 以外（stg投入・production）を対象にしていないか"
+    - "secret / 接続文字列実値がdocs/PRにないか"
+    - "バッチ実装改修や crontab 変更が混入していないか"
+    - "Epic PR target が develop か"
+
+human_decision_points:
+  - "案B・localのみ・第一波合格ラインはチャット採択済み。Decision Log 正本化は配下 Task"
+  - "贈答適否サンプリング結果を受けて収集方針を見直すか（本Epicでは方針変更しない）"
+  - "発見事項を別Issueにするか"
+  - "機能・領域単位Epic（例外）として識別子Epicに分割しない方針の維持"
+
+stop_conditions:
+  - "Decision Log 未整備のまま大規模是正や fetch_plan 変更へ進もうとした場合"
+  - "stg / production DB への接続や破壊的更新が必要に見える場合"
+  - "secret 実値の表示・commit が必要に見える場合"
+  - "本線#7 を本Epicに吸収しないと完了できない場合"
+  - "apps/batch や crontab の改修が本Epic差分に必要に見える場合"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "検証方針の Human Decision を ai-logs/human-decisions に記録。通常作業ログは保存しない"
+
+notes:
+  - "機能・領域単位Epic（例外）。artifact_id 空。Issue本文§2.1に例外理由を明記"
+  - "planned_start / due_date は Definition明示値（第一波 Decision+snapshot を 2026-09-01 まで）。標準の Issue作成日+2日ではない"
+  - "Epic formal parent は持たない。#1745 は Relationships 追跡"
+  - "子Task: (1) verification-policy-decision（着手ゲート） (2) local-catalog-snapshot"
+  - "#1811 crontab / #1795 stg投入 / #1792 / #1607 は変更しない"
+  - "work_mode=ai-agent。local DB は Human 環境。接続文字列実値は commit しない"
+  - "Epic Issue #1882 / Branch chore/epic-1882-catalog-data-verification"

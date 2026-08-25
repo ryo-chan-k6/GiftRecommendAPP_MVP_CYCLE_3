@@ -1,0 +1,54 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-catalog-data-verification-policy-decision"
+  title: "catalog-data-verification:検証方針Decision Task PRレビュー"
+  summary: "蓄積カタログデータ検証方針 Human Decision Log化 Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: null
+  task_definition: "prompts/definitions/tasks/catalog-data-verification/verification-policy-decision.yaml"
+  source_branch: null
+  target_branch: "chore/epic-1882-catalog-data-verification"
+  parent_epic_issue: "[Epic]catalog-data-verification:蓄積カタログデータ検証"
+  parent_epic_branch: "chore/epic-1882-catalog-data-verification"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Decision Logに案B・localのみ・第一波合格ライン・本線#7非吸収があるか"
+  - "スナップショット実行・reco実行・fetch_plan変更・crontab変更・secret実値が混入していないか"
+  - "状態が decided か、未決が明示されているか"
+
+notes:
+  - "親Epic #1882。Task Issue / PR / source_branch は /start-task・/create-pr 後に反映"
+  - "Human Reviewは省略しない"
