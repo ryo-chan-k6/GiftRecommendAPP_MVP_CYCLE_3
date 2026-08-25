@@ -89,16 +89,26 @@ secret・token・APIキー・egress IP・接続文字列の実値は記載しな
 
 ### 5.1 登録対象（親シェルのみ）
 
+Human 採択スケジュール（#1816）:
+
+| 行 | 曜日 | 時刻（JST） | cron（ホストが JST の場合） |
+| -- | ---- | ----------- | --------------------------- |
+| daily | 火曜〜日曜 | 05:00 | `0 5 * * 0,2-6` |
+| weekly | 月曜 | 05:00 | `0 5 * * 1` |
+
+月曜は weekly のみ（daily なし）。火〜日は daily のみ。同日二重起動しない。
+
 ```cron
-# 【例】実登録は Human。AI / Task #1813 は crontab へ書き込まない。
+# 【例】実登録は Human。AI は crontab へ書き込まない（初版 #1813、スケジュール採択 #1816）。
 # リポジトリルートで実行する前提。パス・ユーザは環境に合わせる。
 # .env は親シェルが --live-rakuten 時に読み込む（値をエコーしない）。
+# ホスト cron が UTC の場合は時刻を変換する（JST 05:00 = UTC 20:00 前日）。
 
-# local-daily: 月曜〜土曜 00:30 JST（当日の取得ジャンルは --genre-ids を Human がローテ更新）
-30 0 * * 1-6  cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-daily.log 2>&1
+# local-daily: 火曜〜日曜 05:00 JST（当日の取得ジャンルは --genre-ids を Human がローテ更新）
+0 5 * * 0,2-6  cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_daily_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-daily.log 2>&1
 
-# local-weekly: 日曜 00:30 JST（当日は daily を入れない。001→002→import→existing）
-30 0 * * 0    cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_weekly_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-weekly.log 2>&1
+# local-weekly: 月曜 05:00 JST（当日は daily を入れない。001→002→import→existing）
+0 5 * * 1      cd /path/to/GiftRecommendAPP_MVP_CYCLE_3 && ./scripts/batch/local_weekly_orchestrator.sh --live-rakuten --genre-ids 100005 --ranking-genre-ids 100005 --pages-per-run=60 --max-qps 1 >> scripts/batch/output-local-orchestrator/cron-weekly.log 2>&1
 ```
 
 ### 5.2 Human が実行する登録コマンド例（実登録はしない・手順のみ）
@@ -134,7 +144,7 @@ crontab -l
 
 ## 6. Human 登録チェックリスト
 
-実登録の実行主体は **Human**。本Task（#1813）の AI は登録・live を行っていない。
+実登録の実行主体は **Human**。手順初版は #1813、スケジュール採択は #1816。AI は登録・live を行っていない。
 
 | No | 確認 | 担当 |
 | --: | ---- | ---- |
@@ -144,7 +154,7 @@ crontab -l
 | 4 | `RAKUTEN_EXPECTED_EGRESS_IP` 等が運用方針どおり設定されている | Human |
 | 5 | crontab は親シェル2行のみ（個別 Batch cron なし） | Human |
 | 6 | `--live-rakuten` / `--pages-per-run=60` / `--max-qps 1` / `--ranking-genre-ids 100005` が明示されている | Human |
-| 7 | 日曜は weekly のみ（daily と二重起動しない） | Human |
+| 7 | 月曜は weekly のみ、火〜日は daily のみ（同日二重起動しない） | Human |
 | 8 | ジャンル1本ローテの運用（誰がいつ `--genre-ids` を更新するか）を決めた | Human |
 | 9 | `crontab -l` で意図どおりであること | Human |
 | 10 | 登録済みである旨を Issue / 後続 verify 着手記録に残す | Human |
@@ -204,4 +214,5 @@ crontab -l
 | 日付 | 内容 |
 | ---- | ---- |
 | 2026-08-01 | 初版（#1813）。Phase1 crontab 運用手順・定常ノブ・Human 登録チェックリスト・verify 着手条件 |
+| 2026-08-01 | 起動スケジュール Human 採択反映（#1816）。daily=火〜日 05:00 JST / weekly=月曜 05:00 JST |
 | 2026-08-24 | Phase2 載せ替え手順への参照を §2.2 / §9 に追記（Phase1 ノブ・#1811 分離維持） |

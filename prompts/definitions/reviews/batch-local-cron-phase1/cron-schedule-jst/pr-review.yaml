@@ -1,0 +1,55 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-batch-local-cron-phase1-cron-schedule-jst"
+  title: "batch-local-cron-phase1:crontab曜日・時刻採択 Task PRレビュー"
+  summary: "Human採択スケジュール反映 Task PR を AI Review する。曜日・時刻・同日二重起動禁止・親Epic向けPR・secret非露出を確認する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1817
+  issue:
+    number: 1816
+  task_definition: "prompts/definitions/tasks/batch-local-cron-phase1/cron-schedule-jst.yaml"
+  target_branch: "chore/epic-1811-batch-local-cron-phase1"
+  parent_epic_issue: "[Epic]batch-local-cron-phase1:local cron Phase1無人運用（001〜008）"
+  parent_epic_branch: "chore/epic-1811-batch-local-cron-phase1"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    security: true
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "daily=火〜日 05:00 JST / weekly=月曜 05:00 JST が運用手順・Decisionと一致するか"
+  - "同日二重起動禁止（月曜=weeklyのみ）が維持されているか"
+  - "PR target が親Epic Branch か（develop 直向けでないか）"
+  - "Related to が Task Issue #1816 一意か"
+  - "AIがcrontab登録や --live-rakuten を実行していないか"
+  - "secret実値がないか"
+
+notes:
+  - "Human Reviewは省略しない"
+  - "親Epic #1811 / Branch chore/epic-1811-batch-local-cron-phase1 / Task Issue #1816 / PR #1817"
