@@ -13,6 +13,7 @@
 | 発生元Agent | `worker-ai` |
 | workstream_key | `catalog-data-verification` |
 | 関連Issue | #1883（本Decision） / #1882（親Epic） / #1745（統括・並行レーン） / #1843（第1波収集） / #1798（本格収集） |
+| 関連PR | #1884 |
 | 前提 | 親Epic #1882。Humanチャット採択 2026-08-25（案B / local DBのみ / 第一波合格ライン） |
 | 重要度 | `high` |
 | 状態 | **`decided`** |

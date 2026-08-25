@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1884
   issue:
     number: 1883
   task_definition: "prompts/definitions/tasks/catalog-data-verification/verification-policy-decision.yaml"
@@ -50,5 +50,5 @@ review_points:
   - "状態が decided か、未決が明示されているか"
 
 notes:
-  - "親Epic #1882。Task Issue #1883 / Branch chore/task-1883-verification-policy-decision。PR番号は /create-pr 後に反映"
+  - "親Epic #1882。Task Issue #1883 / Branch chore/task-1883-verification-policy-decision / PR #1884"
   - "Human Reviewは省略しない"
