@@ -132,8 +132,7 @@ issue:
   area: "batch"
 
 dependencies:
-  epics:
-    - 1882
+  epics: []
   issues:
     - 1745
     - 1843
