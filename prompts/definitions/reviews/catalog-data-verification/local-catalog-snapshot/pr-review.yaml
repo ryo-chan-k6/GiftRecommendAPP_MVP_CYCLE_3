@@ -14,11 +14,11 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1888
   issue:
-    number: null
+    number: 1887
   task_definition: "prompts/definitions/tasks/catalog-data-verification/local-catalog-snapshot.yaml"
-  source_branch: null
+  source_branch: "spike/task-1887-local-catalog-snapshot"
   target_branch: "chore/epic-1882-catalog-data-verification"
   parent_epic_issue: "[Epic]catalog-data-verification:蓄積カタログデータ検証"
   parent_epic_branch: "chore/epic-1882-catalog-data-verification"
@@ -51,6 +51,6 @@ review_points:
   - "secret・接続文字列・書き込みSQL・実装改修・crontab変更がないか"
 
 notes:
-  - "親Epic #1882。Task Issue / PR / source_branch は /start-task・/create-pr 後に反映"
+  - "親Epic #1882。Task Issue #1887 / Branch spike/task-1887-local-catalog-snapshot / PR #1888"
   - "Human Reviewは省略しない"
   - "scripts/db/catalog-data-verification.sql がある場合は SELECT のみか確認する"
