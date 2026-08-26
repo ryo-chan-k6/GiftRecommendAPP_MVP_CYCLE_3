@@ -19,6 +19,7 @@ parent:
     - 1843
     - 1798
     - 1811
+    - 1883
   related_prs: []
 
 commands:
@@ -134,14 +135,15 @@ issue:
 dependencies:
   epics: []
   issues:
-    - 1745
-    - 1843
+    - 1883
   prs: []
-  tasks: []
+  tasks:
+    - "task-catalog-data-verification-policy-decision"
   blocking: true
 
 parallel_control:
-  depends_on: []
+  depends_on:
+    - "task-catalog-data-verification-policy-decision"
   blocks: []
   exclusive_files:
     - "docs/15_運用・改善/運用手順/蓄積カタログデータ検証スナップショット.md"
@@ -203,7 +205,7 @@ operation_logging:
 
 notes:
   - "親Epic: #1882 / Branch chore/epic-1882-catalog-data-verification"
-  - "着手ゲート: ai-logs/human-decisions/2026-08-25-catalog-data-verification-policy.md が decided"
-  - "dependencies.blocking: true は Decision Task 完了待ち。Decision Issue 番号は /start-task 後に related_issues へ追加してよい"
+  - "着手ゲート: ai-logs/human-decisions/2026-08-25-catalog-data-verification-policy.md が decided（Task #1883）"
+  - "dependencies.blocking: true は Decision Task #1883 完了待ち"
   - "branch.name は /start-task 後に実 Issue 番号で確定する"
   - "cron は止めない。読み取りはバッチ Run と競合し得るが SELECT のみ"
