@@ -1,0 +1,227 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-batch-live-ops-roadmap"
+  title: "batch-live-ops-roadmap:BATCH live〜本番準備ロードマップ"
+  summary: "案A（schedule無効）とGHA scaffold現状を起点に、楽天Fetch運用方針・live切替レーン・daily schedule・収集/監視・stg品質評価・本番準備の本線Epic群を統括管理する。機能・領域単位Epic（例外）。"
+  workstream_key: "batch-live-ops-roadmap"
+
+work_mode: "human-led"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-epic"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  BATCH 親 workflow（daily/weekly/manual）と失敗通知・手動検証（Epic #1637 / #1732 系）は案A（on.schedule 無効）で進めた。
+  GHA 葉ジョブは現状 --scaffold-demo 固定であり、楽天APIは常用 QPS=2・egress IP 照合等の制約がある。
+  長時間大量自動実行を前提にしたまま schedule 有効化するとボトルネックになるため、
+  楽天Fetch運用方針の確定をゲートに、DB系 / AI系 / 楽天Fetch系の live 切替を段階化し、
+  その後 daily schedule・本格収集・監視改善・stgレコメンド品質評価・本番準備へ進む。
+  本 Epic は実装コンテナではなく、本線 Epic 群の順序・依存・Human判断ゲートを統括する。
+
+objective: |
+  BATCH live 切替から本番準備までの本線を、統括 Epic（no-branch）と本線 Epic 群（独立 Epic）でマネジメントできる状態にする。
+  本線 Epic は Epic Definition の parent を持たず、本 Issue の Relationships / 本文 / dependencies で追跡する。
+
+scope:
+  - "BATCH live〜本番準備ロードマップの統括管理（本線Epic群の起票順序・依存・Human判断ゲートの明示）"
+  - "案A（schedule無効）と scaffold 現状、および案B再判断材料・#1732 の位置づけ整理"
+  - "本線Epic候補の定義方針整理（楽天Fetch運用方針 / DB系live / AI系live / 楽天Fetch live / daily schedule / 収集・監視 / stg品質評価 / 本番準備）"
+  - "#1732 を daily schedule 有効化本線Epicへ吸収する方針の管理（吸収Epic起票時に close）"
+  - "本線Epic起票時の参照用メモ（並列可能なレーン、schedule前倒し条件）の維持"
+
+out_of_scope:
+  - "本統括Epic自身の Branch / 実装PR作成（no-branch）"
+  - "本線Epic・子Taskの実装作業本体（各本線Epic / Task で実施）"
+  - "Human明示承認前の on.schedule コメント解除・production 定期開始"
+  - "GitHub Secrets / Variables の値の表示・変更"
+  - "OpenAPI / Orval / generated 変更"
+  - "本番デプロイの実行判断"
+  - "本番リリース準備本線Epicと既存リリース系Epic（#144/#146/#1646等）の境界確定（当該本線Epic着手時にHuman判断）"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/batch-live-ops-roadmap/**"
+    - "prompts/definitions/epics/batch-rakuten-fetch-ops/**"
+    - "prompts/definitions/epics/batch-live-db-lane/**"
+    - "prompts/definitions/epics/batch-live-ai-lane/**"
+    - "prompts/definitions/epics/batch-live-rakuten-fetch/**"
+    - "prompts/definitions/epics/batch-daily-schedule-enable/**"
+    - "prompts/definitions/epics/batch-data-collect-ops/**"
+    - "prompts/definitions/epics/batch-stg-reco-quality/**"
+    - "prompts/definitions/epics/batch-prod-release-prep/**"
+    - "docs/05_アプリケーション設計/アプリ/batch/**"
+    - "docs/15_運用・改善/運用手順/**"
+    - "docs/90_PoC/外部API疎通検証/**"
+    - "ai-logs/human-decisions/**"
+  forbidden_paths:
+    - "packages/contracts/**"
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+  child_task_areas:
+    - "roadmap"
+    - "orchestration"
+    - "docs"
+
+input:
+  docs:
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ実行スケジュール設計書.md"
+      required: true
+      purpose: "Phase1〜4と親workflowの正本"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ親workflow_schedule有効化ギャップ一覧.md"
+      required: true
+      purpose: "案A採用・案B未採用の現状"
+    - path: "docs/05_アプリケーション設計/アプリ/batch/バッチ処理一覧.md"
+      required: true
+      purpose: "BATCH-001〜019の責務"
+    - path: "docs/15_運用・改善/運用手順/親workflow手動検証結果_D1.md"
+      required: true
+      purpose: "初期D1 PARTIALの事実"
+    - path: "docs/90_PoC/外部API疎通検証/楽天API疎通検証結果.md"
+      required: true
+      purpose: "常用QPS=2等の制約"
+    - path: "docs/90_PoC/外部API疎通検証/楽天API_設計反映メモ.md"
+      required: true
+      purpose: "楽天設計反映・Limiter等の残件"
+  files: []
+  issues:
+    - number: 1637
+      purpose: "親workflow schedule Phase1（案A）完了Epic"
+    - number: 1732
+      purpose: "Phase2 案B再判断Epic。daily schedule本線Epic起票時に吸収してclose"
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "prompts/definitions/epics/batch-live-ops-roadmap/**"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "統括Epic Issue #1745（no-branch）"
+  - "Epic Definition（本ファイル）"
+  - "本線Epic候補一覧と依存関係（Issue本文）"
+  - "#1732 吸収方針の明示"
+
+acceptance_criteria:
+  - "統括Epic Issueが作成され、タイトルが [Epic]batch-live-ops-roadmap:BATCH live〜本番準備ロードマップ 形式である"
+  - "機能・領域単位Epic（例外）である旨と artifact_id 空がIssue本文に明記されている"
+  - "branch.no_branch が true（Issue本文チェック済み）である"
+  - "本線Epicは parent を持たず、Relationships / 本文 / dependencies で追跡する方針が明記されている"
+  - "本線Epic候補（楽天Fetch運用方針 / DB系live / AI系live / 楽天Fetch live / daily schedule / 収集・監視 / stg品質評価 / 本番準備）が列挙されている"
+  - "#1732 を daily schedule本線Epicへ吸収してcloseする方針（案A）が明記されている"
+  - "本番リリース準備本線と既存リリース系Epicの境界は当該本線着手時に判断する旨が明記されている"
+  - "Human明示承認前の schedule有効化・production定期開始を含まない"
+
+branch:
+  no_branch: true
+  summary: "batch-live-ops-roadmap"
+  name: null
+  base: "develop"
+  target: "develop"
+  worktree_required: false
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "Backlog"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-07-30"
+    due_date: null
+
+issue:
+  unit: "epic"
+  type: "chore"
+  area: "batch"
+
+dependencies:
+  epics:
+    - 1637
+  issues:
+    - 1732
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "統括Epicのscopeが実装作業を吸い込んでいないか"
+    - "本線Epic候補の依存が直列過多になっていないか"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "統括Epicは作業管理単位のため対象外"
+    "integration test": "統括Epicは作業管理単位のため対象外"
+
+review:
+  human_review_required: true
+  ai_review_required: false
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: false
+  review_points:
+    - "本線Epic分割と依存がロードマップ意図と一致しているか"
+    - "案A/scaffoldと案B/scheduleの用語が混同されていないか"
+    - "#1732 吸収方針が曖昧でないか"
+
+human_decision_points:
+  - "本線Epicの起票順序・同時起票範囲（Human）"
+  - "daily schedule有効化の最終可否（Human。該当本線Epicで判断）"
+  - "本番リリース準備本線と既存リリース系Epic（#144/#146/#1646等）の境界（当該本線着手時）"
+  - "production定期開始・破壊的変更・secret操作（常にHuman）"
+
+stop_conditions:
+  - "本統括Epic上で実装・schedule有効化を進めようとした場合"
+  - "本線EpicをDefinition上のparent配下として起票しようとした場合（禁止。Relationships追跡とする）"
+  - "Human明示承認なしに on.schedule を有効化しようとした場合"
+  - "secret実値の表示・commitが必要に見える場合"
+
+notes:
+  - "Epic Issue: #1745"
+  - "Epic Definition schema上、Epicはparentを持たない。本Epicは統括管理用の機能・領域単位Epic（例外）である"
+  - "work_mode=human-led かつ no_branch=true（§17.2標準）。本線Epic起票は別途 /start-epic"
+  - "phase=15_運用・改善 は横断ロードマップ統括の完了ゲートとして例外指定。子となる本線Epicは個別にphaseを設定する"
+  - "Epic #1732 の成果（案B材料・Slack E2E・チャンネル分離・daily再検証）はEpic Branch上。develop未マージ分は吸収本線Epic起票時に引き継ぐ"
