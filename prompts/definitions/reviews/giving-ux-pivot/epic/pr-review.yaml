@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-giving-ux-pivot-epic-pr"
+  title: "事業構想:贈る到達UXピボット Epic PRレビュー"
+  summary: "贈る到達 / 診断UX への事業構想差し替え Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1893
+  task_definition: "prompts/definitions/epics/giving-ux-pivot/epic.yaml"
+  source_branch: "docs/epic-1893-giving-ux-pivot"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]事業構想:贈る到達UXピボット"
+  parent_epic_branch: "docs/epic-1893-giving-ux-pivot"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: "docs-reviewer-ai"
+    test: false
+    security: false
+
+review_scope:
+  docs: true
+  source: false
+  tests: false
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "Human 決定と正本が一致しているか"
+  - "未確定事項を確定済みとして書いていないか"
+  - "実装・API・DB 変更が混入していないか"
+  - "Epic PR target が develop、Closes が親Epic Issue か"
+
+notes:
+  - "Epic Issue #1893 / Branch docs/epic-1893-giving-ux-pivot"
+  - "配下 Task #1894。PR番号は Epic PR 作成後に反映"
+  - "Human Reviewは省略しない"

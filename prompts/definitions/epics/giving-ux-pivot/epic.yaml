@@ -1,0 +1,222 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-giving-ux-pivot"
+  title: "事業構想:贈る到達UXピボット"
+  summary: "事業構想の課題・価値仮説・ターゲット・MVPスコープを、「贈る」到達と診断UXへ差し替える。機能・領域単位 Epic（例外。事業構想に成果物識別子なし）。"
+  workstream_key: "giving-ux-pivot"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Human が 2026-08-31 に、前面の価値仮説を「意味の可視化」から「贈る到達 / 診断UX」へ差し替えると決定した。
+  成功定義は「商品確定かつ楽天アフィリエイトURLへの遷移」。診断出口は最終スコア＋MMRの3商品。
+  本決定は spike #1890 の可視化サンプルとは分離する。
+
+objective: |
+  事業構想正本（課題・価値仮説・ターゲット・MVPスコープ）を Human 決定に合わせて差し替え、
+  下流 docs の不整合を後続 Task で扱う単位を整理する。
+
+scope:
+  - "Epic Issue / Epic Branch の管理"
+  - "docs/01_事業構想 の課題・価値仮説・ターゲット・MVPスコープ差し替え"
+  - "Human Decision Log の記録"
+  - "下流整合（03_ / 画面仕様）の子 Task 候補整理"
+
+out_of_scope:
+  - "apps/web / apps/api / apps/reco / apps/batch の実装変更"
+  - "OpenAPI / generated / DB schema / migration"
+  - "初回 Occasion / Relationship / ジャンル具体値の確定"
+  - "設問セット・制限時間・KPI数値の確定"
+  - "scripts/dev/local_data_browser の変更"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "docs/01_事業構想/**"
+    - "ai-logs/human-decisions/2026-08-31-gift-giving-ux-pivot.md"
+    - "prompts/definitions/epics/giving-ux-pivot/**"
+    - "prompts/definitions/tasks/giving-ux-pivot/**"
+    - "prompts/definitions/reviews/giving-ux-pivot/**"
+  forbidden_paths:
+    - "apps/**"
+    - "packages/contracts/**"
+    - "supabase/migrations/**"
+    - "scripts/dev/local_data_browser/**"
+    - ".github/workflows/**"
+  child_task_areas:
+    - "hypothesis-restack"
+    - "downstream-alignment"
+
+input:
+  docs:
+    - path: "docs/01_事業構想/課題定義書.md"
+      required: true
+      purpose: "差し替え対象の現行正本"
+    - path: "docs/01_事業構想/価値仮設定義書.md"
+      required: true
+      purpose: "差し替え対象の現行正本"
+    - path: "docs/01_事業構想/ターゲット定義書.md"
+      required: true
+      purpose: "差し替え対象の現行正本"
+    - path: "docs/01_事業構想/MVPスコープ定義書.md"
+      required: true
+      purpose: "差し替え対象の現行正本"
+  templates: []
+  files:
+    - path: "ai-logs/human-decisions/2026-08-31-gift-giving-ux-pivot.md"
+      required: true
+      purpose: "Human 決定の記録"
+  issues: []
+  prs: []
+
+output:
+  docs:
+    - path: "docs/01_事業構想/課題定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/01_事業構想/価値仮設定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/01_事業構想/ターゲット定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/01_事業構想/MVPスコープ定義書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/2026-08-31-gift-giving-ux-pivot.md"
+      action: "create"
+      required: true
+  tests: []
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: true
+    path: "ai-logs/human-decisions/2026-08-31-gift-giving-ux-pivot.md"
+
+deliverables:
+  - "Epic Issue / Epic Branch"
+  - "事業構想正本の差し替え"
+  - "Human Decision Log"
+
+acceptance_criteria:
+  - "Epic Issue と Epic Branch が存在する"
+  - "Task PR の target が本 Epic Branch である"
+  - "課題・価値仮説・ターゲット・MVPスコープが Human 決定と一致する"
+  - "未確定事項（Occasion / Relationship / ジャンル具体値等）を確定済みとして書いていない"
+  - "apps / OpenAPI / DB を変更していない"
+
+branch:
+  no_branch: false
+  summary: "giving-ux-pivot"
+  name: "docs/epic-1893-giving-ux-pivot"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "01_事業構想"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-08-31"
+    due_date: "2026-09-02"
+
+issue:
+  unit: "epic"
+  type: "docs"
+  area: "docs"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "Human 決定の3点が正本に反映されている"
+    - "未確定事項を確定扱いにしていない"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位。テストは子 Task"
+    "integration test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "Human 決定と正本が一致しているか"
+    - "未確定事項を確定済みとして書いていないか"
+    - "実装・API・DB 変更が混入していないか"
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Human 決定の正本差し替え。下流不整合は cross-cutting として扱う"
+
+risk_points:
+  - "下流 docs が旧価値仮説のまま残る"
+  - "未確定の Occasion / Relationship / ジャンルを確定扱いする"
+
+human_decision_points:
+  - "初回 Occasion / Relationship / 商品ジャンルの具体値"
+  - "設問セット・制限時間・KPI数値"
+  - "類似商品リストの採用時期"
+  - "下流 03_ / 画面仕様をいつ整合させるか"
+
+stop_conditions:
+  - "Human 決定と矛盾する正本上書きが必要に見える"
+  - "実装変更を同一 Epic に混ぜる必要が見える"
+
+notes:
+  - "Epic Issue #1893 / Branch docs/epic-1893-giving-ux-pivot"
+  - "機能・領域単位 Epic（例外）。事業構想に成果物識別子がない"
+  - "spike #1890 / #1889 とは独立"
