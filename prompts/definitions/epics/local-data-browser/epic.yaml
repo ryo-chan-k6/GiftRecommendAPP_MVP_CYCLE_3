@@ -1,0 +1,216 @@
+schema_version: "1.0"
+definition_type: "epic"
+
+epic:
+  id: "epic-local-data-browser"
+  title: "local-data-browser:localデータ可視化"
+  summary: "local DB の商品・意味連鎖・Relationship / Occasion / Pair・推薦入力を、localhost 限定の読み取り専用画面で視覚確認する。apps/web には載せない。機能・領域単位 Epic（例外）。"
+  workstream_key: "local-data-browser"
+
+work_mode: "ai-agent"
+
+commands:
+  primary: "/start-epic"
+  allowed:
+    - "/start-epic"
+    - "/start-task"
+    - "/summarize-work"
+  next:
+    success: "/start-task"
+    review_fix: null
+    blocked: null
+
+agent:
+  primary: "orchestrator-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  カタログ検証（#1882）と並行し、SQL やテーブル定義を読まずに local データを眺めたい、という Human 依頼。
+  apps/web に無認証管理者画面を足すと Vercel Preview で公開され得るため、scripts/dev の localhost 限定ビューアとする。
+  #1882 / #1888 には混ぜない。
+
+objective: |
+  local DB を SELECT のみで可視化するサンプルを用意し、商品・レコメンド用意味データ・マスタ連関・推薦入力をブラウザで確認できるようにする。
+
+scope:
+  - "Epic Issue / Epic Branch の管理"
+  - "localhost 限定・読み取り専用データ可視化サンプル"
+  - "scripts/dev への起動手順追加"
+
+out_of_scope:
+  - "apps/web への管理者画面追加"
+  - "認証・認可の本実装"
+  - "本番 / stg DB 接続"
+  - "DB 書き込み / DDL / migration"
+  - "OpenAPI / generated / apps/api|reco|batch src の改修"
+  - "#1882 成果物の変更"
+  - "embedding ベクトル本体の画面出力"
+
+epic_scope:
+  artifact_id: ""
+  allowed_paths:
+    - "prompts/definitions/epics/local-data-browser/**"
+    - "prompts/definitions/tasks/local-data-browser/**"
+    - "prompts/definitions/reviews/local-data-browser/**"
+    - "scripts/dev/local_data_browser/**"
+    - "scripts/dev/start-local-data-browser.sh"
+    - "scripts/dev/README.md"
+  forbidden_paths:
+    - "apps/web/**"
+    - "apps/api/**"
+    - "apps/reco/**"
+    - "apps/batch/src/**"
+    - "packages/contracts/**"
+    - ".github/workflows/**"
+    - "supabase/migrations/**"
+  child_task_areas:
+    - "sample-viewer"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+      purpose: "商品正本の列を画面に対応させる"
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+      purpose: "Relationship マスタ表示"
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+      purpose: "Occasion マスタ表示"
+    - path: "docs/06_実装設計/database/pair_master_テーブル定義書.md"
+      required: true
+      purpose: "組み合わせマトリクス"
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+      purpose: "ユーザー相当が独立マスタではなく Request であること"
+    - path: "docs/00_共通/ディレクトリ構成/プロジェクトディレクトリ構成定義書.md"
+      required: true
+      purpose: "scripts/dev 配置"
+  templates: []
+  files: []
+  issues:
+    - 1889
+  prs: []
+
+output:
+  docs: []
+  files:
+    - path: "scripts/dev/local_data_browser/**"
+      action: "create"
+      required: true
+    - path: "scripts/dev/start-local-data-browser.sh"
+      action: "create"
+      required: true
+  tests:
+    - path: "scripts/dev/local_data_browser/test_guard.py"
+      action: "create"
+      required: true
+  generated:
+    expected: false
+    paths: []
+    handling: "none"
+  logs:
+    ai_logs_required: false
+    path: null
+
+deliverables:
+  - "Epic Issue（#1889）"
+  - "Epic Branch spike/epic-1889-local-data-browser"
+  - "配下 Task の localhost 可視化サンプル"
+
+acceptance_criteria:
+  - "Epic Issue と Epic Branch が存在する"
+  - "Task PR の target が本 Epic Branch である"
+  - "apps/web に管理者画面を載せていない"
+  - "local 以外の DB host へは接続しない"
+
+branch:
+  no_branch: false
+  summary: "local-data-browser"
+  name: "spike/epic-1889-local-data-browser"
+  base: "develop"
+  target: "develop"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    phase: "15_運用・改善"
+    status: "Todo"
+    priority: "high"
+    planned_start: "2026-08-27"
+    due_date: "2026-08-29"
+
+issue:
+  unit: "epic"
+  type: "spike"
+  area: "db"
+
+dependencies:
+  epics: []
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files: []
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required: []
+  commands: []
+  manual_checks:
+    - "bind が 127.0.0.1 のみ"
+    - "非 local DATABASE_URL を拒否する"
+  not_required:
+    - "unit test"
+    - "integration test"
+  skip_reason:
+    "unit test": "Epic は作業管理単位。テストは子 Task"
+    "integration test": "Epic は作業管理単位"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  review_points:
+    - "apps/web に載せていないか"
+    - "localhost / SELECT のみに閉じているか"
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: true
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常作業は Issue / PR。blocked・security 懸念のみ incidents"
+
+risk_points:
+  - "誤って apps/web に載せて Vercel Preview 公開する"
+  - "非 local DB に接続する"
+
+human_decision_points:
+  - "将来 apps/web の認証付き Admin にするか（その場合は別画面 Epic）"
+
+stop_conditions:
+  - "非 local DB へ接続する必要が出た場合"
+  - "apps/web へ無認証で載せる必要が出た場合"
+  - "書き込み API が必要になった場合"
+
+notes:
+  - "Epic Issue #1889 / Branch spike/epic-1889-local-data-browser"
+  - "#1882 カタログ検証レーンとは独立"

@@ -42,6 +42,7 @@ Phase3a（2026-06-07）の「docker-compose 同梱なし」は **PostgreSQL 用 
 | [`pytest-batch.sh`](./pytest-batch.sh) | `apps/batch/tests/unit` の pytest（骨格 merge 後） |
 | [`start-api.sh`](./start-api.sh) | api を `pnpm dev:api` で起動（port **3001**） |
 | [`start-web.sh`](./start-web.sh) | web を `pnpm dev:web` で起動（port **3000**） |
+| [`start-local-data-browser.sh`](./start-local-data-browser.sh) | local DB の読み取り専用可視化（**127.0.0.1:8787**。`apps/web` 非掲載） |
 
 ## 使い方
 
@@ -75,6 +76,29 @@ redis-cli -u "$REDIS_URL" PING   # 未インストール時は smoke-check が d
 ./scripts/dev/start-api.sh    # terminal 2 — http://localhost:3001
 ./scripts/dev/start-web.sh    # terminal 3 — http://localhost:3000
 ```
+
+### local データ可視化（管理者確認用サンプル）
+
+SQL を書かずに商品・意味連鎖・Relationship / Occasion / Pair・推薦入力を見る。**localhost のみ**。Vercel には出ない。
+
+楽天ランキングAPIの **①総合 / ③年代別 / ④性別 / ⑤年代×性別**（②ジャンル指定は対象外）を取得し、ジャンル・ショップコード・キーワード選定の材料にする画面は `/ranking`。
+
+`external_genre` の階層と直下子数、OKURI 初期取り扱い対象のチェックは `/genres`。選択は local cache（DB 未書き込み）。ランキング分析の「対象ジャンルで絞り込む」で使えます。`external_genre.parent` が L1 直付けになっている場合は `staging_genre` から直近親を再構成して表示します。
+
+```bash
+./scripts/dev/start-local-data-browser.sh   # http://127.0.0.1:8787
+# http://127.0.0.1:8787/ranking
+# http://127.0.0.1:8787/genres
+```
+
+| 項目 | 内容 |
+| ---- | ---- |
+| bind | `127.0.0.1` のみ（`0.0.0.0` 不可） |
+| DB | `.env` の `DATABASE_URL` が loopback のときだけ接続 |
+| 操作 | DB は SELECT のみ。ランキング取得・対象ジャンル選択は **local cache**（DB 未書き込み） |
+| ランキング | `RAKUTEN_APPLICATION_ID` / `RAKUTEN_ACCESS_KEY` が必要。値は画面・ログに出さない |
+| 対象外 | ②ジャンル別ランキング（公式仕様で age / sex と併用不可） |
+| 非掲載 | `apps/web` には置かない（Preview 公開を避ける） |
 
 ### アプリ停止（web → api → reco）
 

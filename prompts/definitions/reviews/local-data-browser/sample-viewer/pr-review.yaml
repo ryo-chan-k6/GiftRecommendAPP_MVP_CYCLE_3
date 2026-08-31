@@ -1,0 +1,56 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-data-browser-sample"
+  title: "local-data-browser:可視化サンプル Task PRレビュー"
+  summary: "localhost 限定データ可視化サンプル Task PR を AI Review する。"
+  type: "task_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: 1891
+  issue:
+    number: 1890
+  task_definition: "prompts/definitions/tasks/local-data-browser/sample-viewer.yaml"
+  source_branch: "spike/task-1890-local-data-browser-sample"
+  target_branch: "spike/epic-1889-local-data-browser"
+  parent_epic_issue: "[Epic]local-data-browser:localデータ可視化"
+  parent_epic_branch: "spike/epic-1889-local-data-browser"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: false
+    security: true
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "bind が 127.0.0.1 のみか"
+  - "DATABASE_URL host が loopback 以外で起動拒否するか"
+  - "SQL が SELECT / WITH のみか"
+  - "apps/web を変更していないか"
+  - "secret / DATABASE_URL 実値を出していないか"
+
+notes:
+  - "親Epic #1889。Task Issue #1890 / Branch spike/task-1890-local-data-browser-sample"
+  - "Human Reviewは省略しない"
