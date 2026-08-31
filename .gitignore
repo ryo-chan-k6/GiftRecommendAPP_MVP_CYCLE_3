@@ -104,6 +104,7 @@ scripts/batch/output-*/
 # =========================
 *.sqlite
 *.db
+scripts/dev/local_data_browser/.cache/
 supabase/.temp/
 supabase/.branches/
 supabase/snippets/
