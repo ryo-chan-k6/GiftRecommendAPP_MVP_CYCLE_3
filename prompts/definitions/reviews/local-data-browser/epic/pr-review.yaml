@@ -1,0 +1,58 @@
+schema_version: "1.0"
+definition_type: "review"
+
+review:
+  id: "review-local-data-browser-epic-pr"
+  title: "local-data-browser:localデータ可視化 Epic PRレビュー"
+  summary: "localhost 限定データ可視化 Epic の develop 向け Epic PR を AI Review する。"
+  type: "epic_pr_review"
+  status: "ready"
+
+work_mode: "ai-agent"
+
+branch:
+  worktree_required: true
+
+target:
+  pr: null
+  issue:
+    number: 1889
+  task_definition: "prompts/definitions/epics/local-data-browser/epic.yaml"
+  source_branch: "spike/epic-1889-local-data-browser"
+  target_branch: "develop"
+  parent_epic_issue: "[Epic]local-data-browser:localデータ可視化"
+  parent_epic_branch: "spike/epic-1889-local-data-browser"
+
+commands:
+  primary: "/review-pr"
+
+agent:
+  primary: "reviewer-ai"
+  specialist:
+    docs: false
+    test: false
+    security: true
+
+review_scope:
+  docs: false
+  source: true
+  tests: true
+  api_contract: false
+  db: false
+  generated: false
+  cicd: false
+  security: true
+  project_operation: true
+
+review_points:
+  - "apps/web に載せていないか"
+  - "bind が 127.0.0.1 のみか"
+  - "DATABASE_URL host が loopback 以外で起動拒否するか"
+  - "SQL が SELECT / WITH のみか"
+  - "secret / DATABASE_URL 実値を出していないか"
+  - "Epic PR target が develop、Closes が親Epic Issue か"
+
+notes:
+  - "Epic Issue #1889 / Branch spike/epic-1889-local-data-browser"
+  - "配下 Task #1890。PR番号は Epic PR 作成後に反映"
+  - "Human Reviewは省略しない"

@@ -1,0 +1,221 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-local-data-browser-sample"
+  title: "local-data-browser:可視化サンプル画面作成"
+  summary: "local DB の商品・レコメンド用意味データ・Relationship / Occasion / Pair・推薦入力を、localhost 限定の読み取り専用画面で視覚確認するサンプルを作成する。"
+  workstream_key: "local-data-browser"
+  phase: "sample"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]local-data-browser:localデータ可視化"
+  epic_issue_number: 1889
+  epic_branch: "spike/epic-1889-local-data-browser"
+  related_issues:
+    - 1889
+    - 1890
+  related_prs: []
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+
+background: |
+  親Epic #1889。カタログ検証 PR（#1888）の確認より先に、SQL なしでデータを見たいという Human 依頼。
+  セキュリティ上 apps/web には載せない。127.0.0.1 bind・local DB・SELECT のみ。
+
+objective: |
+  ブラウザで商品リスト、レコメンド用商品、マスタ連関、Pair マトリクス、推薦入力を確認できるサンプルを動かす。
+
+scope:
+  - "scripts/dev/local_data_browser に読み取り専用 HTTP ビューアを追加する"
+  - "127.0.0.1 のみ bind する"
+  - "DATABASE_URL host が loopback 以外なら起動拒否する"
+  - "SELECT のみ。書き込み SQL を持たない"
+  - "商品 / レコメンド用商品 / マスタ / Pair / 推薦入力の画面"
+  - "起動スクリプトと scripts/dev/README の案内"
+  - "接続ガードの DB 不要単体テスト"
+
+out_of_scope:
+  - "apps/web への管理者画面追加"
+  - "認証・認可の本実装"
+  - "本番 / stg DB 接続"
+  - "DB 書き込み / DDL / migration"
+  - "embedding ベクトル本体の表示"
+  - "#1882 成果物の変更"
+  - "OpenAPI / generated 変更"
+
+input:
+  docs:
+    - path: "docs/06_実装設計/database/item_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_meaning_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/item_feature_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/relationship_master_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/occasion_master_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/pair_master_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/pair_rule_テーブル定義書.md"
+      required: true
+    - path: "docs/06_実装設計/database/recommendation_request_テーブル定義書.md"
+      required: true
+    - path: "prompts/definitions/epics/local-data-browser/epic.yaml"
+      required: true
+  files: []
+
+output:
+  docs: []
+  files:
+    - path: "scripts/dev/local_data_browser/server.py"
+      action: "create"
+      required: true
+    - path: "scripts/dev/local_data_browser/guard.py"
+      action: "create"
+      required: true
+    - path: "scripts/dev/start-local-data-browser.sh"
+      action: "create"
+      required: true
+    - path: "scripts/dev/README.md"
+      action: "update"
+      required: true
+    - path: "prompts/definitions/epics/local-data-browser/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/local-data-browser/sample-viewer.yaml"
+      action: "create"
+      required: true
+  tests:
+    - path: "scripts/dev/local_data_browser/test_guard.py"
+      action: "create"
+      required: true
+
+deliverables:
+  - "localhost 限定データ可視化サンプル"
+  - "起動スクリプト"
+  - "接続ガード単体テスト"
+
+acceptance_criteria:
+  - "localhost で概況・商品・レコメンド用商品・マスタ連関・Pair・推薦入力が開ける"
+  - "非 loopback の DATABASE_URL では起動しない"
+  - "0.0.0.0 へ bind しない"
+  - "apps/web を変更していない"
+  - "secret / DATABASE_URL 実値を画面・ログ・リポジトリに出していない"
+
+branch:
+  no_branch: false
+  summary: "local-data-browser-sample"
+  name: "spike/task-1890-local-data-browser-sample"
+  base: "spike/epic-1889-local-data-browser"
+  target: "spike/epic-1889-local-data-browser"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "15_運用・改善"
+    priority: "high"
+    planned_start: "2026-08-27"
+    due_date: "2026-08-29"
+
+issue:
+  unit: "task"
+  type: "spike"
+  area: "db"
+
+dependencies:
+  epics:
+    - 1889
+  issues:
+    - 1889
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "scripts/dev/local_data_browser/**"
+    - "scripts/dev/start-local-data-browser.sh"
+    - "scripts/dev/README.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "guard 単体テスト"
+    - "localhost での画面確認"
+  commands:
+    - "python scripts/dev/local_data_browser/test_guard.py"
+  manual_checks:
+    - "bind が 127.0.0.1"
+    - "対象が local DB のみ"
+    - "書き込み操作がない"
+  not_required:
+    - "Playwright E2E"
+    - "reco E2E"
+  skip_reason:
+    "Playwright E2E": "apps/web 外の local サンプル"
+    "reco E2E": "推薦実行はしない"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: false
+    test: false
+    contract: false
+    security: true
+  review_points:
+    - "bind が 127.0.0.1 のみか"
+    - "DB host 許可が local loopback に閉じているか"
+    - "SQL が SELECT のみか"
+    - "apps/web に乗っていないか"
+
+human_decision_points:
+  - "この置き場（scripts/dev、localhost 限定）で運用してよいか"
+  - "将来 web の認証付き Admin にするか"
+
+stop_conditions:
+  - "local 以外の DB へ接続する必要が見える"
+  - "apps/web へ無認証で載せる必要が見える"
+  - "書き込みや破壊的 SQL が必要に見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: false
+    experiments: false
+  reason: "通常作業は PR。security / blocked のみ incidents"
+
+notes:
+  - "親Epic: #1889 / Branch spike/epic-1889-local-data-browser"
+  - "Task Issue #1890 / Branch spike/task-1890-local-data-browser-sample"
+  - "MVP に独立 user テーブルはなく、推薦入力をユーザー相当として表示する"
