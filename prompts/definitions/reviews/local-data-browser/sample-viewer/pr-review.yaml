@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1891
   issue:
     number: 1890
   task_definition: "prompts/definitions/tasks/local-data-browser/sample-viewer.yaml"
