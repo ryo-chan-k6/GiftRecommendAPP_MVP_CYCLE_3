@@ -1,0 +1,213 @@
+schema_version: "1.0"
+definition_type: "task"
+
+task:
+  id: "task-giving-hypothesis-restack"
+  title: "事業構想:課題価値ターゲットMVP正本差し替え"
+  summary: "課題定義書・価値仮設定義書・ターゲット定義書・MVPスコープ定義書を、贈る到達と診断UXの Human 決定へ差し替える。"
+  workstream_key: "giving-ux-pivot"
+  phase: "hypothesis-restack"
+
+work_mode: "ai-agent"
+
+parent:
+  epic_issue: "[Epic]事業構想:贈る到達UXピボット"
+  epic_issue_number: 1893
+  epic_branch: "docs/epic-1893-giving-ux-pivot"
+  related_issues:
+    - 1893
+    - 1894
+  related_prs:
+    - 1895
+
+commands:
+  primary: "/work-issue"
+  allowed:
+    - "/start-task"
+    - "/work-issue"
+    - "/create-pr"
+    - "/summarize-work"
+  next:
+    success: "/create-pr"
+    review_fix: "/fix-review-comments"
+    blocked: null
+
+agent:
+  primary: "worker-ai"
+  support:
+    - "support-ai"
+  review:
+    - "reviewer-ai"
+    - "docs-reviewer-ai"
+
+background: |
+  Human が 2026-08-31 に、前面の価値仮説を差し替えると決定した。
+  積み上げは「シーン×相手で何が喜ばれるか分からない → 推奨群提示はテーブルステークス → 最大課題は贈るまで誘導できていない → 候補過多で先送り → 一問一答の診断UX」。
+  成功は商品確定かつ楽天アフィリエイトURLへの遷移。出口は最終スコア＋MMRの3商品。
+
+objective: |
+  事業構想4正本と Human Decision Log を、上記決定に合わせて更新する。
+
+scope:
+  - "docs/01_事業構想/課題定義書.md の差し替え"
+  - "docs/01_事業構想/価値仮設定義書.md の差し替え"
+  - "docs/01_事業構想/ターゲット定義書.md の差し替え"
+  - "docs/01_事業構想/MVPスコープ定義書.md の差し替え"
+  - "ai-logs/human-decisions/2026-08-31-gift-giving-ux-pivot.md の作成"
+  - "本 Task / Epic / Review Definition の配置"
+
+out_of_scope:
+  - "docs/03_ドメイン要件定義 の整合"
+  - "SCR-001 / SCR-002 ほか画面仕様の付け替え"
+  - "ドメインモデルの前面価値の付け替え"
+  - "LP / トップコピーの変更"
+  - "実装 / OpenAPI / DB / local-data-browser の変更"
+  - "Occasion / Relationship / ジャンル具体値の確定"
+
+input:
+  docs:
+    - path: "docs/01_事業構想/課題定義書.md"
+      required: true
+    - path: "docs/01_事業構想/価値仮設定義書.md"
+      required: true
+    - path: "docs/01_事業構想/ターゲット定義書.md"
+      required: true
+    - path: "docs/01_事業構想/MVPスコープ定義書.md"
+      required: true
+    - path: "prompts/definitions/epics/giving-ux-pivot/epic.yaml"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/2026-08-31-gift-giving-ux-pivot.md"
+      required: false
+
+output:
+  docs:
+    - path: "docs/01_事業構想/課題定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/01_事業構想/価値仮設定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/01_事業構想/ターゲット定義書.md"
+      action: "update"
+      required: true
+    - path: "docs/01_事業構想/MVPスコープ定義書.md"
+      action: "update"
+      required: true
+  files:
+    - path: "ai-logs/human-decisions/2026-08-31-gift-giving-ux-pivot.md"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/epics/giving-ux-pivot/epic.yaml"
+      action: "create"
+      required: true
+    - path: "prompts/definitions/tasks/giving-ux-pivot/hypothesis-restack.yaml"
+      action: "create"
+      required: true
+  tests: []
+
+deliverables:
+  - "事業構想4正本の差し替え"
+  - "Human Decision Log"
+
+acceptance_criteria:
+  - "本質課題が先送り / 贈らないになっている"
+  - "中核価値仮説が診断UXになっている"
+  - "成功定義が商品確定かつアフィリエイトURL遷移である"
+  - "診断出口が最終スコア＋MMRの3商品である"
+  - "コアターゲットが先送り層（S01）である"
+  - "未確定事項を確定済みとして書いていない"
+  - "apps / OpenAPI / DB を変更していない"
+
+branch:
+  no_branch: false
+  summary: "giving-hypothesis-restack"
+  name: "docs/task-1894-giving-hypothesis-restack"
+  base: "docs/epic-1893-giving-ux-pivot"
+  target: "docs/epic-1893-giving-ux-pivot"
+  worktree_required: true
+
+project:
+  project_name: "Gift Recommendation Service MVP Cycle 3"
+  fields:
+    status: "In Progress"
+    phase: "01_事業構想"
+    priority: "high"
+    planned_start: "2026-08-31"
+    due_date: "2026-09-02"
+
+issue:
+  unit: "task"
+  type: "docs"
+  area: "docs"
+
+dependencies:
+  epics:
+    - 1893
+  issues: []
+  prs: []
+  tasks: []
+  blocking: false
+
+parallel_control:
+  depends_on: []
+  blocks: []
+  exclusive_files:
+    - "docs/01_事業構想/課題定義書.md"
+    - "docs/01_事業構想/価値仮設定義書.md"
+    - "docs/01_事業構想/ターゲット定義書.md"
+    - "docs/01_事業構想/MVPスコープ定義書.md"
+    - "ai-logs/human-decisions/2026-08-31-gift-giving-ux-pivot.md"
+  conflict_risk: "low"
+  contract_impact: false
+  generated_impact: false
+  db_impact: false
+
+test_policy:
+  required:
+    - "docs の Human 決定3点の目視確認"
+  commands: []
+  manual_checks:
+    - "未確定事項が未確定のまま残っている"
+    - "secret を含んでいない"
+  not_required:
+    - "unit test"
+    - "Playwright E2E"
+  skip_reason:
+    "unit test": "docs 差し替え Task"
+    "Playwright E2E": "実装変更なし"
+
+review:
+  human_review_required: true
+  ai_review_required: true
+  specialist_reviews:
+    docs: true
+    test: false
+    contract: false
+    security: false
+  review_points:
+    - "Human 決定3点が正本に反映されているか"
+    - "未確定事項を確定扱いしていないか"
+    - "下流 docs を勝手に広げていないか"
+
+human_decision_points:
+  - "初回 Occasion / Relationship / ジャンル具体値は本 Task では決めない"
+  - "下流整合の着手順"
+
+stop_conditions:
+  - "Human 決定と矛盾する上書きが必要に見える"
+  - "実装や画面仕様まで同一 Task で直す必要が見える"
+
+operation_logging:
+  level: "standard"
+  ai_logs:
+    intake: false
+    incidents: true
+    cross_cutting: true
+    experiments: false
+  reason: "Human 決定の正本差し替え。下流は別 Task"
+
+notes:
+  - "親Epic #1893 / Branch docs/epic-1893-giving-ux-pivot"
+  - "Task Issue #1894 / Branch docs/task-1894-giving-hypothesis-restack"
+  - "spike #1890 とは独立"
