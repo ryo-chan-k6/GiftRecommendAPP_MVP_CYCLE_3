@@ -14,7 +14,7 @@ branch:
   worktree_required: true
 
 target:
-  pr: null
+  pr: 1895
   issue:
     number: 1894
   task_definition: "prompts/definitions/tasks/giving-ux-pivot/hypothesis-restack.yaml"

@@ -17,7 +17,8 @@ parent:
   related_issues:
     - 1893
     - 1894
-  related_prs: []
+  related_prs:
+    - 1895
 
 commands:
   primary: "/work-issue"
